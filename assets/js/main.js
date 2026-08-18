@@ -288,6 +288,109 @@
     });
   }
 
+  /* ---------- Roadmap: scroll-scrubbed rail, markers and cards ----------
+     The rail fills against a "playhead" line sitting ~62% down the viewport.
+     Markers track it live in both directions; cards reveal once and stay put. */
+  var roadmaps = $$('[data-roadmap]');
+  if (roadmaps.length) {
+    var rmParts = roadmaps.map(function (rm) {
+      return {
+        el: rm,
+        rail: $('.roadmap__rail', rm),
+        fill: $('.roadmap__fill', rm),
+        steps: $$('.roadmap__step', rm).map(function (s) {
+          return { el: s, marker: $('.roadmap__marker', s) };
+        })
+      };
+    });
+
+    if (reduceMotion) {
+      rmParts.forEach(function (rm) {
+        if (rm.fill) rm.fill.style.height = '100%';
+        rm.steps.forEach(function (s) { s.el.classList.add('is-reached', 'is-seen'); });
+      });
+    } else {
+      var rmTicking = false;
+      var drawRoadmaps = function () {
+        rmTicking = false;
+        var playhead = window.innerHeight * 0.62;
+        rmParts.forEach(function (rm) {
+          if (!rm.rail || !rm.fill) return;
+          var r = rm.rail.getBoundingClientRect();
+          if (r.bottom < -200 || r.top > window.innerHeight + 200) return;
+          var p = r.height ? (playhead - r.top) / r.height : 0;
+          p = Math.max(0, Math.min(1, p));
+          rm.fill.style.height = (p * 100).toFixed(2) + '%';
+          rm.el.classList.toggle('is-running', p > 0.001 && p < 0.999);
+          rm.steps.forEach(function (s) {
+            var m = s.marker.getBoundingClientRect();
+            var reached = m.top + m.height / 2 <= playhead;
+            s.el.classList.toggle('is-reached', reached);
+            if (reached) s.el.classList.add('is-seen');
+          });
+        });
+      };
+      var queueRoadmaps = function () {
+        if (!rmTicking) { rmTicking = true; requestAnimationFrame(drawRoadmaps); }
+      };
+      drawRoadmaps();
+      window.addEventListener('scroll', queueRoadmaps, { passive: true });
+      window.addEventListener('resize', queueRoadmaps);
+      window.addEventListener('load', drawRoadmaps);
+    }
+  }
+
+  /* ---------- Reading progress ---------- */
+  var progressBar = $('.scroll-progress');
+  if (progressBar) {
+    var pTicking = false;
+    var drawProgress = function () {
+      pTicking = false;
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      var p = max > 0 ? window.scrollY / max : 0;
+      progressBar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, p)).toFixed(4) + ')';
+    };
+    drawProgress();
+    window.addEventListener('scroll', function () {
+      if (!pTicking) { pTicking = true; requestAnimationFrame(drawProgress); }
+    }, { passive: true });
+    window.addEventListener('resize', drawProgress);
+  }
+
+  /* ---------- Scroll-spy: highlight the section you're reading ---------- */
+  var spyLinks = $$('[data-spy]');
+  if (spyLinks.length) {
+    var spyTargets = spyLinks
+      .map(function (a) { return { link: a, section: document.getElementById(a.dataset.spy) }; })
+      .filter(function (t) { return t.section; });
+
+    if (spyTargets.length) {
+      var sTicking = false;
+      var drawSpy = function () {
+        sTicking = false;
+        // Sit the reading line comfortably below where an anchor jump lands a
+        // section (scroll-padding-top), so clicking a nav link activates it too.
+        var navH = nav ? nav.offsetHeight : 70;
+        var line = window.scrollY + Math.max(navH + 150, window.innerHeight * 0.3);
+        var current = spyTargets[0];
+        spyTargets.forEach(function (t) {
+          if (t.section.offsetTop <= line) current = t;
+        });
+        // Snap to the last section once the page bottom is reached.
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+          current = spyTargets[spyTargets.length - 1];
+        }
+        spyLinks.forEach(function (a) { a.classList.remove('is-active'); });
+        current.link.classList.add('is-active');
+      };
+      drawSpy();
+      window.addEventListener('scroll', function () {
+        if (!sTicking) { sTicking = true; requestAnimationFrame(drawSpy); }
+      }, { passive: true });
+      window.addEventListener('resize', drawSpy);
+    }
+  }
+
   /* ---------- Footer year ---------- */
   $$('[data-year]').forEach(function (el) { el.textContent = String(new Date().getFullYear()); });
 

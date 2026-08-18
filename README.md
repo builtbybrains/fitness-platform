@@ -9,7 +9,7 @@ to any static host and loads instantly.
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Homepage — hero, how it works, features, AI diet, personal trainer, daily accountability, goals & progress, pricing, about, why, contact, final CTA |
+| `index.html` | The landing page — one continuous scroll: Home → How It Works → Features → Pricing → About Us → Contact Us, plus the AI diet, trainer, accountability and progress deep-dives inside the Features chapter |
 | `features.html` | How It Works + full feature catalogue + a day with VITAL + FAQ |
 | `pricing.html` | The single $30/month plan, cost comparison, what's included, billing FAQ |
 | `about.html` | Mission, principles, why choose us |
@@ -24,6 +24,13 @@ assets/
   js/main.js      nav, mobile menu, scroll reveal, counters, tabs, form, CTA orbit
   img/favicon.svg
 ```
+
+## Brand mark
+
+`assets/img/logo.svg` is the VITAL mark — leaf, athlete and broken ring — drawn as vectors so
+it stays sharp from a 30px nav icon up to any size, at roughly 1.5 KB. It is referenced as an
+`<img>` (one cached request rather than inlining it into all seven pages). To swap in a
+different file, replace that path in `logoMark` and the nav and footer both follow.
 
 ## Design system
 
@@ -52,6 +59,29 @@ keyframe. `sizeOrbits()` in `main.js` keeps the corner radius matched to the pil
 Hover speeds the line up, thickens it, brightens the trail and scales the button.
 The `.cta-orbit--xl` variant in the final CTA adds a pulsing radial glow.
 
+## Navigation model
+
+The primary nav is the homepage's section map, in a fixed order: **Home → How It Works →
+Features → Pricing → About Us → Contact Us**. On `index.html` those are in-page anchors; on
+every other page they point back at `index.html#<section>`. A scroll-spy highlights whichever
+section you are reading, and a 2px reading-progress bar sits under the nav.
+
+The detail pages (`features.html`, `pricing.html`, `about.html`, `contact.html`) are reached
+from the footer. They carry the longer copy and FAQs so the landing page can stay tight.
+
+One thing to know if you change the nav offset: `html { scroll-padding-top }` is the single
+source of truth for where an anchor lands. Do not also add `scroll-margin-top` to sections —
+the two add up, and the scroll-spy threshold in `main.js` is calibrated against the padding
+value alone.
+
+## The roadmap
+
+`How It Works` is a scroll-scrubbed timeline, not a static grid. As you scroll, the rail fills
+against a "playhead" at 62% of the viewport, a glowing head travels down it, and each step's
+marker lights up as it is passed. Markers track the playhead live in both directions; step
+cards reveal once and then stay put, so nothing vanishes when you scroll back up. Under
+`prefers-reduced-motion` the whole thing renders complete and static.
+
 ## Behaviour
 
 - **Scroll reveal** — one `IntersectionObserver` adds `.is-visible`; it also triggers number
@@ -61,6 +91,8 @@ The `.cta-orbit--xl` variant in the final CTA adds a pulsing radial glow.
 - **App screen switcher** — `data-tabs="<panel-id>"` cross-fades the phone screens and
   autoplays only while the section is in view.
 - **Hero parallax** — pointer-driven, rAF-smoothed, desktop and fine-pointer only.
+- **Scroll-spy, roadmap and progress bar** — all share the same pattern: a scroll listener
+  that only schedules one rAF at a time, so scrolling stays cheap.
 - **Contact form** — client-side validation with inline errors. It is not wired to a backend;
   see "Wiring up" below.
 

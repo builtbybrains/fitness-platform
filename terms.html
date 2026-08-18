@@ -35,24 +35,18 @@
 <header class="nav" id="nav">
   <div class="container nav__inner">
     <a class="logo" href="index.html" aria-label="VITAL — home">
-      <svg class="logo__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#lg)" fill-opacity="0.14" stroke="url(#lg)" stroke-opacity="0.5"/>
-        <path d="M8 18.5h3.4l2.2-6.2 3.1 9.4 2.4-5.1H24" stroke="url(#lg)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
-        <defs><linearGradient id="lg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#34e5a4"/><stop offset="1" stop-color="#79a6ff"/>
-        </linearGradient></defs>
-      </svg>
+      <img class="logo__mark" src="assets/img/logo.svg" width="34" height="34" alt="" decoding="async">
       <span>VITAL</span>
     </a>
 
     <nav aria-label="Primary">
       <ul class="nav__links">
-        <li><a class="nav__link" href="index.html">Home</a></li>
-        <li><a class="nav__link" href="features.html">How It Works</a></li>
-        <li><a class="nav__link" href="features.html#features">Features</a></li>
-        <li><a class="nav__link" href="pricing.html">Pricing</a></li>
-        <li><a class="nav__link" href="about.html">About Us</a></li>
-        <li><a class="nav__link" href="contact.html">Contact</a></li>
+        <li><a class="nav__link" href="index.html#home">Home</a></li>
+        <li><a class="nav__link" href="index.html#how">How It Works</a></li>
+        <li><a class="nav__link" href="index.html#features">Features</a></li>
+        <li><a class="nav__link" href="index.html#pricing">Pricing</a></li>
+        <li><a class="nav__link" href="index.html#about">About Us</a></li>
+        <li><a class="nav__link" href="index.html#contact">Contact Us</a></li>
       </ul>
     </nav>
 
@@ -64,21 +58,22 @@
     </div>
   </div>
 </header>
+<div class="scroll-progress" aria-hidden="true"></div>
 
 <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
   <nav aria-label="Mobile">
     <ul class="mobile-menu__list">
-        <li style="--i:0"><a href="index.html">Home<span>01</span></a></li>
-        <li style="--i:1"><a href="features.html">How It Works<span>02</span></a></li>
-        <li style="--i:2"><a href="features.html#features">Features<span>03</span></a></li>
-        <li style="--i:3"><a href="pricing.html">Pricing<span>04</span></a></li>
-        <li style="--i:4"><a href="about.html">About Us<span>05</span></a></li>
-        <li style="--i:5"><a href="contact.html">Contact<span>06</span></a></li>
+        <li style="--i:0"><a href="index.html#home">Home<span>01</span></a></li>
+        <li style="--i:1"><a href="index.html#how">How It Works<span>02</span></a></li>
+        <li style="--i:2"><a href="index.html#features">Features<span>03</span></a></li>
+        <li style="--i:3"><a href="index.html#pricing">Pricing<span>04</span></a></li>
+        <li style="--i:4"><a href="index.html#about">About Us<span>05</span></a></li>
+        <li style="--i:5"><a href="index.html#contact">Contact Us<span>06</span></a></li>
     </ul>
   </nav>
   <div class="mobile-menu__foot">
     <a class="btn btn-primary btn-lg" href="index.html#download"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19h16"/></svg><span>Download the app</span></a>
-    <p class="body-muted" style="font-size:.86rem">$30 / month — that's about $1 a day.</p>
+    <p class="body-muted" style="font-size:.86rem">$30 / month — that&rsquo;s about $1 a day.</p>
   </div>
 </div>
 
@@ -118,29 +113,24 @@
   <div class="container">
     <div class="footer__top">
       <div class="footer__brand">
-        <a class="logo" href="index.html" aria-label="VITAL — home"><svg class="logo__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#lg)" fill-opacity="0.14" stroke="url(#lg)" stroke-opacity="0.5"/>
-        <path d="M8 18.5h3.4l2.2-6.2 3.1 9.4 2.4-5.1H24" stroke="url(#lg)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
-        <defs><linearGradient id="lg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#34e5a4"/><stop offset="1" stop-color="#79a6ff"/>
-        </linearGradient></defs>
-      </svg><span>VITAL</span></a>
+        <a class="logo" href="index.html" aria-label="VITAL — home"><img class="logo__mark" src="assets/img/logo.svg" width="34" height="34" alt="" decoding="async"><span>VITAL</span></a>
         <p>Personalized AI nutrition, personal training and daily accountability — inside one intelligent app.</p>
       </div>
       <div>
         <h4>Product</h4>
         <ul class="footer__links">
-          <li><a href="index.html">Home</a></li>
-          <li><a href="features.html">How It Works</a></li>
-          <li><a href="features.html#features">Features</a></li>
-          <li><a href="pricing.html">Pricing</a></li>
+          <li><a href="index.html#how">How It Works</a></li>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#pricing">Pricing</a></li>
+          <li><a href="features.html">Feature details</a></li>
         </ul>
       </div>
       <div>
         <h4>Company</h4>
         <ul class="footer__links">
-          <li><a href="about.html">About</a></li>
-          <li><a href="contact.html">Contact</a></li>
+          <li><a href="index.html#about">About</a></li>
+          <li><a href="index.html#contact">Contact</a></li>
+          <li><a href="pricing.html">Pricing &amp; FAQ</a></li>
           <li><a href="contact.html#partnerships">Partnerships</a></li>
           <li><a href="contact.html#support">Support</a></li>
         </ul>
