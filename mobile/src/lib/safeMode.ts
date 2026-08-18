@@ -9,4 +9,4 @@
  * Expo Go itself rather than in any of those libraries. Remove this file and its
  * two call sites once the cause is found.
  */
-export const SAFE_MODE = true;
+export const SAFE_MODE = false;

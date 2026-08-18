@@ -4,7 +4,6 @@ import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -98,12 +97,15 @@ function AnimatedBoot() {
     glow.value = withDelay(240, withTiming(1, { duration: 780, easing: Easing.inOut(Easing.quad) }));
     wordmark.value = withDelay(420, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }));
 
-    done.value = withDelay(
-      1250,
-      withTiming(1, { duration: 320, easing: Easing.in(Easing.quad) }, (finished) => {
-        if (finished) runOnJS(go)();
-      }),
-    );
+    done.value = withDelay(1250, withTiming(1, { duration: 320, easing: Easing.in(Easing.quad) }));
+
+    // Navigation is driven by a plain timer rather than runOnJS from inside the
+    // animation callback. Routing from a worklet is the most exotic thing in the
+    // startup path, and it fires on the UI thread while the navigator is still
+    // mounting; a timer does the same job on the JS thread with no coupling to
+    // whether the animation finished.
+    const t = setTimeout(go, 1570);
+    return () => clearTimeout(t);
   }, [hydrated, timedOut, reduced, go, opacity, scale, rotate, glow, wordmark, done]);
 
   const markStyle = useAnimatedStyle(() => ({
