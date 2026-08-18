@@ -1,5 +1,5 @@
 /* ============================================================
-   VITAL — interaction layer
+   VITAL: interaction layer
    No dependencies. Everything degrades gracefully.
    ============================================================ */
 (function () {
@@ -274,7 +274,7 @@
         if (firstBad) firstBad.focus();
         return;
       }
-      // No backend in this static build — wire this to your endpoint.
+      // No backend in this static build. Wire this up to your endpoint.
       var btn = $('button[type="submit"]', form);
       if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Sending…'; }
       setTimeout(function () {

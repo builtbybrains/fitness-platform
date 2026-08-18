@@ -1,5 +1,5 @@
 /* ============================================================
-   VITAL — AI Diet & Personal Training
+   VITAL: AI Diet & Personal Training
    Design system + global styles
    ============================================================ */
 
@@ -20,7 +20,7 @@
   --muted:     #8b96a6;
   --faint:     #5d6675;
 
-  /* Accent — single, consistent, health + intelligence */
+  /* Accent: single, consistent, health + intelligence */
   --accent:      #34e5a4;
   --accent-deep: #14b981;
   --accent-glow: rgba(52, 229, 164, 0.35);
@@ -43,7 +43,7 @@
   --r-xl: 30px;
   --r-pill: 999px;
 
-  /* Elevation — soft, premium, never heavy */
+  /* Elevation: soft, premium, never heavy */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 18px 40px -22px rgba(0, 0, 0, 0.9);
   --shadow-lg: 0 40px 90px -40px rgba(0, 0, 0, 0.95);
@@ -319,7 +319,7 @@ h1, h2, h3, h4 {
 .link-arrow svg { transition: transform var(--t-med) var(--ease); }
 .link-arrow:hover svg { transform: translateX(5px); }
 
-/* ---------- 7. The signature CTA — animated energy line ---------- */
+/* ---------- 7. The signature CTA: animated energy line ---------- */
 .cta-orbit {
   position: relative;
   display: inline-flex;
@@ -846,7 +846,7 @@ body.is-locked { overflow: hidden; }
   flex: none;
 }
 
-/* ---------- 13. How it works — steps ---------- */
+/* ---------- 13. How it works: steps ---------- */
 .steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1001,7 +1001,7 @@ body.is-locked { overflow: hidden; }
 .check-list li { display: flex; gap: 12px; align-items: flex-start; font-size: 0.93rem; color: var(--text-soft); }
 .check-list li svg { flex: none; color: var(--accent); margin-top: 3px; }
 
-/* Trainer visual — workout board */
+/* Trainer visual: workout board */
 .board {
   display: grid;
   gap: 12px;
@@ -1534,7 +1534,7 @@ body.is-locked { overflow: hidden; }
 }
 .bg-soft { background: linear-gradient(180deg, transparent, rgba(255,255,255,0.018), transparent); }
 
-/* Page load — only ever hides content when JS is running */
+/* Page load: only ever hides content when JS is running */
 .no-js [data-reveal],
 .no-js .reveal-words .word > span { opacity: 1 !important; transform: none !important; }
 .no-js .timeline__progress { height: calc(100% - 12px); }
@@ -1666,7 +1666,7 @@ body:not(.page-loading) .stage { animation: rise-in 1.1s var(--ease-out) 0.22s b
 .final-cta__badges a:hover { color: var(--accent); }
 
 /* ============================================================
-   30. Roadmap — scroll-scrubbed process timeline
+   30. Roadmap: scroll-scrubbed process timeline
    The rail fills and the markers light up as the page scrolls;
    cards reveal once and stay, so nothing disappears on scroll-up.
    ============================================================ */
