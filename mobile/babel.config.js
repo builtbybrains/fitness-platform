@@ -1,8 +1,6 @@
 module.exports = function (api) {
   api.cache(true);
-  return {
-    presets: ['babel-preset-expo'],
-    // Reanimated 4 ships its worklets plugin separately; it must stay last.
-    plugins: ['react-native-worklets/plugin'],
-  };
+  // babel-preset-expo already adds react-native-worklets/plugin when Reanimated
+  // is installed, so it must not be listed again here.
+  return { presets: ['babel-preset-expo'] };
 };
