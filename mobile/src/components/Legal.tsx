@@ -1,6 +1,9 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { FadeIn, Header, Screen, Txt } from '@/components';
+import { FadeIn } from './FadeIn';
+import { Header } from './Header';
+import { Screen } from './Screen';
+import { Txt } from './Txt';
 import { colors, gap, spacing } from '@/theme';
 
 export interface LegalSection {
