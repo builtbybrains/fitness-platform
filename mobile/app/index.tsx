@@ -40,7 +40,10 @@ function SafeBoot() {
         Safe mode is on. If you can read this, the native runtime is fine and the
         crash is in the animation, SVG or font layer.
       </Txt>
-      <Link href="/diag" style={{ color: colors.primaryLight, fontSize: 16, marginTop: 8 }}>
+      <Link href="/probe" style={styles.safeLink}>
+        Open the crash finder
+      </Link>
+      <Link href="/diag" style={styles.safeLink}>
         Open diagnostics
       </Link>
     </View>
@@ -180,4 +183,5 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   word: { letterSpacing: 6, textAlign: 'center' },
+  safeLink: { color: colors.primaryLight, fontSize: 16, marginTop: 10, textAlign: 'center' },
 });

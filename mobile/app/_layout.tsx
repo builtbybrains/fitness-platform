@@ -74,6 +74,12 @@ export default function RootLayout() {
 
 /** Bare navigator: nothing but expo-router and core React Native. */
 function SafeModeLayout() {
+  // preventAutoHideAsync runs at module scope, so safe mode has to hide the
+  // splash itself or it sits there forever.
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
   return (
     <>
       <StatusBar style="light" />
