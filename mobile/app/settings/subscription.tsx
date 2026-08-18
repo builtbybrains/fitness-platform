@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Card, FadeIn, Header, Icon, Logo, Screen, Txt } from '@/components';
-import { createSubscriptionSession, PRICE, stripeConfigured } from '@/services/payments';
+import { createSubscriptionSession, PRICE, PUBLISHABLE_KEY, stripeConfigured } from '@/services/payments';
 import { isExpoGo, loadStripe } from '@/services/stripeCompat';
 import { useStore } from '@/state/store';
 import { colors, gap, radius, s, spacing } from '@/theme';
@@ -22,7 +22,7 @@ export default function Subscription() {
   const subscribe = useCallback(async () => {
     setBusy(true);
     try {
-      const stripe = await loadStripe();
+      const stripe = await loadStripe(PUBLISHABLE_KEY);
 
       if (!stripeConfigured || !stripe) {
         // No keys, or running in Expo Go: complete locally so the flow stays

@@ -13,11 +13,17 @@ export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.
 
 export type StripeSdk = typeof import('@stripe/stripe-react-native');
 
-/** Loads the Stripe SDK only when it can actually work. */
-export async function loadStripe(): Promise<StripeSdk | null> {
-  if (isExpoGo) return null;
+/**
+ * Loads the Stripe SDK only when it can actually work, and initialises it with
+ * the publishable key. Doing it here rather than mounting StripeProvider at the
+ * root keeps a native-only module out of the app's startup path entirely.
+ */
+export async function loadStripe(publishableKey: string): Promise<StripeSdk | null> {
+  if (isExpoGo || !publishableKey) return null;
   try {
-    return await import('@stripe/stripe-react-native');
+    const sdk = await import('@stripe/stripe-react-native');
+    await sdk.initStripe({ publishableKey, merchantIdentifier: 'merchant.app.vital' });
+    return sdk;
   } catch {
     return null;
   }

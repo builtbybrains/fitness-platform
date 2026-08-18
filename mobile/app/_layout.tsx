@@ -12,17 +12,11 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { SAFE_MODE } from '@/lib/safeMode';
-import { PUBLISHABLE_KEY } from '@/services/payments';
-import { isExpoGo } from '@/services/stripeCompat';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-/**
- * Shown when any route throws. Without this a startup error can take the whole
- * app down with nothing on screen to explain why.
- */
+/** Shown when any route throws, so a failure is readable instead of silent. */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <View style={styles.errRoot}>
@@ -42,91 +36,46 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  errRoot: { flex: 1, backgroundColor: '#0A090B' },
-  errBody: { padding: 24, paddingTop: 72, gap: 14 },
-  errTitle: { color: '#F6F3F4', fontSize: 20, fontWeight: '700' },
-  errMsg: { color: '#F4667A', fontSize: 15, lineHeight: 21 },
-  errStack: { color: '#8D848A', fontSize: 11, lineHeight: 16 },
-  errRetry: { color: '#E03B4F', fontSize: 15, fontWeight: '600', marginTop: 12 },
-});
-
 /**
- * Renders Stripe's provider only where the native module exists. In Expo Go it
- * renders children untouched so the app is still fully browsable.
+ * Deliberately minimal, and shaped exactly like the layout that was verified
+ * working on device.
+ *
+ * Three things are intentionally absent, each of which was a suspect while
+ * chasing a launch crash:
+ *  - no `return null` while fonts load. Missing families fall back on their own,
+ *    so blocking the first render buys nothing and delays the navigator.
+ *  - no per-screen <Stack.Screen> children. They only set entry animations.
+ *  - no Stripe provider. It is native-only, and pulling it into the module graph
+ *    at the root is not worth it when the payment flow can import it on demand.
  */
-function StripeGate({ children }: { children: React.ReactElement | React.ReactElement[] }) {
-  if (isExpoGo || !PUBLISHABLE_KEY) return <>{children}</>;
-  // Required lazily so Expo Go never evaluates the native binding at all.
-  const { StripeProvider } = require('@stripe/stripe-react-native') as
-    typeof import('@stripe/stripe-react-native');
-  return (
-    <StripeProvider publishableKey={PUBLISHABLE_KEY} merchantIdentifier="merchant.app.vital">
-      {children}
-    </StripeProvider>
-  );
-}
-
 export default function RootLayout() {
-  if (SAFE_MODE) return <SafeModeLayout />;
-  return <FullLayout />;
-}
+  useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
 
-/** Bare navigator: nothing but expo-router and core React Native. */
-function SafeModeLayout() {
-  // preventAutoHideAsync runs at module scope, so safe mode has to hide the
-  // splash itself or it sits there forever.
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // Level 6 of the probe cleared these standalone, and real screens need them
-  // (useSafeAreaInsets throws without a provider), so safe mode includes them.
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0A090B' }}>
+    <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A090B' } }} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
-function FullLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
-
-  useEffect(() => {
-    // Hand off to our own animated logo screen as soon as type is ready. If a
-    // font fails to load we still continue rather than hanging on the splash.
-    if (fontsLoaded || fontError) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
-
-  return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <SafeAreaProvider>
-        <StripeGate>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: colors.bg },
-            }}
-          >
-            <Stack.Screen name="index" options={{ animation: 'fade' }} />
-            <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-            <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
-            <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-          </Stack>
-        </StripeGate>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
-  );
-}
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  errRoot: { flex: 1, backgroundColor: colors.bg },
+  errBody: { padding: 24, paddingTop: 72, gap: 14 },
+  errTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
+  errMsg: { color: colors.primaryLight, fontSize: 15, lineHeight: 21 },
+  errStack: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  errRetry: { color: colors.primary, fontSize: 15, fontWeight: '600', marginTop: 12 },
+});
