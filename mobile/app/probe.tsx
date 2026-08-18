@@ -11,16 +11,16 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
  *
  * Tap the levels in order. The one that ejects you from Expo Go is the culprit.
  */
-const LEVELS: { n: number; label: string; render: () => React.ReactNode }[] = [
+const LEVELS: { n: number; label: string; Component: React.ComponentType }[] = [
   {
     n: 1,
     label: 'Plain React Native (baseline)',
-    render: () => <Text style={s.sample}>Plain text renders.</Text>,
+    Component: () => <Text style={s.sample}>Plain text renders.</Text>,
   },
   {
     n: 2,
     label: 'Custom Inter fonts',
-    render: () => {
+    Component: () => {
       const { useFonts, Inter_700Bold } = require('@expo-google-fonts/inter');
       const [loaded] = useFonts({ Inter_700Bold });
       if (!loaded) return <Text style={s.sample}>Loading font…</Text>;
@@ -30,7 +30,7 @@ const LEVELS: { n: number; label: string; render: () => React.ReactNode }[] = [
   {
     n: 3,
     label: 'SVG (the VITAL logo)',
-    render: () => {
+    Component: () => {
       const { Logo } = require('@/components/Logo');
       return (
         <View style={s.center}>
@@ -43,7 +43,7 @@ const LEVELS: { n: number; label: string; render: () => React.ReactNode }[] = [
   {
     n: 4,
     label: 'Linear gradient',
-    render: () => {
+    Component: () => {
       const { LinearGradient } = require('expo-linear-gradient');
       return (
         <LinearGradient colors={['#E03B4F', 'transparent']} style={s.grad}>
@@ -55,7 +55,7 @@ const LEVELS: { n: number; label: string; render: () => React.ReactNode }[] = [
   {
     n: 5,
     label: 'Reanimated (shared value + animation)',
-    render: () => {
+    Component: () => {
       const Reanimated = require('react-native-reanimated');
       const { default: Animated, useAnimatedStyle, useSharedValue, withTiming } = Reanimated;
       const Probe = () => {
@@ -76,7 +76,7 @@ const LEVELS: { n: number; label: string; render: () => React.ReactNode }[] = [
   {
     n: 6,
     label: 'Gesture handler + safe area providers',
-    render: () => {
+    Component: () => {
       const { GestureHandlerRootView } = require('react-native-gesture-handler');
       const { SafeAreaProvider, useSafeAreaInsets } = require('react-native-safe-area-context');
       const Inner = () => {
@@ -95,7 +95,7 @@ const LEVELS: { n: number; label: string; render: () => React.ReactNode }[] = [
   {
     n: 7,
     label: 'Haptics + async storage',
-    render: () => {
+    Component: () => {
       require('expo-haptics');
       require('@react-native-async-storage/async-storage');
       return <Text style={s.sample}>Both modules loaded.</Text>;
@@ -129,7 +129,12 @@ export default function Probe() {
         ))}
 
         <View style={s.stage}>
-          {current ? current.render() : <Text style={s.note}>Nothing loaded yet.</Text>}
+          {current ? (
+            // key remounts cleanly so each level starts from a fresh hook list
+            <current.Component key={current.n} />
+          ) : (
+            <Text style={s.note}>Nothing loaded yet.</Text>
+          )}
         </View>
       </ScrollView>
     </View>
