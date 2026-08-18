@@ -80,11 +80,15 @@ function SafeModeLayout() {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
+  // Level 6 of the probe cleared these standalone, and real screens need them
+  // (useSafeAreaInsets throws without a provider), so safe mode includes them.
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A090B' } }} />
-    </>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0A090B' }}>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A090B' } }} />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

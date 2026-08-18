@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
 
 /**
  * Crash finder.
@@ -101,7 +102,85 @@ const LEVELS: { n: number; label: string; Component: React.ComponentType }[] = [
       return <Text style={s.sample}>Both modules loaded.</Text>;
     },
   },
+  {
+    n: 8,
+    label: 'Splash screen control',
+    Component: () => {
+      const Splash = require('expo-splash-screen');
+      const [state, setState] = React.useState('calling…');
+      React.useEffect(() => {
+        Splash.preventAutoHideAsync()
+          .then(() => Splash.hideAsync())
+          .then(() => setState('prevent + hide both returned'))
+          .catch((e: unknown) => setState(`failed: ${e instanceof Error ? e.message : 'error'}`));
+      }, []);
+      return <Text style={s.sample}>{state}</Text>;
+    },
+  },
+  {
+    n: 9,
+    label: 'Store + async storage rehydration',
+    Component: () => {
+      const { useStore } = require('@/state/store');
+      const hydrated = useStore((st: { hydrated: boolean }) => st.hydrated);
+      const name = useStore((st: { profile: { firstName: string } }) => st.profile.firstName);
+      return <Text style={s.sample}>hydrated: {String(hydrated)}, name: {name}</Text>;
+    },
+  },
+  {
+    n: 10,
+    label: 'The real boot animation (logo + glow + motion)',
+    Component: () => {
+      const { LinearGradient } = require('expo-linear-gradient');
+      const { Logo } = require('@/components/Logo');
+      const R = require('react-native-reanimated');
+      const { default: Animated, Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } = R;
+
+      const Inner = () => {
+        const opacity = useSharedValue(0);
+        const scale = useSharedValue(0.86);
+        const rotate = useSharedValue(-10);
+        const glow = useSharedValue(0);
+
+        React.useEffect(() => {
+          opacity.value = withTiming(1, { duration: 460, easing: Easing.out(Easing.cubic) });
+          scale.value = withSequence(
+            withTiming(1.04, { duration: 520, easing: Easing.out(Easing.cubic) }),
+            withTiming(1, { duration: 260 }),
+          );
+          rotate.value = withTiming(0, { duration: 760, easing: Easing.out(Easing.back(1.6)) });
+          glow.value = withDelay(240, withTiming(1, { duration: 780 }));
+        }, [opacity, scale, rotate, glow]);
+
+        const mark = useAnimatedStyle(() => ({
+          opacity: opacity.value,
+          transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
+        }));
+        const halo = useAnimatedStyle(() => ({ opacity: glow.value * 0.9 }));
+
+        return (
+          <View style={s.center}>
+            <Animated.View style={[{ position: 'absolute', width: 200, height: 200, borderRadius: 100, overflow: 'hidden' }, halo]}>
+              <LinearGradient colors={['rgba(224,59,79,0.32)', 'transparent']} style={{ flex: 1 }} />
+            </Animated.View>
+            <Animated.View style={mark}>
+              <Logo size={100} />
+            </Animated.View>
+            <Text style={s.sample}>Boot animation ran.</Text>
+          </View>
+        );
+      };
+      return <Inner />;
+    },
+  },
 ];
+
+const ROUTES = [
+  { href: '/(auth)/login', label: 'Login screen' },
+  { href: '/(auth)/register', label: 'Register screen' },
+  { href: '/(onboarding)', label: 'Onboarding wizard' },
+  { href: '/(tabs)', label: 'Main tabs (home)' },
+] as const;
 
 export default function Probe() {
   const [active, setActive] = useState<number | null>(null);
@@ -126,6 +205,14 @@ export default function Probe() {
               {l.n}. {l.label}
             </Text>
           </Pressable>
+        ))}
+
+        <Text style={s.h2}>Real screens</Text>
+        <Text style={s.note}>Open each one. Whichever ejects you is where the crash lives.</Text>
+        {ROUTES.map((r) => (
+          <Link key={r.href} href={r.href as never} style={s.link}>
+            {r.label}
+          </Link>
         ))}
 
         <View style={s.stage}>
@@ -155,4 +242,6 @@ const s = StyleSheet.create({
   sample: { color: '#F6F3F4', fontSize: 16, textAlign: 'center' },
   box: { backgroundColor: 'rgba(224,59,79,0.2)', padding: 20, borderRadius: 12 },
   grad: { padding: 24, borderRadius: 12 },
+  link: { color: '#F4667A', fontSize: 15, paddingVertical: 10 },
+  h2: { color: '#F6F3F4', fontSize: 16, fontWeight: '700', marginTop: 20 },
 });
