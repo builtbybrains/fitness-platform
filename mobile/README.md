@@ -5,6 +5,12 @@ training platform. Same brand as the website in `../`, rebuilt for phones.
 
 ## See it on your phone
 
+This project targets **Expo SDK 54**, so it needs an Expo Go build that supports
+SDK 54. Expo Go supports exactly one SDK at a time; check yours under Settings,
+App Info, Supported SDK. If that number is not 54, Expo Go refuses to open the
+project with "Project is incompatible with this version of Expo Go", and the SDK
+here has to be moved to match.
+
 Install **Expo Go** ([iOS](https://apps.apple.com/app/expo-go/id982107779) /
 [Android](https://play.google.com/store/apps/details?id=host.exp.exponent)), then
 on a computer on the same Wi-Fi as your phone:
@@ -23,6 +29,10 @@ If your phone and computer are on different networks, add `--tunnel`.
 
 The QR has to be generated on your own machine, because it encodes that
 computer's address on your network.
+
+On iPhone there is no QR scanner inside Expo Go; Apple's rules made Expo remove
+it. Scan with the system Camera app and tap the banner, or use "Enter URL
+manually" in Expo Go with the `exp://…` address the terminal prints.
 
 ### Real payments need a development build
 
