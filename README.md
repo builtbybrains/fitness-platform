@@ -1,5 +1,16 @@
 # VITAL: AI Diet & Personal Training
 
+This repository holds two products that share one brand:
+
+| Path | What it is |
+| --- | --- |
+| `/` (root) | The marketing website. Static HTML, no build step. |
+| `mobile/` | The Expo / React Native app. See [`mobile/README.md`](mobile/README.md). |
+
+The rest of this document covers the website.
+
+## Website
+
 Marketing website for an AI-powered nutrition and personal training mobile app.
 
 **Zero dependencies, zero build step.** Plain HTML, one stylesheet and one script, so it
