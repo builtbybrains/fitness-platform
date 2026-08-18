@@ -12,6 +12,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+import { SAFE_MODE } from '@/lib/safeMode';
 import { PUBLISHABLE_KEY } from '@/services/payments';
 import { isExpoGo } from '@/services/stripeCompat';
 import { colors } from '@/theme';
@@ -67,6 +68,21 @@ function StripeGate({ children }: { children: React.ReactElement | React.ReactEl
 }
 
 export default function RootLayout() {
+  if (SAFE_MODE) return <SafeModeLayout />;
+  return <FullLayout />;
+}
+
+/** Bare navigator: nothing but expo-router and core React Native. */
+function SafeModeLayout() {
+  return (
+    <>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A090B' } }} />
+    </>
+  );
+}
+
+function FullLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Logo, Txt } from '@/components';
 import { useReducedMotion } from '@/lib/useReducedMotion';
+import { SAFE_MODE } from '@/lib/safeMode';
 import { useStore } from '@/state/store';
 import { colors, s, spacing } from '@/theme';
 
@@ -24,6 +25,29 @@ import { colors, s, spacing } from '@/theme';
  * about 1.6s and only ever plays once per cold start.
  */
 export default function Boot() {
+  if (SAFE_MODE) return <SafeBoot />;
+  return <AnimatedBoot />;
+}
+
+/** No Reanimated, SVG or gradients: pure React Native. */
+function SafeBoot() {
+  return (
+    <View style={[styles.root, { padding: 24 }]}>
+      <Txt variant="h1" center>
+        VITAL
+      </Txt>
+      <Txt variant="body" color={colors.muted} center>
+        Safe mode is on. If you can read this, the native runtime is fine and the
+        crash is in the animation, SVG or font layer.
+      </Txt>
+      <Link href="/diag" style={{ color: colors.primaryLight, fontSize: 16, marginTop: 8 }}>
+        Open diagnostics
+      </Link>
+    </View>
+  );
+}
+
+function AnimatedBoot() {
   const reduced = useReducedMotion();
   const hydrated = useStore((st) => st.hydrated);
   const signedIn = useStore((st) => st.signedIn);
