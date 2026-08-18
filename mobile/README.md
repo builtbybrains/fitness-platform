@@ -3,7 +3,11 @@
 A premium Expo / React Native app for the VITAL AI health, nutrition and personal
 training platform. Same brand as the website in `../`, rebuilt for phones.
 
-## Run it
+## See it on your phone
+
+Install **Expo Go** ([iOS](https://apps.apple.com/app/expo-go/id982107779) /
+[Android](https://play.google.com/store/apps/details?id=host.exp.exponent)), then
+on a computer on the same Wi-Fi as your phone:
 
 ```bash
 cd mobile
@@ -11,14 +15,25 @@ npm install
 npx expo start
 ```
 
-Stripe ships a native module, so card payments need a development build rather
-than Expo Go:
+A QR code prints in the terminal. Scan it with the Camera app on iOS, or from
+inside Expo Go on Android. The whole app runs: launch animation, AI coach, every
+screen.
+
+If your phone and computer are on different networks, add `--tunnel`.
+
+The QR has to be generated on your own machine, because it encodes that
+computer's address on your network.
+
+### Real payments need a development build
+
+Stripe is a native module and Expo Go cannot load it. In Expo Go the subscription
+flow runs in demo mode and says so on screen; everything else is identical. For
+the real Stripe sheet, build the app once:
 
 ```bash
-npx expo run:ios      # or: npx expo run:android
+npx expo run:ios       # needs macOS + Xcode
+npx expo run:android   # needs Android Studio
 ```
-
-Everything else in the app works in Expo Go.
 
 ## Journey
 

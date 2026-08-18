@@ -4,7 +4,6 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StripeProvider } from '@stripe/stripe-react-native';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -13,9 +12,26 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import { PUBLISHABLE_KEY } from '@/services/payments';
+import { isExpoGo } from '@/services/stripeCompat';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/**
+ * Renders Stripe's provider only where the native module exists. In Expo Go it
+ * renders children untouched so the app is still fully browsable.
+ */
+function StripeGate({ children }: { children: React.ReactElement | React.ReactElement[] }) {
+  if (isExpoGo || !PUBLISHABLE_KEY) return <>{children}</>;
+  // Required lazily so Expo Go never evaluates the native binding at all.
+  const { StripeProvider } = require('@stripe/stripe-react-native') as
+    typeof import('@stripe/stripe-react-native');
+  return (
+    <StripeProvider publishableKey={PUBLISHABLE_KEY} merchantIdentifier="merchant.app.vital">
+      {children}
+    </StripeProvider>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -36,10 +52,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
-        <StripeProvider
-          publishableKey={PUBLISHABLE_KEY}
-          merchantIdentifier="merchant.app.vital"
-        >
+        <StripeGate>
           <StatusBar style="light" />
           <Stack
             screenOptions={{
@@ -53,7 +66,7 @@ export default function RootLayout() {
             <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
             <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
           </Stack>
-        </StripeProvider>
+        </StripeGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

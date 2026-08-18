@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { useStripe } from '@stripe/stripe-react-native';
 import { Button, Card, FadeIn, Header, Icon, Logo, Screen, Txt } from '@/components';
 import { createSubscriptionSession, PRICE, stripeConfigured } from '@/services/payments';
+import { isExpoGo, loadStripe } from '@/services/stripeCompat';
 import { useStore } from '@/state/store';
 import { colors, gap, radius, s, spacing } from '@/theme';
 
@@ -13,7 +13,6 @@ export default function Subscription() {
   const setPremium = useStore((st) => st.setPremium);
   const email = useStore((st) => st.profile.email);
 
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [busy, setBusy] = useState(false);
 
   /**
@@ -23,8 +22,11 @@ export default function Subscription() {
   const subscribe = useCallback(async () => {
     setBusy(true);
     try {
-      if (!stripeConfigured) {
-        // No keys wired up yet: complete locally so the flow is reviewable.
+      const stripe = await loadStripe();
+
+      if (!stripeConfigured || !stripe) {
+        // No keys, or running in Expo Go: complete locally so the flow stays
+        // reviewable end to end without taking a payment.
         await new Promise((r) => setTimeout(r, 700));
         setPremium(true);
         router.replace('/settings/payment-success');
@@ -33,7 +35,7 @@ export default function Subscription() {
 
       const session = await createSubscriptionSession(email || 'member@vital.app');
 
-      const init = await initPaymentSheet({
+      const init = await stripe.initPaymentSheet({
         merchantDisplayName: 'VITAL',
         customerId: session.customer,
         customerEphemeralKeySecret: session.ephemeralKey,
@@ -54,7 +56,7 @@ export default function Subscription() {
       });
       if (init.error) throw new Error(init.error.message);
 
-      const result = await presentPaymentSheet();
+      const result = await stripe.presentPaymentSheet();
       if (result.error) {
         if (result.error.code !== 'Canceled') {
           Alert.alert('Payment not completed', result.error.message);
@@ -69,7 +71,7 @@ export default function Subscription() {
     } finally {
       setBusy(false);
     }
-  }, [email, initPaymentSheet, presentPaymentSheet, setPremium]);
+  }, [email, setPremium]);
 
   const cancel = () =>
     Alert.alert('Cancel subscription', 'You keep access until the end of the paid period.', [
@@ -143,9 +145,11 @@ export default function Subscription() {
             <Txt variant="caption" color={colors.faint} center>
               Cancel anytime. Card details are handled by Stripe and never stored in this app.
             </Txt>
-            {!stripeConfigured ? (
+            {!stripeConfigured || isExpoGo ? (
               <Txt variant="caption" color={colors.warning} center>
-                Demo mode: no Stripe key configured, so no real charge is made.
+                {isExpoGo
+                  ? 'Demo mode: Expo Go cannot load Stripe. Use a development build for real payments.'
+                  : 'Demo mode: no Stripe key configured, so no real charge is made.'}
               </Txt>
             ) : null}
           </>
