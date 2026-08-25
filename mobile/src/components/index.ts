@@ -14,3 +14,5 @@ export { FadeIn } from './FadeIn';
 export { WeightChart } from './WeightChart';
 export { LegalPage } from './Legal';
 export type { LegalSection } from './Legal';
+export { ExerciseArt } from './ExerciseArt';
+export type { ExerciseArtName } from './ExerciseArt';

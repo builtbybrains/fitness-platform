@@ -50,13 +50,23 @@ export const todayPlan: PlanItem[] = [
   },
 ];
 
-export const exercises = [
-  { id: '1', name: 'Incline dumbbell press', detail: '4 × 10 · 16 kg', done: true },
-  { id: '2', name: 'Seated row', detail: '4 × 12 · 40 kg', done: true },
-  { id: '3', name: 'Lateral raise', detail: '3 × 15 · 8 kg', done: true },
-  { id: '4', name: 'Cable triceps push-down', detail: '3 × 12 · 25 kg', done: false },
-  { id: '5', name: 'Face pull', detail: '3 × 15 · 20 kg', done: false },
-  { id: '6', name: 'Plank', detail: '3 × 45 sec', done: false },
+export interface Exercise {
+  id: string;
+  name: string;
+  detail: string;
+  art: 'bench' | 'row' | 'raise' | 'pushdown' | 'facepull' | 'plank' | 'squat' | 'run';
+  /** Minutes on the player's auto-started timer. */
+  minutes: number;
+  done: boolean;
+}
+
+export const exercises: Exercise[] = [
+  { id: '1', name: 'Incline dumbbell press', detail: '4 × 10 · 16 kg', art: 'bench', minutes: 10, done: false },
+  { id: '2', name: 'Seated row', detail: '4 × 12 · 40 kg', art: 'row', minutes: 10, done: false },
+  { id: '3', name: 'Lateral raise', detail: '3 × 15 · 8 kg', art: 'raise', minutes: 10, done: false },
+  { id: '4', name: 'Cable triceps push-down', detail: '3 × 12 · 25 kg', art: 'pushdown', minutes: 10, done: false },
+  { id: '5', name: 'Face pull', detail: '3 × 15 · 20 kg', art: 'facepull', minutes: 10, done: false },
+  { id: '6', name: 'Plank', detail: '3 × 45 sec', art: 'plank', minutes: 10, done: false },
 ];
 
 export const macros = [

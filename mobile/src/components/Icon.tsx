@@ -15,6 +15,8 @@ export type IconName =
   | 'bell'
   | 'notification'
   | 'clock'
+  | 'play'
+  | 'pause'
   | 'target'
   | 'card'
   | 'shield'
@@ -87,6 +89,9 @@ export function Icon({ name, size = 22, color = colors.text, strokeWidth = 1.7 }
 
       {name === 'clock' && <Circle cx={12} cy={12} r={8.6} {...p} />}
       {name === 'clock' && <Path d="M12 7.2V12l3.2 1.9" {...p} />}
+
+      {name === 'play' && <Path d="M9 6.5v11l9-5.5z" fill={color} stroke="none" />}
+      {name === 'pause' && <Path d="M9 6.8v10.4M15 6.8v10.4" {...p} strokeWidth={2.6} />}
 
       {name === 'target' && <Path d="M20.4 8.2A8.8 8.8 0 1 1 15.8 3.6" {...p} />}
       {name === 'notification' && <Path d="M18.4 9.2a6.4 6.4 0 1 0-12.8 0c0 5.2-2.2 6.6-2.2 6.6h17.2s-2.2-1.4-2.2-6.6" {...p} />}
