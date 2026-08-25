@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import {
   Button,
   Card,
-  ExerciseArt,
+  ExercisePhoto,
   FadeIn,
   Header,
   Icon,
@@ -127,7 +127,7 @@ export default function Workout() {
       {/* Hero illustration with the floating stopwatch card. */}
       <FadeIn>
         <View style={styles.heroWrap}>
-          <ExerciseArt name={current.art} size={s(320)} tile={colors.accentSoft} rounded={8} />
+          <ExercisePhoto name={current.art} width={s(340)} height={s(300)} radius={24} />
 
           <View style={styles.stopwatch}>
             <View style={styles.timerPill}>
@@ -214,7 +214,7 @@ export default function Workout() {
             const isCurrent = i === index && !isDone;
             return (
               <View key={ex.id} style={[styles.exRow, isCurrent && styles.exRowCurrent]}>
-                <ExerciseArt name={ex.art} size={s(48)} tile={isCurrent ? colors.accentSoft : colors.surfaceAlt} />
+                <ExercisePhoto name={ex.art} size={s(48)} radius={14} />
                 <View style={styles.flex}>
                   <Txt variant="h3" numberOfLines={1}>
                     {ex.name}

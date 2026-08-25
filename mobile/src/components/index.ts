@@ -16,3 +16,4 @@ export { LegalPage } from './Legal';
 export type { LegalSection } from './Legal';
 export { ExerciseArt } from './ExerciseArt';
 export type { ExerciseArtName } from './ExerciseArt';
+export { ExercisePhoto } from './ExercisePhoto';

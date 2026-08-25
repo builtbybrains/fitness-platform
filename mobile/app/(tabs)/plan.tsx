@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { Bar, Button, Card, ExerciseArt, FadeIn, Icon, Screen, Txt } from '@/components';
+import { Bar, Button, Card, ExercisePhoto, FadeIn, Icon, Screen, Txt } from '@/components';
 import { exercises, macros, todayPlan } from '@/data/plan';
 import { useDerived, useStore } from '@/state/store';
 import { colors, gap, radius, s, spacing } from '@/theme';
@@ -179,7 +179,7 @@ export default function Plan() {
                 key={ex.id}
                 style={[styles.exRow, i < exercises.length - 1 && styles.rowDivider]}
               >
-                <ExerciseArt name={ex.art} size={s(48)} />
+                <ExercisePhoto name={ex.art} size={s(52)} radius={14} />
                 <View style={styles.flex}>
                   <Txt variant="bodyMed" numberOfLines={1}>
                     {ex.name}
