@@ -1,64 +1,91 @@
-import { Platform, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import { Icon, IconName, Txt } from '@/components';
 import { useTabBarHeight } from '@/lib/tabBar';
 import { colors, radius, s, shadow, spacing } from '@/theme';
 
-const TABS: { name: string; title: string; icon: IconName }[] = [
-  { name: 'index', title: 'Home', icon: 'home' },
-  { name: 'ai', title: 'AI', icon: 'ai' },
-  { name: 'plan', title: 'Plan', icon: 'plan' },
-  { name: 'progress', title: 'Progress', icon: 'progress' },
-  { name: 'profile', title: 'Profile', icon: 'profile' },
-];
+const TABS: Record<string, { title: string; icon: IconName }> = {
+  index: { title: 'Home', icon: 'home' },
+  ai: { title: 'AI', icon: 'ai' },
+  plan: { title: 'Plan', icon: 'plan' },
+  progress: { title: 'Progress', icon: 'progress' },
+  profile: { title: 'Profile', icon: 'profile' },
+};
 
-/** Bold black floating pill, echoing the design's primary buttons. */
-export default function TabsLayout() {
+/**
+ * Fully custom bar instead of styling React Navigation's default. Its built-in
+ * layout splits each item into separate icon and label regions with their own
+ * padding, which is why a styled icon+label combination never quite centred.
+ * Here every tab is one flex column, so centring is exact by construction.
+ */
+function BlackTabBar({ state, navigation }: BottomTabBarProps) {
   const { barHeight, bottomOffset } = useTabBarHeight();
 
   return (
+    <View style={[styles.bar, { height: barHeight, bottom: bottomOffset }]}>
+      {state.routes.map((route, i) => {
+        const tab = TABS[route.name];
+        if (!tab) return null;
+        const focused = state.index === i;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <Pressable
+            key={route.key}
+            onPress={onPress}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={tab.title}
+            style={styles.tab}
+            hitSlop={6}
+          >
+            <View style={[styles.iconPill, focused && styles.iconPillActive]}>
+              <Icon
+                name={tab.icon}
+                size={s(20)}
+                color={focused ? colors.primary : 'rgba(255,255,255,0.55)'}
+                strokeWidth={focused ? 2.1 : 1.6}
+              />
+            </View>
+            <Txt
+              variant="caption"
+              color={focused ? colors.onPrimary : 'rgba(255,255,255,0.4)'}
+              maxFontSizeMultiplier={1}
+              numberOfLines={1}
+            >
+              {tab.title}
+            </Txt>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export default function TabsLayout() {
+  return (
     <Tabs
+      tabBar={(props) => <BlackTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
         sceneStyle: { backgroundColor: colors.bg },
-        tabBarStyle: [
-          styles.bar,
-          { height: barHeight, bottom: bottomOffset },
-        ],
-        tabBarItemStyle: styles.item,
         tabBarHideOnKeyboard: Platform.OS === 'android',
       }}
     >
-      {TABS.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.title,
-            tabBarAccessibilityLabel: tab.title,
-            tabBarIcon: ({ focused }) => (
-              <View style={styles.tab}>
-                <View style={[styles.iconWrap, focused && styles.iconActive]}>
-                  <Icon
-                    name={tab.icon}
-                    size={s(20)}
-                    color={focused ? colors.onAccent : 'rgba(255,255,255,0.55)'}
-                    strokeWidth={focused ? 2.1 : 1.6}
-                  />
-                </View>
-                <Txt
-                  variant="caption"
-                  color={focused ? colors.onPrimary : 'rgba(255,255,255,0.45)'}
-                  maxFontSizeMultiplier={1}
-                  numberOfLines={1}
-                >
-                  {tab.title}
-                </Txt>
-              </View>
-            ),
-          }}
-        />
+      {Object.entries(TABS).map(([name, tab]) => (
+        <Tabs.Screen key={name} name={name} options={{ title: tab.title }} />
       ))}
     </Tabs>
   );
@@ -69,20 +96,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: s(8),
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    borderTopWidth: 0,
-    paddingTop: s(6),
-    paddingBottom: 0,
-    elevation: 8,
     ...shadow.glow,
+    elevation: 8,
   },
-  item: { paddingTop: 0 },
-  tab: { alignItems: 'center', justifyContent: 'center', gap: 2, width: s(62) },
-  iconWrap: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  iconPill: {
+    width: s(44),
+    height: s(27),
     borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  iconActive: { backgroundColor: colors.accent },
+  iconPillActive: { backgroundColor: colors.accent },
 });
