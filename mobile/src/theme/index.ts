@@ -11,40 +11,53 @@ export * from './responsive';
  * so it reads as premium rather than alarming.
  */
 export const colors = {
-  // Light. White page, white cards separated by a hairline and a soft shadow
-  // rather than a grey fill, which keeps large areas calm.
-  bg: '#FFFFFF',
+  // Soft grey canvas so white cards read as raised surfaces, the way the
+  // reference design does it. Depth comes from the contrast, not from borders.
+  bg: '#F1F1F3',
   bgElevated: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceAlt: '#F3F6F4',
-  surfacePressed: '#E9EEEB',
+  surfaceAlt: '#F4F4F6',
+  surfacePressed: '#EAEAED',
 
-  border: 'rgba(16, 26, 21, 0.09)',
-  borderStrong: 'rgba(16, 26, 21, 0.18)',
+  border: 'rgba(20, 21, 23, 0.07)',
+  borderStrong: 'rgba(20, 21, 23, 0.16)',
 
-  text: '#0F1613',
-  textSoft: '#3C4A44',
-  muted: '#6B7772',
-  faint: '#98A39E',
+  text: '#141517',
+  textSoft: '#43454A',
+  muted: '#8A8D93',
+  faint: '#B3B6BC',
 
-  // Darker than the mark's leaf so it stays legible on white; white text on it
-  // clears WCAG AA.
-  primary: '#16A34A',
-  primaryDeep: '#0D7A37',
-  primaryLight: '#109042',
-  primarySoft: 'rgba(22, 163, 74, 0.10)',
-  primaryBorder: 'rgba(22, 163, 74, 0.24)',
-  primaryGlow: 'rgba(22, 163, 74, 0.28)',
+  // Primary actions are near-black pills; the lime is an accent for progress,
+  // badges and highlights, exactly as in the reference.
+  primary: '#1B1C1E',
+  primaryDeep: '#000000',
+  primaryLight: '#1B1C1E',
+  primarySoft: 'rgba(27, 28, 30, 0.06)',
+  primaryBorder: 'rgba(27, 28, 30, 0.14)',
+  primaryGlow: 'rgba(27, 28, 30, 0.25)',
   onPrimary: '#FFFFFF',
 
-  success: '#16A34A',
-  successSoft: 'rgba(22, 163, 74, 0.10)',
-  info: '#2563EB',
-  infoSoft: 'rgba(37, 99, 235, 0.10)',
+  accent: '#AEE761',
+  accentSoft: '#E6F8C9',
+  onAccent: '#263D0E',
+
+  // Chart series: lavender for context bars, lime for the highlighted one.
+  chart: '#BCB7F2',
+  chartSoft: '#ECEBFA',
+  onChart: '#4A45A8',
+
+  badgeYellow: '#F6D465',
+  badgeYellowSoft: '#FBEFC9',
+  onBadgeYellow: '#6E520C',
+
+  success: '#4CAF50',
+  successSoft: '#E6F8C9',
+  info: '#6C66D9',
+  infoSoft: '#ECEBFA',
   warning: '#C2740A',
   danger: '#DC2626',
 
-  overlay: 'rgba(15, 22, 19, 0.45)',
+  overlay: 'rgba(20, 21, 23, 0.45)',
 } as const;
 
 export const spacing = {
@@ -67,10 +80,10 @@ export const gap = {
 } as const;
 
 export const radius = {
-  sm: s(10),
-  md: s(14),
-  lg: s(20),
-  xl: s(26),
+  sm: s(12),
+  md: s(16),
+  lg: s(24),
+  xl: s(30),
   pill: 999,
 } as const;
 
@@ -92,19 +105,19 @@ export const type = {
 export const shadow = {
   card: Platform.select({
     ios: {
-      shadowColor: '#0B1F16',
-      shadowOpacity: 0.07,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 6 },
+      shadowColor: '#101114',
+      shadowOpacity: 0.06,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 8 },
     },
     android: { elevation: 2 },
     default: {},
   }),
   glow: Platform.select({
     ios: {
-      shadowColor: colors.primary,
-      shadowOpacity: 0.3,
-      shadowRadius: 16,
+      shadowColor: '#101114',
+      shadowOpacity: 0.22,
+      shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
     },
     android: { elevation: 4 },

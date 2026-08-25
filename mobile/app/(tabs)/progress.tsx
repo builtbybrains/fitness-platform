@@ -73,7 +73,7 @@ export default function Progress() {
             Your weight over the last {weeklyWeights.length} weeks
           </Txt>
           <View style={styles.chartWrap}>
-            <WeightChart values={weeklyWeights} />
+            <WeightChart values={weeklyWeights} highlightLabel={`${profile.weightKg} kg`} />
           </View>
         </Card>
       </FadeIn>

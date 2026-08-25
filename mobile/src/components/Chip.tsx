@@ -24,7 +24,7 @@ export function Chip({ label, selected, onPress }: Props) {
     >
       <Txt
         variant="smallMed"
-        color={selected ? colors.primaryLight : colors.textSoft}
+        color={selected ? colors.onAccent : colors.textSoft}
         maxFontSizeMultiplier={1.2}
       >
         {label}
@@ -43,6 +43,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  selected: { backgroundColor: colors.primarySoft, borderColor: colors.primaryBorder },
+  selected: { backgroundColor: colors.accentSoft, borderColor: 'transparent' },
   pressed: { opacity: 0.7 },
 });

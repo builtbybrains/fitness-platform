@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
   },
   padded: { padding: spacing.lg },
   accent: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryBorder,
+    backgroundColor: colors.accentSoft,
+    borderColor: 'transparent',
   },
 });

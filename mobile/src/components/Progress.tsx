@@ -16,7 +16,7 @@ const clamp01 = (n: number) => Math.min(Math.max(Number.isFinite(n) ? n : 0, 0),
 export function Bar({
   value,
   height = 8,
-  tint = colors.primary,
+  tint = colors.accent,
   track = colors.surfaceAlt,
 }: {
   value: number;
@@ -53,7 +53,7 @@ export function Ring({
   stroke = s(8),
   label,
   caption,
-  tint = colors.primary,
+  tint = colors.accent,
 }: {
   value: number;
   size?: number;

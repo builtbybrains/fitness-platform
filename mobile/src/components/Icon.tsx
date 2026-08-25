@@ -14,6 +14,7 @@ export type IconName =
   | 'dumbbell'
   | 'bell'
   | 'notification'
+  | 'clock'
   | 'target'
   | 'card'
   | 'shield'
@@ -84,9 +85,15 @@ export function Icon({ name, size = 22, color = colors.text, strokeWidth = 1.7 }
       {name === 'notification' && <Path d="M18.4 9.2a6.4 6.4 0 1 0-12.8 0c0 5.2-2.2 6.6-2.2 6.6h17.2s-2.2-1.4-2.2-6.6" {...p} />}
       {name === 'notification' && <Path d="M10.2 19.4a2.1 2.1 0 0 0 3.6 0" {...p} />}
 
+      {name === 'clock' && <Circle cx={12} cy={12} r={8.6} {...p} />}
+      {name === 'clock' && <Path d="M12 7.2V12l3.2 1.9" {...p} />}
+
       {name === 'target' && <Path d="M20.4 8.2A8.8 8.8 0 1 1 15.8 3.6" {...p} />}
       {name === 'notification' && <Path d="M18.4 9.2a6.4 6.4 0 1 0-12.8 0c0 5.2-2.2 6.6-2.2 6.6h17.2s-2.2-1.4-2.2-6.6" {...p} />}
       {name === 'notification' && <Path d="M10.2 19.4a2.1 2.1 0 0 0 3.6 0" {...p} />}
+
+      {name === 'clock' && <Circle cx={12} cy={12} r={8.6} {...p} />}
+      {name === 'clock' && <Path d="M12 7.2V12l3.2 1.9" {...p} />}
 
       {name === 'target' && <Path d="M16.2 12a4.2 4.2 0 1 1-4.2-4.2M12 12l8-8M16.4 4H20v3.6" {...p} />}
 

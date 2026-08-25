@@ -4,15 +4,8 @@ import { router } from 'expo-router';
 import { Bar, Card, FadeIn, Icon, IconName, Ring, Screen, Txt } from '@/components';
 import { todayPlan } from '@/data/plan';
 import { catchUpMessage } from '@/services/coach';
-import { useDerived, useStore } from '@/state/store';
-import { colors, gap, isSmallPhone, radius, s, spacing } from '@/theme';
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
-}
+import { Activity, useDerived, useStore } from '@/state/store';
+import { colors, gap, isSmallPhone, radius, s, shadow, spacing } from '@/theme';
 
 const KIND_ICON: Record<string, IconName> = {
   meal: 'meal',
@@ -20,20 +13,42 @@ const KIND_ICON: Record<string, IconName> = {
   water: 'water',
 };
 
+/** Badge palette per row kind, mirroring the reference card badges. */
+const KIND_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
+  meal: { bg: colors.accentSoft, fg: colors.onAccent, label: 'Meal' },
+  workout: { bg: colors.badgeYellowSoft, fg: colors.onBadgeYellow, label: 'Workout' },
+  water: { bg: colors.chartSoft, fg: colors.onChart, label: 'Water' },
+};
+
+const LEVEL_LABEL: Record<Activity, string> = {
+  sedentary: 'Beginner',
+  light: 'Light',
+  moderate: 'Intermediate',
+  active: 'Advanced',
+};
+
 export default function Home() {
-  const profile = useStore((s) => s.profile);
-  const addWater = useStore((s) => s.addWater);
+  const profile = useStore((st) => st.profile);
+  const addWater = useStore((st) => st.addWater);
+  const logWorkout = useStore((st) => st.logWorkout);
+  const unread = useStore((st) => st.notifications.filter((n) => !n.read).length);
   const d = useDerived();
-  const logWorkout = useStore((s) => s.logWorkout);
-  const unread = useStore((s) => s.notifications.filter((n) => !n.read).length);
   const [refreshing, setRefreshing] = useState(false);
   const catchUp = catchUpMessage(d.daysSinceWorkout, profile.firstName);
+
+  const initials =
+    `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`.trim().toUpperCase() || 'A';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await new Promise((r) => setTimeout(r, 700));
     setRefreshing(false);
   }, []);
+
+  const startWorkout = () => {
+    logWorkout();
+    router.push('/(tabs)/plan');
+  };
 
   return (
     <Screen
@@ -45,10 +60,11 @@ export default function Home() {
         <View style={styles.greetRow}>
           <View style={styles.flex}>
             <Txt variant="small" color={colors.muted}>
-              {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+              Welcome back{' '}🙌
             </Txt>
-            <Txt variant="h1" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-              {greeting()}, {profile.firstName}
+            <Txt variant="h1" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {profile.firstName}
+              {profile.lastName ? ` ${profile.lastName}` : ''}
             </Txt>
           </View>
 
@@ -57,9 +73,9 @@ export default function Home() {
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-            style={({ pressed }) => [styles.bell, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.circleBtn, pressed && styles.pressed]}
           >
-            <Icon name="notification" size={20} color={colors.text} />
+            <Icon name="notification" size={19} color={colors.text} />
             {unread > 0 ? (
               <View style={styles.badge}>
                 <Txt variant="caption" color={colors.onPrimary} maxFontSizeMultiplier={1}>
@@ -67,6 +83,18 @@ export default function Home() {
                 </Txt>
               </View>
             ) : null}
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/profile')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Your profile"
+            style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}
+          >
+            <Txt variant="h3" color={colors.onAccent}>
+              {initials}
+            </Txt>
           </Pressable>
         </View>
       }
@@ -76,7 +104,7 @@ export default function Home() {
           <Card accent style={styles.catchUp}>
             <View style={styles.catchUpHead}>
               <View style={styles.catchUpIcon}>
-                <Icon name="flame" size={18} color={colors.primaryLight} />
+                <Icon name="flame" size={18} color={colors.onAccent} />
               </View>
               <Txt variant="h3" style={styles.flex}>
                 Let&apos;s pick it back up
@@ -86,7 +114,7 @@ export default function Home() {
               {catchUp}
             </Txt>
             <Pressable
-              onPress={() => { logWorkout(); router.push('/(tabs)/plan'); }}
+              onPress={startWorkout}
               accessibilityRole="button"
               style={({ pressed }) => [styles.catchUpBtn, pressed && styles.pressed]}
             >
@@ -98,25 +126,68 @@ export default function Home() {
         </FadeIn>
       ) : null}
 
+      {/* Hero: today's session, ring in a lime tile, black continue pill. */}
       <FadeIn delay={70}>
-        <Card>
-          <View style={styles.progressHead}>
-            <View style={styles.flex}>
-              <Txt variant="caption" color={colors.muted}>
-                TODAY&apos;S PROGRESS
+        <Card style={styles.hero}>
+          <View style={styles.heroTop}>
+            <View style={[styles.flex, styles.heroCopy]}>
+              <Txt variant="h3">Progress</Txt>
+              <View style={styles.heroBadge}>
+                <Txt variant="caption" color={colors.onAccent} maxFontSizeMultiplier={1.1}>
+                  {profile.training[0] ?? 'Strength'}
+                </Txt>
+              </View>
+              <Txt variant="h2" numberOfLines={1}>
+                Upper body
               </Txt>
-              <Txt variant="h3" style={styles.tight}>
-                You are on track
-              </Txt>
+              <View style={styles.metaRow}>
+                <Icon name="clock" size={14} color={colors.muted} />
+                <Txt variant="small" color={colors.muted}>
+                  {d.workoutMinutes} min
+                </Txt>
+                <View style={styles.metaDot} />
+                <Icon name="target" size={14} color={colors.muted} />
+                <Txt variant="small" color={colors.muted}>
+                  {LEVEL_LABEL[profile.activity]}
+                </Txt>
+              </View>
             </View>
-            <Ring
-              value={d.dailyGoal}
-              size={s(78)}
-              label={`${Math.round(d.dailyGoal * 100)}%`}
-              caption="GOAL"
-            />
+
+            <View style={styles.ringTile}>
+              <Ring
+                value={d.dailyGoal}
+                size={s(72)}
+                stroke={s(7)}
+                label={`${Math.round(d.dailyGoal * 100)}%`}
+              />
+            </View>
           </View>
 
+          <Pressable
+            onPress={startWorkout}
+            accessibilityRole="button"
+            accessibilityLabel="Continue the workout"
+            style={({ pressed }) => [styles.continueBtn, pressed && styles.pressed]}
+          >
+            <Txt variant="h3" color={colors.onPrimary}>
+              Continue the workout
+            </Txt>
+            <View style={styles.continueArrow}>
+              <Icon name="chevron" size={14} color={colors.onPrimary} strokeWidth={2.2} />
+            </View>
+          </Pressable>
+        </Card>
+      </FadeIn>
+
+      {/* Today's numbers. */}
+      <FadeIn delay={130}>
+        <Card>
+          <View style={styles.overviewHead}>
+            <Txt variant="h3">Today&apos;s progress</Txt>
+            <Txt variant="small" color={colors.muted}>
+              You are on track
+            </Txt>
+          </View>
           <View style={styles.statGrid}>
             <Stat
               icon="flame"
@@ -132,63 +203,70 @@ export default function Home() {
               sub={`of ${d.waterTarget} glasses`}
               progress={d.waterGlasses / d.waterTarget}
             />
-            <Stat
-              icon="dumbbell"
-              label="Workout"
-              value={`${d.workoutMinutes}`}
-              sub="minutes"
-              progress={0.62}
-            />
+            <Stat icon="dumbbell" label="Workout" value={`${d.workoutMinutes}`} sub="minutes" progress={0.62} />
             <Stat icon="target" label="Streak" value={`${d.streak}`} sub="days" progress={0.8} />
           </View>
         </Card>
       </FadeIn>
 
-      <FadeIn delay={130}>
+      {/* Recommendation-style plan rows. */}
+      <FadeIn delay={190}>
         <View style={styles.sectionHead}>
           <Txt variant="h2">Today&apos;s plan</Txt>
           <Pressable onPress={() => router.push('/(tabs)/plan')} hitSlop={8} accessibilityRole="button">
-            <Txt variant="smallMed" color={colors.primaryLight}>
+            <Txt variant="smallMed" color={colors.muted}>
               See all
             </Txt>
           </Pressable>
         </View>
 
         <View style={styles.list}>
-          {todayPlan.map((item, i) => (
-            <FadeIn key={item.id} delay={160 + i * 45}>
-              <Pressable
-                onPress={() => (item.kind === 'water' ? addWater(1) : router.push('/(tabs)/plan'))}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.title}. ${item.subtitle}. ${item.meta}`}
-                style={({ pressed }) => [styles.planRow, pressed && styles.pressed]}
-              >
-                <View style={[styles.planIcon, item.done && styles.planIconDone]}>
-                  <Icon
-                    name={item.done ? 'check' : (KIND_ICON[item.kind] ?? 'meal')}
-                    size={18}
-                    color={item.done ? colors.success : colors.primaryLight}
-                  />
-                </View>
-                <View style={styles.flex}>
-                  <Txt variant="h3" numberOfLines={1}>
-                    {item.title}
-                  </Txt>
-                  <Txt variant="small" color={colors.textSoft} numberOfLines={1}>
-                    {item.subtitle}
-                  </Txt>
-                  <Txt variant="caption" color={colors.faint} numberOfLines={1} style={styles.planMeta}>
-                    {item.meta}
-                  </Txt>
-                </View>
-                <Icon name="chevron" size={15} color={colors.faint} />
-              </Pressable>
-            </FadeIn>
-          ))}
+          {todayPlan.map((item, i) => {
+            const badge = KIND_BADGE[item.kind] ?? KIND_BADGE.meal;
+            return (
+              <FadeIn key={item.id} delay={220 + i * 45}>
+                <Pressable
+                  onPress={() => (item.kind === 'water' ? addWater(1) : router.push('/(tabs)/plan'))}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.title}. ${item.subtitle}. ${item.meta}`}
+                  style={({ pressed }) => [styles.planRow, pressed && styles.pressed]}
+                >
+                  <View style={[styles.planIcon, { backgroundColor: badge.bg }]}>
+                    <Icon
+                      name={item.done ? 'check' : (KIND_ICON[item.kind] ?? 'meal')}
+                      size={19}
+                      color={badge.fg}
+                    />
+                  </View>
+
+                  <View style={styles.flex}>
+                    <Txt variant="h3" numberOfLines={1}>
+                      {item.title}
+                    </Txt>
+                    <Txt variant="small" color={colors.muted} numberOfLines={1}>
+                      {item.subtitle}
+                    </Txt>
+                    <View style={styles.metaRow}>
+                      <Icon name="clock" size={12} color={colors.faint} />
+                      <Txt variant="caption" color={colors.faint} numberOfLines={1}>
+                        {item.meta}
+                      </Txt>
+                    </View>
+                  </View>
+
+                  <View style={[styles.kindBadge, { backgroundColor: badge.bg }]}>
+                    <Txt variant="caption" color={badge.fg} maxFontSizeMultiplier={1}>
+                      {item.done ? 'Done' : badge.label}
+                    </Txt>
+                  </View>
+                </Pressable>
+              </FadeIn>
+            );
+          })}
         </View>
       </FadeIn>
 
-      <FadeIn delay={420}>
+      <FadeIn delay={480}>
         <Pressable
           onPress={() => router.push('/(tabs)/ai')}
           accessibilityRole="button"
@@ -196,7 +274,7 @@ export default function Home() {
         >
           <Card accent style={styles.askRow}>
             <View style={styles.askIcon}>
-              <Icon name="ai" size={20} color={colors.primaryLight} />
+              <Icon name="ai" size={20} color={colors.onAccent} />
             </View>
             <View style={styles.flex}>
               <Txt variant="h3">Ask your coach</Txt>
@@ -204,7 +282,7 @@ export default function Home() {
                 Meals, training or anything about your goal
               </Txt>
             </View>
-            <Icon name="chevron" size={16} color={colors.muted} />
+            <Icon name="chevron" size={16} color={colors.onAccent} />
           </Card>
         </Pressable>
       </FadeIn>
@@ -228,7 +306,7 @@ function Stat({
   return (
     <View style={styles.stat}>
       <View style={styles.statHead}>
-        <Icon name={icon} size={14} color={colors.primaryLight} />
+        <Icon name={icon} size={14} color={colors.textSoft} />
         <Txt variant="caption" color={colors.muted} numberOfLines={1}>
           {label.toUpperCase()}
         </Txt>
@@ -249,24 +327,118 @@ function Stat({
 const styles = StyleSheet.create({
   content: { gap: gap.md },
   flex: { flex: 1 },
-  tight: { marginTop: 2 },
-  progressHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
+  pressed: { opacity: 0.72 },
+
+  greetRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  circleBtn: {
+    width: s(44),
+    height: s(44),
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    ...shadow.card,
   },
+  avatar: {
+    width: s(44),
+    height: s(44),
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: s(19),
+    height: s(19),
+    paddingHorizontal: 5,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+
+  catchUp: { gap: spacing.xs },
+  catchUpHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  catchUpIcon: {
+    width: s(34),
+    height: s(34),
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  catchUpBtn: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    minHeight: s(38),
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+
+  hero: { gap: spacing.md },
+  heroTop: { flexDirection: 'row', gap: spacing.md },
+  heroCopy: { gap: spacing.xs },
+  heroBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+  },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: colors.faint, marginHorizontal: 2 },
+  ringTile: {
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accentSoft,
+    alignSelf: 'flex-start',
+  },
+  continueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: s(54),
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  continueArrow: {
+    width: s(26),
+    height: s(26),
+    borderRadius: radius.pill,
+    borderWidth: 1.4,
+    borderColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  overviewHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   stat: {
     flexGrow: 1,
     flexBasis: '46%',
     gap: spacing.xs,
-    padding: spacing.sm,
+    padding: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
   },
   statHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statValue: { gap: 1 },
+
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -279,68 +451,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     padding: spacing.md,
-    minHeight: s(76),
-    borderRadius: radius.md,
+    minHeight: s(80),
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    ...shadow.card,
   },
   planIcon: {
-    width: s(42),
-    height: s(42),
-    borderRadius: radius.sm,
+    width: s(46),
+    height: s(46),
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
   },
-  planIconDone: { backgroundColor: colors.successSoft },
-  planMeta: { marginTop: 3 },
-  pressed: { opacity: 0.72 },
-  greetRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  bell: {
-    width: s(44),
-    height: s(44),
+  kindBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
     borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
   },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: s(20),
-    height: s(20),
-    paddingHorizontal: 5,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.bg,
-  },
-  catchUp: { gap: spacing.xs },
-  catchUpHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  catchUpIcon: {
-    width: s(34),
-    height: s(34),
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  catchUpBtn: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    minHeight: s(38),
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-  },
+
   askRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   askIcon: {
     width: s(40),
@@ -348,6 +476,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.6)',
   },
 });

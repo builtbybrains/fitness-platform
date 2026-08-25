@@ -40,13 +40,13 @@ export default function TabsLayout() {
                   <Icon
                     name={tab.icon}
                     size={s(21)}
-                    color={focused ? colors.primaryLight : colors.muted}
-                    strokeWidth={focused ? 2 : 1.6}
+                    color={focused ? colors.primary : colors.faint}
+                    strokeWidth={focused ? 2.1 : 1.6}
                   />
                 </View>
                 <Txt
                   variant="caption"
-                  color={focused ? colors.primaryLight : colors.muted}
+                  color={focused ? colors.primary : colors.faint}
                   maxFontSizeMultiplier={1.1}
                   numberOfLines={1}
                 >
@@ -80,5 +80,5 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  iconActive: { backgroundColor: colors.primarySoft },
+  iconActive: { backgroundColor: 'transparent' },
 });

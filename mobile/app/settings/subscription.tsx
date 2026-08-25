@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 7,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.6)',
   },
   benefits: { gap: spacing.sm, marginTop: spacing.md },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

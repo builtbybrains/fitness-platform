@@ -14,6 +14,7 @@ interface Props {
   loading?: boolean;
   disabled?: boolean;
   icon?: React.ReactNode;
+  iconRight?: React.ReactNode;
   full?: boolean;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
@@ -28,6 +29,7 @@ export function Button({
   loading,
   disabled,
   icon,
+  iconRight,
   full = true,
   style,
   compact,
@@ -81,6 +83,7 @@ export function Button({
           <Txt variant="h3" color={fg} maxFontSizeMultiplier={1.15}>
             {label}
           </Txt>
+          {iconRight ? <View style={styles.iconRight}>{iconRight}</View> : null}
         </View>
       )}
     </AnimatedPressable>
@@ -101,6 +104,16 @@ const styles = StyleSheet.create({
   compact: { height: s(44), minHeight: 44, paddingHorizontal: spacing.lg },
   full: { alignSelf: 'stretch' },
   inner: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  iconRight: {
+    marginLeft: spacing.xxs,
+    width: s(26),
+    height: s(26),
+    borderRadius: radius.pill,
+    borderWidth: 1.4,
+    borderColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   disabled: { opacity: 0.45 },
 });
 

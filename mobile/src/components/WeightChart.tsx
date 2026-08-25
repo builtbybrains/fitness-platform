@@ -6,10 +6,20 @@ import { colors, radius, s, spacing } from '@/theme';
 import { Txt } from './Txt';
 
 /**
- * Deliberately a simple animated bar chart rather than a full charting library:
- * it reads instantly, costs nothing at runtime, and keeps the bundle small.
+ * Statistic-style chart from the reference design: thin rounded lavender bars,
+ * with the most recent one highlighted in lime and captioned by a floating
+ * value pill. Deliberately not a charting library; it reads instantly and
+ * costs nothing at runtime.
  */
-export function WeightChart({ values, height = s(120) }: { values: number[]; height?: number }) {
+export function WeightChart({
+  values,
+  height = s(140),
+  highlightLabel,
+}: {
+  values: number[];
+  height?: number;
+  highlightLabel?: string;
+}) {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = Math.max(0.1, max - min);
@@ -18,10 +28,21 @@ export function WeightChart({ values, height = s(120) }: { values: number[]; hei
     <View>
       <View style={[styles.chart, { height }]} accessibilityLabel="Weekly weight trend">
         {values.map((v, i) => {
-          // Floor at 12% so the lowest bar is still a visible mark, not a sliver.
-          const ratio = 0.12 + ((v - min) / span) * 0.88;
+          // Floor at 18% so the lowest bar is still a visible mark.
+          const ratio = 0.18 + ((v - min) / span) * 0.82;
           const isLast = i === values.length - 1;
-          return <ChartBar key={i} ratio={ratio} index={i} highlight={isLast} />;
+          return (
+            <View key={i} style={styles.slot}>
+              {isLast && highlightLabel ? (
+                <View style={styles.tooltip} pointerEvents="none">
+                  <Txt variant="caption" color={colors.onAccent} maxFontSizeMultiplier={1} numberOfLines={1}>
+                    {highlightLabel}
+                  </Txt>
+                </View>
+              ) : null}
+              <ChartBar ratio={ratio} index={i} highlight={isLast} />
+            </View>
+          );
         })}
       </View>
       <View style={styles.axis}>
@@ -50,22 +71,34 @@ function ChartBar({ ratio, index, highlight }: { ratio: number; index: number; h
 
   const style = useAnimatedStyle(() => ({ height: `${ratio * 100 * grow.value}%` }));
 
-  return (
-    <View style={styles.slot}>
-      <Animated.View style={[styles.bar, highlight && styles.barHighlight, style]} />
-    </View>
-  );
+  return <Animated.View style={[styles.bar, highlight && styles.barHighlight, style]} />;
 }
 
 const styles = StyleSheet.create({
-  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: s(5) },
-  slot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
-  bar: {
-    width: '100%',
-    borderRadius: radius.sm,
-    backgroundColor: colors.primaryDeep,
-    minHeight: 4,
+  chart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: s(4),
+    // Room for the floating value pill above the tallest bar.
+    paddingTop: s(34),
   },
-  barHighlight: { backgroundColor: colors.primary },
-  axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs },
+  slot: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
+  bar: {
+    width: s(7),
+    borderRadius: radius.pill,
+    backgroundColor: colors.chart,
+    minHeight: 6,
+  },
+  barHighlight: { width: s(9), backgroundColor: colors.accent },
+  tooltip: {
+    position: 'absolute',
+    top: 0,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    // Anchored to the last slot; nudged left so it does not clip the card edge.
+    right: -s(4),
+  },
+  axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
 });
