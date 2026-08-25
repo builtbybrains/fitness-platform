@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Bar, Card, FadeIn, Icon, IconName, Ring, Screen, Txt } from '@/components';
 import { todayPlan } from '@/data/plan';
+import { catchUpMessage } from '@/services/coach';
 import { useDerived, useStore } from '@/state/store';
 import { colors, gap, isSmallPhone, radius, s, spacing } from '@/theme';
 
@@ -23,7 +24,9 @@ export default function Home() {
   const profile = useStore((s) => s.profile);
   const addWater = useStore((s) => s.addWater);
   const d = useDerived();
+  const logWorkout = useStore((s) => s.logWorkout);
   const [refreshing, setRefreshing] = useState(false);
+  const catchUp = catchUpMessage(d.daysSinceWorkout, profile.firstName);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -41,6 +44,33 @@ export default function Home() {
           {greeting()}, {profile.firstName} 👋
         </Txt>
       </FadeIn>
+
+      {catchUp ? (
+        <FadeIn delay={40}>
+          <Card accent style={styles.catchUp}>
+            <View style={styles.catchUpHead}>
+              <View style={styles.catchUpIcon}>
+                <Icon name="flame" size={18} color={colors.primaryLight} />
+              </View>
+              <Txt variant="h3" style={styles.flex}>
+                Let&apos;s pick it back up
+              </Txt>
+            </View>
+            <Txt variant="small" color={colors.textSoft}>
+              {catchUp}
+            </Txt>
+            <Pressable
+              onPress={() => { logWorkout(); router.push('/(tabs)/plan'); }}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.catchUpBtn, pressed && styles.pressed]}
+            >
+              <Txt variant="smallMed" color={colors.onPrimary}>
+                Start today&apos;s session
+              </Txt>
+            </Pressable>
+          </Card>
+        </FadeIn>
+      ) : null}
 
       <FadeIn delay={70}>
         <Card>
@@ -238,6 +268,26 @@ const styles = StyleSheet.create({
   planIconDone: { backgroundColor: colors.successSoft },
   planMeta: { maxWidth: '32%', textAlign: 'right' },
   pressed: { opacity: 0.72 },
+  catchUp: { gap: spacing.xs },
+  catchUpHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  catchUpIcon: {
+    width: s(34),
+    height: s(34),
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  catchUpBtn: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    minHeight: s(38),
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
   askRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   askIcon: {
     width: s(40),

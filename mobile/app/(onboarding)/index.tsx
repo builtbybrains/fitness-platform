@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Bar, Button, Card, Chip, FadeIn, Input, Screen, Txt } from '@/components';
-import { Activity, Goal, useStore } from '@/state/store';
+import { Activity, Budget, Goal, useStore } from '@/state/store';
 import { colors, gap, spacing } from '@/theme';
 
 const GOALS: { key: Goal; label: string; detail: string }[] = [
@@ -21,7 +21,17 @@ const ACTIVITY: { key: Activity; label: string; detail: string }[] = [
 const DIETS = ['High protein', 'Balanced', 'Vegetarian', 'Vegan', 'Low carb', 'Mediterranean', 'Quick prep', 'Budget'];
 const TRAINING = ['Strength', 'Cardio', 'Home workouts', 'Gym', 'Bodyweight', 'Mobility', 'Running', 'Low impact'];
 
-const STEPS = ['About you', 'Your goal', 'How active', 'Preferences'] as const;
+const BUDGETS: { key: Budget; label: string; detail: string }[] = [
+  { key: 'low', label: '$  Budget', detail: 'Eggs, chicken thighs, lentils, seasonal veg' },
+  { key: 'standard', label: '$$  Standard', detail: 'Chicken breast, fish twice a week, mixed veg' },
+  { key: 'premium', label: '$$$  Premium', detail: 'Salmon, steak, prawns, wider variety' },
+];
+
+const CONDITIONS = ['Diabetes', 'High blood pressure', 'High cholesterol', 'Thyroid', 'PCOS', 'Asthma', 'Heart condition', 'None'];
+const INJURIES = ['Lower back', 'Knee', 'Shoulder', 'Wrist', 'Neck', 'Ankle', 'Hip', 'None'];
+const ALLERGIES = ['Nuts', 'Dairy', 'Gluten', 'Shellfish', 'Eggs', 'Soy', 'None'];
+
+const STEPS = ['About you', 'Your goal', 'How active', 'Your health', 'Food budget', 'Preferences'] as const;
 
 export default function Onboarding() {
   const complete = useStore((s) => s.completeOnboarding);
@@ -36,7 +46,14 @@ export default function Onboarding() {
   const [activity, setActivity] = useState<Activity>(profile.activity);
   const [diet, setDiet] = useState<string[]>(profile.diet);
   const [training, setTraining] = useState<string[]>(profile.training);
+  const [budget, setBudget] = useState<Budget>(profile.budget);
+  const [goalDelta, setGoalDelta] = useState(String(profile.goalDeltaKg));
+  const [conditions, setConditions] = useState<string[]>([]);
+  const [injuries, setInjuries] = useState<string[]>([]);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [medications, setMedications] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const setMedical = useStore((s) => s.setMedical);
 
   const numbersValid = useMemo(() => {
     const h = Number(height);
@@ -54,7 +71,11 @@ export default function Onboarding() {
       setError('Check your height, weight, target and age.');
       return;
     }
-    if (step === 3 && diet.length === 0) {
+    if (step === 3 && conditions.length === 0 && injuries.length === 0 && allergies.length === 0) {
+      setError('Pick at least one option, or choose None, so I know what to work around.');
+      return;
+    }
+    if (step === 5 && diet.length === 0) {
       setError('Pick at least one dietary preference.');
       return;
     }
@@ -65,6 +86,14 @@ export default function Onboarding() {
       return;
     }
 
+    const clean = (list: string[]) => list.filter((v) => v !== 'None');
+    setMedical({
+      conditions: clean(conditions),
+      injuries: clean(injuries),
+      allergies: clean(allergies),
+      medications: medications.trim(),
+      completed: true,
+    });
     complete({
       heightCm: Number(height),
       weightKg: Number(weight),
@@ -74,6 +103,8 @@ export default function Onboarding() {
       activity,
       diet,
       training,
+      budget,
+      goalDeltaKg: Number(goalDelta) || 10,
     });
     router.replace('/(tabs)');
   };
@@ -115,18 +146,25 @@ export default function Onboarding() {
       {step === 1 && (
         <FadeIn key="s1" style={styles.body}>
           {GOALS.map((g) => (
-            <Card
-              key={g.key}
-              accent={goal === g.key}
-              style={styles.option}
-              // eslint-disable-next-line react-native/no-inline-styles
-            >
+            <Card key={g.key} accent={goal === g.key} style={styles.option}>
               <Chip label={g.label} selected={goal === g.key} onPress={() => setGoal(g.key)} />
               <Txt variant="small" color={colors.muted} style={styles.optionDetail}>
                 {g.detail}
               </Txt>
             </Card>
           ))}
+
+          {goal !== 'maintain' ? (
+            <View style={styles.sectionGap}>
+              <Input
+                label={goal === 'gain' ? 'How many kg to gain' : 'How many kg to lose'}
+                value={goalDelta}
+                onChangeText={setGoalDelta}
+                keyboardType="decimal-pad"
+                maxLength={4}
+              />
+            </View>
+          ) : null}
         </FadeIn>
       )}
 
@@ -145,6 +183,66 @@ export default function Onboarding() {
 
       {step === 3 && (
         <FadeIn key="s3" style={styles.body}>
+          <Txt variant="small" color={colors.muted}>
+            This stays on your device and shapes every plan I build. Choose None where
+            nothing applies.
+          </Txt>
+
+          <Txt variant="h3" style={styles.sectionGap}>Medical conditions</Txt>
+          <View style={styles.chips}>
+            {CONDITIONS.map((c) => (
+              <Chip key={c} label={c} selected={conditions.includes(c)} onPress={() => toggle(conditions, setConditions, c)} />
+            ))}
+          </View>
+
+          <Txt variant="h3" style={styles.sectionGap}>Injuries to work around</Txt>
+          <View style={styles.chips}>
+            {INJURIES.map((c) => (
+              <Chip key={c} label={c} selected={injuries.includes(c)} onPress={() => toggle(injuries, setInjuries, c)} />
+            ))}
+          </View>
+
+          <Txt variant="h3" style={styles.sectionGap}>Food allergies</Txt>
+          <View style={styles.chips}>
+            {ALLERGIES.map((c) => (
+              <Chip key={c} label={c} selected={allergies.includes(c)} onPress={() => toggle(allergies, setAllergies, c)} />
+            ))}
+          </View>
+
+          <View style={styles.sectionGap}>
+            <Input
+              label="Medication (optional)"
+              value={medications}
+              onChangeText={setMedications}
+              placeholder="Anything I should know about"
+            />
+          </View>
+
+          <Txt variant="caption" color={colors.faint}>
+            VITAL is not a medical service. Check with your doctor before starting a new
+            diet or training programme.
+          </Txt>
+        </FadeIn>
+      )}
+
+      {step === 4 && (
+        <FadeIn key="s4" style={styles.body}>
+          <Txt variant="small" color={colors.muted}>
+            Meals are built to fit this. You can change it any time.
+          </Txt>
+          {BUDGETS.map((b) => (
+            <Card key={b.key} accent={budget === b.key} style={styles.option}>
+              <Chip label={b.label} selected={budget === b.key} onPress={() => setBudget(b.key)} />
+              <Txt variant="small" color={colors.muted} style={styles.optionDetail}>
+                {b.detail}
+              </Txt>
+            </Card>
+          ))}
+        </FadeIn>
+      )}
+
+      {step === 5 && (
+        <FadeIn key="s5" style={styles.body}>
           <Txt variant="h3">Food</Txt>
           <View style={styles.chips}>
             {DIETS.map((d) => (

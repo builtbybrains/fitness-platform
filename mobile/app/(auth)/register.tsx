@@ -10,6 +10,7 @@ type Errors = Partial<Record<'first' | 'last' | 'email' | 'password' | 'confirm'
 
 export default function Register() {
   const signIn = useStore((s) => s.signIn);
+  const continueAsGuest = useStore((s) => s.continueAsGuest);
 
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
@@ -125,6 +126,15 @@ export default function Register() {
           icon={<Icon name="google" size={18} />}
           onPress={() => {
             signIn('alex@example.com', 'Alex', 'Moreau');
+            router.replace('/(onboarding)');
+          }}
+        />
+
+        <Button
+          label="Continue as guest"
+          variant="ghost"
+          onPress={() => {
+            continueAsGuest();
             router.replace('/(onboarding)');
           }}
         />

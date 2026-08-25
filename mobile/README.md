@@ -63,10 +63,10 @@ Launch logo  ->  Login / Register  ->  Set goals  ->  Home
 
 ## Design system
 
-Everything comes from `src/theme`. The palette is a deep, slightly warm
-near-black base with one sophisticated crimson accent (`colors.primary`,
-`#E03B4F`), white type and soft grey secondary text. Change the tokens and the
-whole app follows; nothing hardcodes a colour.
+Everything comes from `src/theme`. The palette is a near-black base with one
+green accent taken from the leaf in the VITAL mark (`colors.primary`, `#31CC70`),
+white type and soft grey secondary text. Change the tokens and the whole app
+follows; nothing hardcodes a colour.
 
 Type is Inter, bundled locally rather than fetched, so there is no network
 dependency or font flash on launch.
@@ -102,6 +102,30 @@ a light sweep, about 1.6s), card entrances, progress bars and rings, the weight
 chart, button press springs, the AI typing indicator, and pull to refresh. Every
 one of them is skipped when the OS "Reduce Motion" setting is on, via
 `src/lib/useReducedMotion.ts`.
+
+## What the coach does
+
+`src/services/coach.ts` holds the rules. Beyond answering questions it covers:
+
+- **Real-life mode.** A wedding, a week away or a shift until midnight rewrites
+  the day's food and moves training rather than writing the day off.
+- **Alternative workouts.** Same movement pattern and load target, different
+  tool, so a session can feel fresh without breaking progression.
+- **Catch-up, never guilt.** `catchUpMessage` fires after a missed day. It says
+  what to do next and never mentions a broken streak.
+- **Budget-aware meals.** Every food suggestion is drawn from the user's budget
+  tier, so a tight budget gets eggs and lentils rather than salmon.
+- **Health-aware.** Injuries and allergies from the health form are appended to
+  the advice that needs them.
+
+## Meal photos
+
+`analyseMealPhoto` returns a calorie **range**, per-item confidence and one
+clarifying question. Portion size, oil and sauce are the hard part of reading a
+plate, and a single confident number that is quietly wrong is what makes people
+stop trusting a tracker. Point `EXPO_PUBLIC_API_URL` at a vision endpoint and it
+posts the image there; without one it returns a representative local estimate so
+the flow stays usable.
 
 ## The AI coach
 

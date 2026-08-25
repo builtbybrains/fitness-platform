@@ -20,7 +20,7 @@ import Animated, {
 import { Icon, Logo, Txt } from '@/components';
 import { useTabBarHeight } from '@/lib/tabBar';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-import { askCoach, SUGGESTIONS } from '@/services/coach';
+import { analyseMealPhoto, askCoach, MealAnalysis, SUGGESTIONS } from '@/services/coach';
 import { useDerived, useStore } from '@/state/store';
 import { colors, fs, MAX_FONT_SCALE_TIGHT, radius, s, spacing, type } from '@/theme';
 
@@ -28,10 +28,12 @@ interface Message {
   id: string;
   role: 'user' | 'coach';
   text: string;
+  analysis?: MealAnalysis;
 }
 
 export default function AI() {
   const profile = useStore((st) => st.profile);
+  const medical = useStore((st) => st.medical);
   const d = useDerived();
   const insets = useSafeAreaInsets();
   const { height: tabBarHeight } = useTabBarHeight();
@@ -52,12 +54,14 @@ export default function AI() {
 
       const reply = await askCoach(question, {
         profile,
+        medical,
         calorieTarget: d.calorieTarget,
         caloriesEaten: d.caloriesEaten,
         waterGlasses: d.waterGlasses,
         waterTarget: d.waterTarget,
         lost: d.lost,
         toLose: d.toLose,
+        daysSinceWorkout: d.daysSinceWorkout,
       });
 
       // A short beat so the typing indicator reads as thought, not lag.
@@ -65,13 +69,42 @@ export default function AI() {
       setMessages((m) => [...m, { id: `c${Date.now()}`, role: 'coach', text: reply }]);
       setThinking(false);
     },
-    [d, profile, thinking],
+    [d, profile, medical, thinking],
   );
 
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
     return () => clearTimeout(t);
   }, [messages, thinking]);
+
+  const analysePhoto = useCallback(
+    async (fromCamera: boolean) => {
+      const picker = await import('expo-image-picker');
+
+      const perm = fromCamera
+        ? await picker.requestCameraPermissionsAsync()
+        : await picker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        setMessages((m) => [
+          ...m,
+          { id: `c${Date.now()}`, role: 'coach', text: 'I need permission to use your camera before I can read a meal.' },
+        ]);
+        return;
+      }
+
+      const result = fromCamera
+        ? await picker.launchCameraAsync({ quality: 0.6 })
+        : await picker.launchImageLibraryAsync({ quality: 0.6, mediaTypes: ['images'] });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      setMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: '📷 Sent a photo of my meal' }]);
+      setThinking(true);
+      const a = await analyseMealPhoto(result.assets[0].uri);
+      setThinking(false);
+      setMessages((m) => [...m, { id: `a${Date.now()}`, role: 'coach', text: '', analysis: a }]);
+    },
+    [],
+  );
 
   const empty = messages.length === 0;
 
@@ -110,9 +143,13 @@ export default function AI() {
             </View>
           ) : null}
 
-          {messages.map((m) => (
-            <Bubble key={m.id} message={m} />
-          ))}
+          {messages.map((m) =>
+            m.analysis ? (
+              <MealCard key={m.id} analysis={m.analysis} />
+            ) : (
+              <Bubble key={m.id} message={m} />
+            ),
+          )}
 
           {thinking ? <Typing /> : null}
         </ScrollView>
@@ -152,6 +189,15 @@ export default function AI() {
               accessibilityLabel="Message your coach"
               onSubmitEditing={() => send(draft)}
             />
+            <Pressable
+              onPress={() => analysePhoto(true)}
+              disabled={thinking}
+              accessibilityRole="button"
+              accessibilityLabel="Photograph a meal"
+              style={({ pressed }) => [styles.cameraBtn, pressed && styles.pressed]}
+            >
+              <Icon name="meal" size={19} color={colors.primaryLight} />
+            </Pressable>
             <Pressable
               onPress={() => send(draft)}
               disabled={!draft.trim() || thinking}
@@ -201,6 +247,55 @@ function Bubble({ message }: { message: Message }) {
         </Txt>
       </View>
     </Animated.View>
+  );
+}
+
+const CONF_COLOR = { high: colors.success, medium: colors.warning, low: colors.danger };
+
+/**
+ * Shows a range and per-item confidence rather than one exact number. Portion
+ * size, oil and sauce are the hard part of reading a plate, so the honest answer is a
+ * band the user can correct in a tap.
+ */
+function MealCard({ analysis }: { analysis: MealAnalysis }) {
+  return (
+    <View style={[styles.bubbleWrap, styles.theirsWrap]}>
+      <View style={styles.mealCard}>
+        <Txt variant="caption" color={colors.muted}>
+          ESTIMATED FROM YOUR PHOTO
+        </Txt>
+        <Txt variant="h2">
+          {analysis.kcalLow}&ndash;{analysis.kcalHigh} kcal
+        </Txt>
+
+        {analysis.items.map((it) => (
+          <View key={it.name} style={styles.mealRow}>
+            <View style={[styles.mealDot, { backgroundColor: CONF_COLOR[it.confidence] }]} />
+            <Txt variant="small" style={{ flex: 1 }}>
+              {it.name}
+            </Txt>
+            <Txt variant="small" color={colors.muted}>
+              {it.grams}g &middot; {it.kcal} kcal
+            </Txt>
+          </View>
+        ))}
+
+        <View style={styles.mealTotals}>
+          <Txt variant="smallMed">P {analysis.protein}g</Txt>
+          <Txt variant="smallMed" color={colors.textSoft}>C {analysis.carbs}g</Txt>
+          <Txt variant="smallMed" color={colors.textSoft}>F {analysis.fat}g</Txt>
+          <Txt variant="smallMed" color={colors.muted} style={{ marginLeft: 'auto' }}>
+            {Math.round(analysis.confidence * 100)}% sure
+          </Txt>
+        </View>
+
+        {analysis.question ? (
+          <Txt variant="small" color={colors.primaryLight}>
+            {analysis.question}
+          </Txt>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -310,5 +405,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   sendDisabled: { opacity: 0.4 },
+  cameraBtn: {
+    width: s(48),
+    height: s(48),
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  mealCard: {
+    maxWidth: '92%',
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.primaryBorder,
+    gap: spacing.xs,
+  },
+  mealRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  mealDot: { width: 7, height: 7, borderRadius: 4 },
+  mealTotals: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
   pressed: { opacity: 0.7 },
 });

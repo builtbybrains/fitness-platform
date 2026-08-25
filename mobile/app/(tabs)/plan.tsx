@@ -6,6 +6,18 @@ import { exercises, macros, todayPlan } from '@/data/plan';
 import { useDerived, useStore } from '@/state/store';
 import { colors, gap, radius, s, spacing } from '@/theme';
 
+const BUDGET_LABEL = {
+  low: 'Budget',
+  standard: 'Standard',
+  premium: 'Premium',
+} as const;
+
+const BUDGET_NOTE = {
+  low: 'Meals built from eggs, chicken thighs, lentils, tuna and seasonal veg. Same protein, lower cost.',
+  standard: 'Chicken breast, fish twice a week and mixed vegetables.',
+  premium: 'Salmon, steak and prawns in rotation, with wider variety across the week.',
+} as const;
+
 const TABS = ['Nutrition', 'Training', 'Goals'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -113,6 +125,18 @@ export default function Plan() {
               ))}
           </Card>
 
+          <Card accent>
+            <Txt variant="caption" color={colors.textSoft}>
+              FOOD BUDGET
+            </Txt>
+            <Txt variant="h3" style={styles.tight}>
+              {BUDGET_LABEL[profile.budget]}
+            </Txt>
+            <Txt variant="small" color={colors.textSoft}>
+              {BUDGET_NOTE[profile.budget]}
+            </Txt>
+          </Card>
+
           <Button
             label="Ask for a different meal"
             variant="secondary"
@@ -168,7 +192,7 @@ export default function Plan() {
             ))}
           </Card>
 
-          <Button label="Ask for a different workout" variant="secondary" onPress={() => router.push('/(tabs)/ai')} />
+          <Button label="Give me a different workout" variant="secondary" onPress={() => router.push('/(tabs)/ai')} />
         </FadeIn>
       )}
 

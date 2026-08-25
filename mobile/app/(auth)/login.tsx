@@ -8,6 +8,7 @@ import { colors, gap, spacing } from '@/theme';
 
 export default function Login() {
   const signIn = useStore((s) => s.signIn);
+  const continueAsGuest = useStore((s) => s.continueAsGuest);
   const onboarded = useStore((s) => s.onboarded);
 
   const [email, setEmail] = useState('');
@@ -99,6 +100,15 @@ export default function Login() {
           onPress={() => {
             signIn('alex@example.com', 'Alex');
             router.replace(onboarded ? '/(tabs)' : '/(onboarding)');
+          }}
+        />
+
+        <Button
+          label="Continue as guest"
+          variant="ghost"
+          onPress={() => {
+            continueAsGuest();
+            router.replace('/(onboarding)');
           }}
         />
 

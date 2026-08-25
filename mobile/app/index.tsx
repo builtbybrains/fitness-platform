@@ -28,6 +28,7 @@ export default function Boot() {
   const spin = useRef(new Animated.Value(0)).current;
   const halo = useRef(new Animated.Value(0)).current;
   const word = useRef(new Animated.Value(0)).current;
+  const line = useRef(new Animated.Value(0)).current;
 
   // Never strand the user here if persisted state fails to resolve.
   const [timedOut, setTimedOut] = useState(false);
@@ -90,11 +91,20 @@ export default function Boot() {
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
+      // A thin rule that draws itself under the wordmark, so the wait reads as
+      // deliberate rather than as the app hanging.
+      Animated.timing(line, {
+        toValue: 1,
+        duration: 900,
+        delay: 560,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start();
 
     const t = setTimeout(go, 1600);
     return () => clearTimeout(t);
-  }, [hydrated, timedOut, reduced, signedIn, onboarded, fade, scale, spin, halo, word]);
+  }, [hydrated, timedOut, reduced, signedIn, onboarded, fade, scale, spin, halo, word, line]);
 
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['-10deg', '0deg'] });
 
@@ -127,6 +137,15 @@ export default function Boot() {
         <Txt variant="caption" color={colors.muted} center>
           AI HEALTH &amp; TRAINING
         </Txt>
+
+        <View style={styles.rule}>
+          <Animated.View
+            style={[
+              styles.ruleFill,
+              { transform: [{ scaleX: line }] },
+            ]}
+          />
+        </View>
       </Animated.View>
     </View>
   );
@@ -149,4 +168,20 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   word: { letterSpacing: 6, textAlign: 'center' },
+  rule: {
+    width: s(120),
+    height: 2,
+    borderRadius: 2,
+    marginTop: spacing.md,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  ruleFill: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    transform: [{ scaleX: 0 }],
+  },
 });

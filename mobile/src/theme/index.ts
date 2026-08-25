@@ -11,34 +11,39 @@ export * from './responsive';
  * so it reads as premium rather than alarming.
  */
 export const colors = {
-  bg: '#0A090B',
-  bgElevated: '#111013',
-  surface: '#161418',
-  surfaceAlt: '#1D1A20',
-  surfacePressed: '#221E25',
+  bg: '#07090A',
+  bgElevated: '#0E1213',
+  surface: '#131819',
+  surfaceAlt: '#1A2021',
+  surfacePressed: '#202728',
 
   border: 'rgba(255, 255, 255, 0.08)',
   borderStrong: 'rgba(255, 255, 255, 0.15)',
 
-  text: '#F6F3F4',
-  textSoft: '#C7BFC4',
-  muted: '#8D848A',
-  faint: '#5E575D',
+  text: '#F2F6F4',
+  textSoft: '#C2CCC7',
+  muted: '#87938D',
+  faint: '#586159',
 
-  primary: '#E03B4F',
-  primaryDeep: '#B01F32',
-  primaryLight: '#F4667A',
-  primarySoft: 'rgba(224, 59, 79, 0.14)',
-  primaryBorder: 'rgba(224, 59, 79, 0.30)',
-  primaryGlow: 'rgba(224, 59, 79, 0.32)',
-  onPrimary: '#FFFFFF',
+  // Green, taken from the leaf in the VITAL mark. Deep enough to read as
+  // premium on near-black rather than a highlighter.
+  primary: '#31CC70',
+  primaryDeep: '#12864A',
+  primaryLight: '#63E895',
+  primarySoft: 'rgba(49, 204, 112, 0.13)',
+  primaryBorder: 'rgba(49, 204, 112, 0.30)',
+  primaryGlow: 'rgba(49, 204, 112, 0.30)',
+  onPrimary: '#04170C',
 
-  success: '#3FD08A',
-  successSoft: 'rgba(63, 208, 138, 0.14)',
+  // A cool second accent so "done" never fights the primary green.
+  success: '#31CC70',
+  successSoft: 'rgba(49, 204, 112, 0.13)',
+  info: '#5AA9FF',
+  infoSoft: 'rgba(90, 169, 255, 0.13)',
   warning: '#F0B23E',
   danger: '#FF6B6B',
 
-  overlay: 'rgba(6, 5, 7, 0.72)',
+  overlay: 'rgba(4, 6, 6, 0.74)',
 } as const;
 
 export const spacing = {

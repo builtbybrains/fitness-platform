@@ -8,6 +8,7 @@ import { colors, gap, radius, s, spacing } from '@/theme';
 export default function Profile() {
   const profile = useStore((st) => st.profile);
   const premium = useStore((st) => st.premium);
+  const guest = useStore((st) => st.guest);
   const renewsOn = useStore((st) => st.renewsOn);
   const signOut = useStore((st) => st.signOut);
 
@@ -41,7 +42,7 @@ export default function Profile() {
               {profile.firstName} {profile.lastName}
             </Txt>
             <Txt variant="small" color={colors.muted} numberOfLines={1}>
-              {profile.email || 'alex@example.com'}
+              {guest ? 'Guest · nothing leaves this device' : profile.email || 'Signed in'}
             </Txt>
           </View>
         </View>
@@ -77,6 +78,7 @@ export default function Profile() {
         <Card padded={false}>
           <ListRow icon="profile" label="Profile information" onPress={() => router.push('/settings/personal')} />
           <ListRow icon="target" label="Goals" onPress={() => router.push('/settings/goals')} />
+          <ListRow icon="shield" label="Health" onPress={() => router.push('/settings/health')} />
           <ListRow icon="sliders" label="Preferences" onPress={() => router.push('/settings/preferences')} />
           <ListRow icon="bell" label="Reminders" onPress={() => router.push('/settings/reminders')} last />
         </Card>
@@ -97,14 +99,20 @@ export default function Profile() {
           LEGAL
         </Txt>
         <Card padded={false}>
-          <ListRow icon="shield" label="Privacy policy" onPress={() => router.push('/settings/privacy')} />
+          <ListRow icon="shield" label="Privacy &amp; data" onPress={() => router.push('/settings/privacy-controls')} />
           <ListRow icon="doc" label="Terms of service" onPress={() => router.push('/settings/terms')} last />
         </Card>
       </FadeIn>
 
       <FadeIn delay={260}>
         <Card padded={false}>
-          <ListRow icon="logout" label="Log out" danger onPress={confirmSignOut} last />
+          <ListRow
+            icon="logout"
+            label={guest ? 'Exit guest mode' : 'Log out'}
+            danger
+            onPress={confirmSignOut}
+            last
+          />
         </Card>
         <View style={styles.version}>
           <Icon name="check" size={13} color={colors.faint} />
