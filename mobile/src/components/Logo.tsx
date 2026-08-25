@@ -5,7 +5,14 @@ import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg'
  * The VITAL mark, identical to the one on the website: leaf, athlete and a
  * broken ring. Drawn as vectors so it is razor sharp at every density.
  */
-export function Logo({ size = 64 }: { size?: number }) {
+/**
+ * The athlete and the outer ring are near-white, which disappears on a light
+ * background. `onLight` swaps just those two gradients for slate, leaving the
+ * leaf and the mark's identity untouched.
+ */
+export function Logo({ size = 64, onLight = true }: { size?: number; onLight?: boolean }) {
+  const body = onLight ? ['#243330', '#4A5B55'] : ['#ffffff', '#aebccb'];
+  const ring = onLight ? ['#3A4A45', '#7C8B85'] : ['#ffffff', '#8b9aab'];
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel="VITAL">
       <Defs>
@@ -22,12 +29,12 @@ export function Logo({ size = 64 }: { size?: number }) {
           <Stop offset="1" stopColor="#9bf457" />
         </LinearGradient>
         <LinearGradient id="vBody" x1="44" y1="14" x2="16" y2="58" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#ffffff" />
-          <Stop offset="1" stopColor="#aebccb" />
+          <Stop offset="0" stopColor={body[0]} />
+          <Stop offset="1" stopColor={body[1]} />
         </LinearGradient>
         <LinearGradient id="vRingS" x1="58" y1="24" x2="20" y2="56" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#ffffff" />
-          <Stop offset="1" stopColor="#8b9aab" />
+          <Stop offset="0" stopColor={ring[0]} />
+          <Stop offset="1" stopColor={ring[1]} />
         </LinearGradient>
       </Defs>
 

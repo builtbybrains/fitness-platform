@@ -276,7 +276,7 @@ export default function Onboarding() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.lg, paddingTop: spacing.lg },
+  content: { gap: gap.lg },
   head: { gap: spacing.xs },
   body: { gap: spacing.sm, flex: 1 },
   row: { flexDirection: 'row', gap: spacing.sm },

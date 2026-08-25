@@ -13,6 +13,7 @@ export type IconName =
   | 'meal'
   | 'dumbbell'
   | 'bell'
+  | 'notification'
   | 'target'
   | 'card'
   | 'shield'
@@ -80,7 +81,13 @@ export function Icon({ name, size = 22, color = colors.text, strokeWidth = 1.7 }
       {name === 'bell' && <Circle cx={12} cy={13.4} r={7.4} {...p} />}
       {name === 'bell' && <Path d="M12 9.6v3.8l2.8 1.7M6.2 5.7 3.9 8.1M17.8 5.7l2.3 2.4" {...p} />}
 
+      {name === 'notification' && <Path d="M18.4 9.2a6.4 6.4 0 1 0-12.8 0c0 5.2-2.2 6.6-2.2 6.6h17.2s-2.2-1.4-2.2-6.6" {...p} />}
+      {name === 'notification' && <Path d="M10.2 19.4a2.1 2.1 0 0 0 3.6 0" {...p} />}
+
       {name === 'target' && <Path d="M20.4 8.2A8.8 8.8 0 1 1 15.8 3.6" {...p} />}
+      {name === 'notification' && <Path d="M18.4 9.2a6.4 6.4 0 1 0-12.8 0c0 5.2-2.2 6.6-2.2 6.6h17.2s-2.2-1.4-2.2-6.6" {...p} />}
+      {name === 'notification' && <Path d="M10.2 19.4a2.1 2.1 0 0 0 3.6 0" {...p} />}
+
       {name === 'target' && <Path d="M16.2 12a4.2 4.2 0 1 1-4.2-4.2M12 12l8-8M16.4 4H20v3.6" {...p} />}
 
       {name === 'card' && <Rect x={2.8} y={5.4} width={18.4} height={13.2} rx={2.6} {...p} />}

@@ -56,7 +56,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    marginTop: spacing.xs,
   },
   back: {
     width: s(40),
@@ -70,6 +71,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  titles: { flex: 1, gap: 2 },
+  titles: { flex: 1, gap: 4 },
   right: { flexShrink: 0 },
 });

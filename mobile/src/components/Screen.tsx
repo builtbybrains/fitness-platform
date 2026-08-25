@@ -46,7 +46,7 @@ export function Screen({
   const bottom = edges?.bottom === false ? 0 : insets.bottom;
 
   const padding: ViewStyle = {
-    paddingTop: top + spacing.xs,
+    paddingTop: top + spacing.md,
     // The tab bar floats above the scene, so tab screens reserve its exact
     // height. It already covers the bottom inset, so that is not added twice.
     paddingBottom: tabBarPadding ? tabBarHeight + spacing.lg : bottom + spacing.lg,
@@ -56,7 +56,9 @@ export function Screen({
   const body = scroll ? (
     <ScrollView
       style={styles.flex}
-      contentContainerStyle={[styles.content, padding, contentStyle]}
+      // `padding` comes last on purpose: it carries the safe-area insets, and a
+      // screen passing its own paddingTop must not be able to erase them.
+      contentContainerStyle={[styles.content, contentStyle, padding]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -75,7 +77,7 @@ export function Screen({
       <View style={styles.inner}>{children}</View>
     </ScrollView>
   ) : (
-    <View style={[styles.flex, padding, contentStyle]}>
+    <View style={[styles.flex, contentStyle, padding]}>
       <View style={[styles.inner, styles.flex]}>{children}</View>
     </View>
   );

@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   brand: { gap: spacing.xs, alignItems: 'flex-start' },
   title: { marginTop: spacing.sm },
   form: { gap: spacing.md },
-  forgot: { alignSelf: 'flex-end', paddingVertical: spacing.xxs },
+  forgot: { alignSelf: 'flex-end', paddingVertical: spacing.xs, marginBottom: spacing.xs },
   actions: { gap: spacing.md },
   divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },

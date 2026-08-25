@@ -87,7 +87,7 @@ export default function Payment() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   flex: { flex: 1 },
   spaced: { marginTop: spacing.xxs },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

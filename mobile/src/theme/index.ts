@@ -11,58 +11,59 @@ export * from './responsive';
  * so it reads as premium rather than alarming.
  */
 export const colors = {
-  bg: '#07090A',
-  bgElevated: '#0E1213',
-  surface: '#131819',
-  surfaceAlt: '#1A2021',
-  surfacePressed: '#202728',
+  // Light. White page, white cards separated by a hairline and a soft shadow
+  // rather than a grey fill, which keeps large areas calm.
+  bg: '#FFFFFF',
+  bgElevated: '#FFFFFF',
+  surface: '#FFFFFF',
+  surfaceAlt: '#F3F6F4',
+  surfacePressed: '#E9EEEB',
 
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderStrong: 'rgba(255, 255, 255, 0.15)',
+  border: 'rgba(16, 26, 21, 0.09)',
+  borderStrong: 'rgba(16, 26, 21, 0.18)',
 
-  text: '#F2F6F4',
-  textSoft: '#C2CCC7',
-  muted: '#87938D',
-  faint: '#586159',
+  text: '#0F1613',
+  textSoft: '#3C4A44',
+  muted: '#6B7772',
+  faint: '#98A39E',
 
-  // Green, taken from the leaf in the VITAL mark. Deep enough to read as
-  // premium on near-black rather than a highlighter.
-  primary: '#31CC70',
-  primaryDeep: '#12864A',
-  primaryLight: '#63E895',
-  primarySoft: 'rgba(49, 204, 112, 0.13)',
-  primaryBorder: 'rgba(49, 204, 112, 0.30)',
-  primaryGlow: 'rgba(49, 204, 112, 0.30)',
-  onPrimary: '#04170C',
+  // Darker than the mark's leaf so it stays legible on white; white text on it
+  // clears WCAG AA.
+  primary: '#16A34A',
+  primaryDeep: '#0D7A37',
+  primaryLight: '#109042',
+  primarySoft: 'rgba(22, 163, 74, 0.10)',
+  primaryBorder: 'rgba(22, 163, 74, 0.24)',
+  primaryGlow: 'rgba(22, 163, 74, 0.28)',
+  onPrimary: '#FFFFFF',
 
-  // A cool second accent so "done" never fights the primary green.
-  success: '#31CC70',
-  successSoft: 'rgba(49, 204, 112, 0.13)',
-  info: '#5AA9FF',
-  infoSoft: 'rgba(90, 169, 255, 0.13)',
-  warning: '#F0B23E',
-  danger: '#FF6B6B',
+  success: '#16A34A',
+  successSoft: 'rgba(22, 163, 74, 0.10)',
+  info: '#2563EB',
+  infoSoft: 'rgba(37, 99, 235, 0.10)',
+  warning: '#C2740A',
+  danger: '#DC2626',
 
-  overlay: 'rgba(4, 6, 6, 0.74)',
+  overlay: 'rgba(15, 22, 19, 0.45)',
 } as const;
 
 export const spacing = {
   xxs: s(4),
-  xs: s(8),
-  sm: s(12),
-  md: s(16),
-  lg: s(20),
-  xl: s(24),
-  xxl: s(32),
-  xxxl: s(44),
+  xs: s(10),
+  sm: s(14),
+  md: s(18),
+  lg: s(22),
+  xl: s(28),
+  xxl: s(38),
+  xxxl: s(52),
 } as const;
 
 /** Vertical gaps between major stacked blocks. */
 export const gap = {
-  sm: vs(12),
-  md: vs(18),
-  lg: vs(26),
-  xl: vs(36),
+  sm: vs(16),
+  md: vs(24),
+  lg: vs(34),
+  xl: vs(46),
 } as const;
 
 export const radius = {
@@ -91,22 +92,22 @@ export const type = {
 export const shadow = {
   card: Platform.select({
     ios: {
-      shadowColor: '#000',
-      shadowOpacity: 0.35,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 10 },
+      shadowColor: '#0B1F16',
+      shadowOpacity: 0.07,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
     },
-    android: { elevation: 4 },
+    android: { elevation: 2 },
     default: {},
   }),
   glow: Platform.select({
     ios: {
       shadowColor: colors.primary,
-      shadowOpacity: 0.45,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
     },
-    android: { elevation: 8 },
+    android: { elevation: 4 },
     default: {},
   }),
 } as const;

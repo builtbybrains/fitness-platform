@@ -25,6 +25,7 @@ export default function Home() {
   const addWater = useStore((s) => s.addWater);
   const d = useDerived();
   const logWorkout = useStore((s) => s.logWorkout);
+  const unread = useStore((s) => s.notifications.filter((n) => !n.read).length);
   const [refreshing, setRefreshing] = useState(false);
   const catchUp = catchUpMessage(d.daysSinceWorkout, profile.firstName);
 
@@ -37,12 +38,33 @@ export default function Home() {
   return (
     <Screen tabBarPadding onRefresh={onRefresh} refreshing={refreshing} contentStyle={styles.content}>
       <FadeIn>
-        <Txt variant="small" color={colors.muted}>
-          {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-        </Txt>
-        <Txt variant="h1" numberOfLines={2}>
-          {greeting()}, {profile.firstName} 👋
-        </Txt>
+        <View style={styles.greetRow}>
+          <View style={styles.flex}>
+            <Txt variant="small" color={colors.muted}>
+              {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Txt>
+            <Txt variant="h1" numberOfLines={2}>
+              {greeting()}, {profile.firstName}{'\u00A0'}👋
+            </Txt>
+          </View>
+
+          <Pressable
+            onPress={() => router.push('/notifications')}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+            style={({ pressed }) => [styles.bell, pressed && styles.pressed]}
+          >
+            <Icon name="notification" size={20} color={colors.text} />
+            {unread > 0 ? (
+              <View style={styles.badge}>
+                <Txt variant="caption" color={colors.onPrimary} maxFontSizeMultiplier={1}>
+                  {unread > 9 ? '9+' : unread}
+                </Txt>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
       </FadeIn>
 
       {catchUp ? (
@@ -268,6 +290,32 @@ const styles = StyleSheet.create({
   planIconDone: { backgroundColor: colors.successSoft },
   planMeta: { maxWidth: '32%', textAlign: 'right' },
   pressed: { opacity: 0.72 },
+  greetRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  bell: {
+    width: s(44),
+    height: s(44),
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    marginTop: spacing.xs,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: s(20),
+    height: s(20),
+    paddingHorizontal: 5,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
   catchUp: { gap: spacing.xs },
   catchUpHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   catchUpIcon: {

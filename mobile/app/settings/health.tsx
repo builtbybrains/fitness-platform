@@ -90,7 +90,7 @@ export default function Health() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   section: { gap: spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   notes: { minHeight: 90, textAlignVertical: 'top' },

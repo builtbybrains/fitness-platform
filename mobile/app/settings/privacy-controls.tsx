@@ -81,7 +81,7 @@ export default function PrivacyControls() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },

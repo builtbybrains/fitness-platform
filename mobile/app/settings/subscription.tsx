@@ -160,7 +160,7 @@ export default function Subscription() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   flex: { flex: 1 },
   plan: { gap: spacing.sm },
   planHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

@@ -113,7 +113,7 @@ export default function Reminders() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md, paddingTop: spacing.md },
+  content: { gap: spacing.md },
   flex: { flex: 1 },
   row: {
     flexDirection: 'row',

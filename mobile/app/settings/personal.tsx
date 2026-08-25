@@ -61,7 +61,7 @@ export default function Personal() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   form: { gap: spacing.md },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },

@@ -65,7 +65,7 @@ export default function ForgotPassword() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   form: { gap: spacing.lg },
   done: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
   spaced: { marginTop: spacing.lg },

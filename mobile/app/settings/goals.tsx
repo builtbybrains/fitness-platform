@@ -97,7 +97,7 @@ export default function Goals() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   metric: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginVertical: spacing.xs },
   form: { gap: spacing.md },
   row: { flexDirection: 'row', gap: spacing.sm },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, shadow, spacing } from '@/theme';
 
 interface Props {
   children: React.ReactNode;
@@ -31,8 +31,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
+    ...shadow.card,
   },
-  padded: { padding: spacing.md },
+  padded: { padding: spacing.lg },
   accent: {
     backgroundColor: colors.primarySoft,
     borderColor: colors.primaryBorder,

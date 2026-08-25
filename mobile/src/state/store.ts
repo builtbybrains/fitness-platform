@@ -38,6 +38,15 @@ export interface Profile {
   goalDeltaKg: number;
 }
 
+export interface AppNotification {
+  id: string;
+  kind: 'meal' | 'water' | 'workout' | 'goal' | 'progress' | 'coach';
+  title: string;
+  body: string;
+  at: string;
+  read: boolean;
+}
+
 export interface Reminder {
   id: string;
   label: string;
@@ -59,6 +68,7 @@ interface State {
   reminders: Reminder[];
   /** ISO dates the user completed a workout, newest last. */
   workoutLog: string[];
+  notifications: AppNotification[];
   /** Share analytics to improve recommendations. */
   shareAnalytics: boolean;
   /** Water glasses logged today. */
@@ -70,6 +80,8 @@ interface State {
   setMedical: (patch: Partial<Medical>) => void;
   logWorkout: () => void;
   setShareAnalytics: (v: boolean) => void;
+  markNotificationsRead: () => void;
+  dismissNotification: (id: string) => void;
   completeOnboarding: (patch: Partial<Profile>) => void;
   updateProfile: (patch: Partial<Profile>) => void;
   toggleReminder: (id: string) => void;
@@ -104,6 +116,14 @@ const DEFAULT_MEDICAL: Medical = {
   completed: false,
 };
 
+const DEFAULT_NOTIFICATIONS: AppNotification[] = [
+  { id: 'n1', kind: 'water', title: 'Water reminder', body: 'Two glasses to go. Next one around 15:30.', at: '14:00', read: false },
+  { id: 'n2', kind: 'workout', title: "Today's session is ready", body: 'Upper body strength, 32 minutes, 6 exercises.', at: '12:10', read: false },
+  { id: 'n3', kind: 'coach', title: 'Your coach adjusted lunch', body: 'You trained yesterday, so lunch gains 120 kcal for recovery.', at: '11:05', read: false },
+  { id: 'n4', kind: 'meal', title: 'Lunch logged', body: 'Grilled chicken, quinoa and greens. 612 kcal, 48g protein.', at: '12:34', read: true },
+  { id: 'n5', kind: 'progress', title: 'Weekly review', body: 'Down 0.4 kg this week with 92% workout consistency. Targets unchanged.', at: 'Sun', read: true },
+];
+
 const DEFAULT_REMINDERS: Reminder[] = [
   { id: 'breakfast', label: 'Breakfast', detail: 'Start the day on target', time: '08:00', enabled: true },
   { id: 'water', label: 'Water', detail: 'Every 2 hours', time: '10:00', enabled: true },
@@ -127,6 +147,7 @@ export const useStore = create<State>()(
       medical: DEFAULT_MEDICAL,
       reminders: DEFAULT_REMINDERS,
       workoutLog: [],
+      notifications: DEFAULT_NOTIFICATIONS,
       shareAnalytics: true,
       water: 6,
 
@@ -142,6 +163,12 @@ export const useStore = create<State>()(
         }),
 
       setShareAnalytics: (v) => set({ shareAnalytics: v }),
+
+      markNotificationsRead: () =>
+        set((st) => ({ notifications: st.notifications.map((n) => ({ ...n, read: true })) })),
+
+      dismissNotification: (id) =>
+        set((st) => ({ notifications: st.notifications.filter((n) => n.id !== id) })),
 
       signIn: (email, firstName, lastName) =>
         set((st) => ({
@@ -198,10 +225,10 @@ export const useStore = create<State>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         signedIn, guest, onboarded, premium, renewsOn,
-        profile, medical, reminders, workoutLog, shareAnalytics, water,
+        profile, medical, reminders, workoutLog, notifications, shareAnalytics, water,
       }) => ({
         signedIn, guest, onboarded, premium, renewsOn,
-        profile, medical, reminders, workoutLog, shareAnalytics, water,
+        profile, medical, reminders, workoutLog, notifications, shareAnalytics, water,
       }),
       onRehydrateStorage: () => (state) => {
         useStore.setState({ hydrated: true });

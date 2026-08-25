@@ -70,7 +70,7 @@ export default function Preferences() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md, paddingTop: spacing.md },
+  content: { gap: gap.md },
   section: { gap: spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   save: { marginTop: spacing.lg },
