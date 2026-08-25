@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { Bar, Button, Card, FadeIn, Icon, Screen, Txt } from '@/components';
+import { Bar, Button, Card, ExerciseArt, FadeIn, Icon, Screen, Txt } from '@/components';
 import { exercises, macros, todayPlan } from '@/data/plan';
 import { useDerived, useStore } from '@/state/store';
 import { colors, gap, radius, s, spacing } from '@/theme';
@@ -167,29 +167,30 @@ export default function Plan() {
             </View>
           </Card>
 
+          <Button
+            label="Start the workout"
+            onPress={() => router.push('/workout')}
+            iconRight={<Icon name="chevron" size={13} color={colors.onPrimary} strokeWidth={2.2} />}
+          />
+
           <Card padded={false}>
             {exercises.map((ex, i) => (
               <View
                 key={ex.id}
                 style={[styles.exRow, i < exercises.length - 1 && styles.rowDivider]}
               >
-                <View style={[styles.exIdx, ex.done && styles.exIdxDone]}>
-                  {ex.done ? (
-                    <Icon name="check" size={15} color={colors.success} />
-                  ) : (
-                    <Txt variant="caption" color={colors.primaryLight}>
-                      {i + 1}
-                    </Txt>
-                  )}
-                </View>
+                <ExerciseArt name={ex.art} size={s(48)} />
                 <View style={styles.flex}>
                   <Txt variant="bodyMed" numberOfLines={1}>
                     {ex.name}
                   </Txt>
                   <Txt variant="small" color={colors.muted}>
-                    {ex.detail}
+                    {ex.detail} · {ex.minutes} min
                   </Txt>
                 </View>
+                <Txt variant="caption" color={colors.faint}>
+                  {i + 1}
+                </Txt>
               </View>
             ))}
           </Card>

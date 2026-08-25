@@ -1,9 +1,8 @@
-import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Icon, IconName, Txt } from '@/components';
 import { useTabBarHeight } from '@/lib/tabBar';
-import { colors, radius, s, spacing } from '@/theme';
+import { colors, radius, s, shadow, spacing } from '@/theme';
 
 const TABS: { name: string; title: string; icon: IconName }[] = [
   { name: 'index', title: 'Home', icon: 'home' },
@@ -13,8 +12,9 @@ const TABS: { name: string; title: string; icon: IconName }[] = [
   { name: 'profile', title: 'Profile', icon: 'profile' },
 ];
 
+/** Bold black floating pill, echoing the design's primary buttons. */
 export default function TabsLayout() {
-  const { height, bottomInset } = useTabBarHeight();
+  const { barHeight, bottomOffset } = useTabBarHeight();
 
   return (
     <Tabs
@@ -22,7 +22,10 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         sceneStyle: { backgroundColor: colors.bg },
-        tabBarStyle: [styles.bar, { height, paddingBottom: bottomInset }],
+        tabBarStyle: [
+          styles.bar,
+          { height: barHeight, bottom: bottomOffset },
+        ],
         tabBarItemStyle: styles.item,
         tabBarHideOnKeyboard: Platform.OS === 'android',
       }}
@@ -39,15 +42,15 @@ export default function TabsLayout() {
                 <View style={[styles.iconWrap, focused && styles.iconActive]}>
                   <Icon
                     name={tab.icon}
-                    size={s(21)}
-                    color={focused ? colors.primary : colors.faint}
+                    size={s(20)}
+                    color={focused ? colors.onAccent : 'rgba(255,255,255,0.55)'}
                     strokeWidth={focused ? 2.1 : 1.6}
                   />
                 </View>
                 <Txt
                   variant="caption"
-                  color={focused ? colors.primary : colors.faint}
-                  maxFontSizeMultiplier={1.1}
+                  color={focused ? colors.onPrimary : 'rgba(255,255,255,0.45)'}
+                  maxFontSizeMultiplier={1}
                   numberOfLines={1}
                 >
                   {tab.title}
@@ -64,21 +67,22 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.bgElevated,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    paddingTop: spacing.xs,
-    elevation: 0,
+    left: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    borderTopWidth: 0,
+    paddingTop: s(6),
+    paddingBottom: 0,
+    elevation: 8,
+    ...shadow.glow,
   },
   item: { paddingTop: 0 },
-  tab: { alignItems: 'center', justifyContent: 'center', gap: 2, width: s(64) },
+  tab: { alignItems: 'center', justifyContent: 'center', gap: 2, width: s(62) },
   iconWrap: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: radius.pill,
   },
-  iconActive: { backgroundColor: 'transparent' },
+  iconActive: { backgroundColor: colors.accent },
 });

@@ -47,7 +47,7 @@ export default function Home() {
 
   const startWorkout = () => {
     logWorkout();
-    router.push('/(tabs)/plan');
+    router.push('/workout');
   };
 
   return (
