@@ -80,8 +80,7 @@ export default function Subscription() {
     ]);
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Header title="Subscription" back />
+    <Screen contentStyle={styles.content} header={<Header title="Subscription" back />}>
 
       <FadeIn>
         <Card accent style={styles.plan}>
@@ -160,7 +159,7 @@ export default function Subscription() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md },
+  content: { gap: gap.lg },
   flex: { flex: 1 },
   plan: { gap: spacing.sm },
   planHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -175,7 +174,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  benefits: { gap: spacing.xs, marginTop: spacing.sm },
+  benefits: { gap: spacing.sm, marginTop: spacing.md },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   actions: { gap: spacing.sm },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

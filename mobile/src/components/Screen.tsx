@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   RefreshControl,
   ScrollView,
@@ -15,6 +18,11 @@ import { colors, isTablet, spacing } from '@/theme';
 
 interface Props {
   children: React.ReactNode;
+  /**
+   * Pinned above the scroll area. Content passes underneath it, and a hairline
+   * fades in once the page has moved so the join reads cleanly.
+   */
+  header?: React.ReactNode;
   scroll?: boolean;
   /** Leaves room for the floating tab bar. */
   tabBarPadding?: boolean;
@@ -32,6 +40,7 @@ interface Props {
  */
 export function Screen({
   children,
+  header,
   scroll = true,
   tabBarPadding,
   onRefresh,
@@ -45,23 +54,38 @@ export function Screen({
   const top = edges?.top === false ? 0 : insets.top;
   const bottom = edges?.bottom === false ? 0 : insets.bottom;
 
+  const divider = useRef(new Animated.Value(0)).current;
+  const shown = useRef(false);
+
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const past = e.nativeEvent.contentOffset.y > 4;
+    if (past === shown.current) return;
+    shown.current = past;
+    Animated.timing(divider, {
+      toValue: past ? 1 : 0,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const padding: ViewStyle = {
-    paddingTop: top + spacing.md,
-    // The tab bar floats above the scene, so tab screens reserve its exact
-    // height. It already covers the bottom inset, so that is not added twice.
-    paddingBottom: tabBarPadding ? tabBarHeight + spacing.lg : bottom + spacing.lg,
+    // With a pinned header the inset is already spent above; without one the
+    // scroll content carries it. `padding` is applied last so a screen passing
+    // its own paddingTop cannot erase the safe area.
+    paddingTop: header ? spacing.lg : top + spacing.md,
+    paddingBottom: tabBarPadding ? tabBarHeight + spacing.xl : bottom + spacing.xl,
     paddingHorizontal: spacing.lg,
   };
 
   const body = scroll ? (
     <ScrollView
       style={styles.flex}
-      // `padding` comes last on purpose: it carries the safe-area insets, and a
-      // screen passing its own paddingTop must not be able to erase them.
-      contentContainerStyle={[styles.content, contentStyle, padding]}
+      contentContainerStyle={[styles.content, padding]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      onScroll={header ? onScroll : undefined}
+      scrollEventThrottle={header ? 16 : undefined}
       refreshControl={
         onRefresh ? (
           <RefreshControl
@@ -74,16 +98,23 @@ export function Screen({
         ) : undefined
       }
     >
-      <View style={styles.inner}>{children}</View>
+      <View style={[styles.inner, contentStyle]}>{children}</View>
     </ScrollView>
   ) : (
-    <View style={[styles.flex, contentStyle, padding]}>
-      <View style={[styles.inner, styles.flex]}>{children}</View>
+    <View style={[styles.flex, padding]}>
+      <View style={[styles.inner, styles.flex, contentStyle]}>{children}</View>
     </View>
   );
 
   return (
     <View style={styles.root}>
+      {header ? (
+        <View style={[styles.header, { paddingTop: top + spacing.md }]}>
+          <View style={styles.inner}>{header}</View>
+          <Animated.View style={[styles.divider, { opacity: divider }]} />
+        </View>
+      ) : null}
+
       {keyboardAware ? (
         <KeyboardAvoidingView
           style={styles.flex}
@@ -107,5 +138,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: isTablet ? 620 : undefined,
     alignSelf: 'center',
+  },
+  header: {
+    backgroundColor: colors.bg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+    zIndex: 10,
+  },
+  divider: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
   },
 });

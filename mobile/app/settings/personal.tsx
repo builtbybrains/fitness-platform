@@ -27,8 +27,7 @@ export default function Personal() {
   };
 
   return (
-    <Screen keyboardAware contentStyle={styles.content}>
-      <Header title="Profile information" back />
+    <Screen keyboardAware contentStyle={styles.content} header={<Header title="Profile information" back />}>
       <FadeIn style={styles.form}>
         <View style={styles.row}>
           <View style={styles.half}>
@@ -61,8 +60,8 @@ export default function Personal() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md },
-  form: { gap: spacing.md },
+  content: { gap: gap.lg },
+  form: { gap: spacing.lg },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
 });

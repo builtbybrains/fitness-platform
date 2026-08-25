@@ -29,7 +29,11 @@ export default function Profile() {
     ]);
 
   return (
-    <Screen tabBarPadding contentStyle={styles.content}>
+    <Screen
+      tabBarPadding
+      contentStyle={styles.content}
+      header={<Txt variant="h1">Profile</Txt>}
+    >
       <FadeIn>
         <View style={styles.identity}>
           <View style={styles.avatar}>
@@ -148,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   badgeActive: { backgroundColor: colors.successSoft },
-  groupLabel: { marginTop: spacing.md, marginBottom: spacing.xs, marginLeft: spacing.xxs },
+  groupLabel: { marginTop: spacing.lg, marginBottom: spacing.sm, marginLeft: spacing.xxs },
   version: {
     flexDirection: 'row',
     alignItems: 'center',

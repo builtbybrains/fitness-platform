@@ -18,8 +18,7 @@ export default function Payment() {
   const renewsOn = useStore((s) => s.renewsOn);
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Header title="Payment" subtitle="Handled securely by Stripe" back />
+    <Screen contentStyle={styles.content} header={<Header title="Payment" subtitle="Handled securely by Stripe" back />}>
 
       <FadeIn>
         {premium ? (

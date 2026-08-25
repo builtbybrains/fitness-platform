@@ -28,8 +28,7 @@ export default function Health() {
   };
 
   return (
-    <Screen keyboardAware contentStyle={styles.content}>
-      <Header title="Health" subtitle="Every plan is built around this." back />
+    <Screen keyboardAware contentStyle={styles.content} header={<Header title="Health" subtitle="Every plan is built around this." back />}>
 
       <FadeIn>
         <Card accent>
@@ -90,8 +89,8 @@ export default function Health() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md },
-  section: { gap: spacing.sm },
+  content: { gap: gap.lg },
+  section: { gap: spacing.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   notes: { minHeight: 90, textAlignVertical: 'top' },
 });

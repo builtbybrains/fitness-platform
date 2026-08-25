@@ -26,17 +26,25 @@ export default function Notifications() {
   }, [markRead]);
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Header
-        title="Notifications"
-        subtitle={items.length ? `${items.filter((n) => !n.read).length} new` : undefined}
-        back
-        right={
-          <Pressable onPress={() => router.push('/settings/reminders')} hitSlop={10} accessibilityLabel="Reminder settings">
-            <Icon name="sliders" size={20} color={colors.muted} />
-          </Pressable>
-        }
-      />
+    <Screen
+      contentStyle={styles.content}
+      header={
+        <Header
+          title="Notifications"
+          subtitle={items.length ? `${items.filter((n) => !n.read).length} new` : undefined}
+          back
+          right={
+            <Pressable
+              onPress={() => router.push('/settings/reminders')}
+              hitSlop={10}
+              accessibilityLabel="Reminder settings"
+            >
+              <Icon name="sliders" size={20} color={colors.muted} />
+            </Pressable>
+          }
+        />
+      }
+    >
 
       {items.length === 0 ? (
         <FadeIn>

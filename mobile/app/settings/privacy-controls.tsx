@@ -25,8 +25,7 @@ export default function PrivacyControls() {
     ]);
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Header title="Privacy" subtitle="What is kept, and what you can remove." back />
+    <Screen contentStyle={styles.content} header={<Header title="Privacy" subtitle="What is kept, and what you can remove." back />}>
 
       <FadeIn>
         <Card style={styles.row}>
@@ -81,11 +80,11 @@ export default function PrivacyControls() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md },
+  content: { gap: gap.lg },
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
-  points: { gap: spacing.xs },
+  points: { gap: spacing.sm },
   point: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
   actions: { gap: spacing.sm },
 });

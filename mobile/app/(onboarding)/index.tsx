@@ -278,12 +278,12 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   content: { gap: gap.lg },
   head: { gap: spacing.xs },
-  body: { gap: spacing.sm, flex: 1 },
+  body: { gap: spacing.md, flex: 1 },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
   option: { gap: spacing.xs, alignItems: 'flex-start' },
   optionDetail: { paddingHorizontal: spacing.xxs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  sectionGap: { marginTop: spacing.sm },
+  sectionGap: { marginTop: spacing.lg },
   footer: { gap: spacing.sm, marginTop: spacing.lg },
 });

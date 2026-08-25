@@ -27,38 +27,40 @@ export default function Plan() {
   const d = useDerived();
 
   return (
-    <Screen tabBarPadding contentStyle={styles.content}>
-      <FadeIn>
-        <Txt variant="h1">My plan</Txt>
-        <Txt variant="small" color={colors.muted}>
-          Built around your goal and updated as you log.
-        </Txt>
-      </FadeIn>
+    <Screen
+      tabBarPadding
+      contentStyle={styles.content}
+      header={
+        <View style={styles.headerBlock}>
+          <Txt variant="h1">My plan</Txt>
 
-      <FadeIn delay={60}>
-        <View style={styles.segment} accessibilityRole="tablist">
-          {TABS.map((t) => (
-            <Pressable
-              key={t}
-              onPress={() => setTab(t)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === t }}
-              style={[styles.segmentItem, tab === t && styles.segmentActive]}
-            >
-              <Txt
-                variant="smallMed"
-                color={tab === t ? colors.onPrimary : colors.muted}
-                maxFontSizeMultiplier={1.1}
+          <View style={styles.segment} accessibilityRole="tablist">
+            {TABS.map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => setTab(t)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === t }}
+                style={[styles.segmentItem, tab === t && styles.segmentActive]}
               >
-                {t}
-              </Txt>
-            </Pressable>
-          ))}
+                <Txt
+                  variant="smallMed"
+                  color={tab === t ? colors.onPrimary : colors.muted}
+                  maxFontSizeMultiplier={1.1}
+                >
+                  {t}
+                </Txt>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </FadeIn>
-
+      }
+    >
       {tab === 'Nutrition' && (
         <FadeIn key="n" style={styles.section}>
+          <Txt variant="small" color={colors.muted}>
+            Built around your goal and updated as you log.
+          </Txt>
           <Card>
             <Txt variant="caption" color={colors.muted}>
               DAILY TARGET
@@ -256,11 +258,13 @@ function Row({ label, value, last }: { label: string; value: string; last?: bool
 
 const styles = StyleSheet.create({
   content: { gap: gap.md },
+  headerBlock: { gap: spacing.md },
+  headerSub: { marginTop: 6 },
   flex: { flex: 1 },
   tight: { marginTop: 2 },
   spaced: { marginTop: spacing.xs },
   spacedTop: { marginTop: spacing.md },
-  section: { gap: spacing.sm },
+  section: { gap: spacing.md },
   segment: {
     flexDirection: 'row',
     padding: 4,
@@ -278,7 +282,7 @@ const styles = StyleSheet.create({
   },
   segmentActive: { backgroundColor: colors.primary },
   targetRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginVertical: spacing.xs },
-  cardTitle: { marginBottom: spacing.sm },
+  cardTitle: { marginBottom: spacing.md },
   macros: { gap: spacing.sm },
   macro: { gap: 6 },
   macroHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

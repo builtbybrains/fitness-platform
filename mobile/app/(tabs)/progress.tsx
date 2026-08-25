@@ -19,14 +19,20 @@ export default function Progress() {
   const remaining = Math.max(0, profile.weightKg - profile.targetWeightKg);
 
   return (
-    <Screen tabBarPadding onRefresh={onRefresh} refreshing={refreshing} contentStyle={styles.content}>
-      <FadeIn>
-        <Txt variant="h1">Progress</Txt>
-        <Txt variant="small" color={colors.muted}>
-          Twelve weeks in and still moving.
-        </Txt>
-      </FadeIn>
-
+    <Screen
+      tabBarPadding
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      contentStyle={styles.content}
+      header={
+        <View>
+          <Txt variant="h1">Progress</Txt>
+          <Txt variant="small" color={colors.muted} style={styles.headerSub}>
+            Twelve weeks in and still moving.
+          </Txt>
+        </View>
+      }
+    >
       <FadeIn delay={60}>
         <Card>
           <View style={styles.head}>
@@ -150,6 +156,7 @@ function Legend({ label, value, accent }: { label: string; value: string; accent
 
 const styles = StyleSheet.create({
   content: { gap: gap.md },
+  headerSub: { marginTop: 6 },
   flex: { flex: 1 },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   metricRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
@@ -169,7 +176,7 @@ const styles = StyleSheet.create({
   duo: { flexDirection: 'row', gap: spacing.sm },
   duoCard: { flex: 1, gap: 2, borderRadius: radius.lg },
   iconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.xs },
-  rows: { gap: spacing.md },
+  rows: { gap: spacing.lg },
   consRow: { gap: 6 },
   consHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

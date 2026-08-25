@@ -19,8 +19,7 @@ export default function Reminders() {
   const active = reminders.filter((r) => r.enabled).length;
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Header title="Reminders" subtitle={`${active} of ${reminders.length} turned on`} back />
+    <Screen contentStyle={styles.content} header={<Header title="Reminders" subtitle={`${active} of ${reminders.length} turned on`} back />}>
 
       <FadeIn>
         <Card padded={false}>

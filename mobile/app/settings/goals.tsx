@@ -33,8 +33,7 @@ export default function Goals() {
   };
 
   return (
-    <Screen keyboardAware contentStyle={styles.content}>
-      <Header title="Goals" subtitle="Change these and your plan rebuilds." back />
+    <Screen keyboardAware contentStyle={styles.content} header={<Header title="Goals" subtitle="Change these and your plan rebuilds." back />}>
 
       <FadeIn>
         <Card accent>
@@ -97,9 +96,9 @@ export default function Goals() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md },
+  content: { gap: gap.lg },
   metric: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginVertical: spacing.xs },
-  form: { gap: spacing.md },
+  form: { gap: spacing.lg },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
   label: { marginBottom: spacing.xs, marginLeft: spacing.xxs },

@@ -31,8 +31,7 @@ export default function Preferences() {
   };
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Header title="Preferences" subtitle="Your plan respects these permanently." back />
+    <Screen contentStyle={styles.content} header={<Header title="Preferences" subtitle="Your plan respects these permanently." back />}>
 
       <FadeIn style={styles.section}>
         <Txt variant="h3">Food</Txt>
@@ -70,8 +69,8 @@ export default function Preferences() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: gap.md },
-  section: { gap: spacing.sm },
+  content: { gap: gap.lg },
+  section: { gap: spacing.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   save: { marginTop: spacing.lg },
 });

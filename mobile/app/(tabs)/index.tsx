@@ -36,15 +36,19 @@ export default function Home() {
   }, []);
 
   return (
-    <Screen tabBarPadding onRefresh={onRefresh} refreshing={refreshing} contentStyle={styles.content}>
-      <FadeIn>
+    <Screen
+      tabBarPadding
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      contentStyle={styles.content}
+      header={
         <View style={styles.greetRow}>
           <View style={styles.flex}>
             <Txt variant="small" color={colors.muted}>
               {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
             </Txt>
-            <Txt variant="h1" numberOfLines={2}>
-              {greeting()}, {profile.firstName}{'\u00A0'}👋
+            <Txt variant="h1" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+              {greeting()}, {profile.firstName}
             </Txt>
           </View>
 
@@ -65,8 +69,8 @@ export default function Home() {
             ) : null}
           </Pressable>
         </View>
-      </FadeIn>
-
+      }
+    >
       {catchUp ? (
         <FadeIn delay={40}>
           <Card accent style={styles.catchUp}>
@@ -170,13 +174,14 @@ export default function Home() {
                   <Txt variant="h3" numberOfLines={1}>
                     {item.title}
                   </Txt>
-                  <Txt variant="small" color={colors.muted} numberOfLines={1}>
+                  <Txt variant="small" color={colors.textSoft} numberOfLines={1}>
                     {item.subtitle}
                   </Txt>
+                  <Txt variant="caption" color={colors.faint} numberOfLines={1} style={styles.planMeta}>
+                    {item.meta}
+                  </Txt>
                 </View>
-                <Txt variant="caption" color={colors.faint} style={styles.planMeta} numberOfLines={2}>
-                  {item.meta}
-                </Txt>
+                <Icon name="chevron" size={15} color={colors.faint} />
               </Pressable>
             </FadeIn>
           ))}
@@ -266,31 +271,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
-  list: { gap: spacing.xs },
+  list: { gap: spacing.sm },
   planRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
+    gap: spacing.md,
+    padding: spacing.md,
+    minHeight: s(76),
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
   planIcon: {
-    width: s(38),
-    height: s(38),
+    width: s(42),
+    height: s(42),
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primarySoft,
   },
   planIconDone: { backgroundColor: colors.successSoft },
-  planMeta: { maxWidth: '32%', textAlign: 'right' },
+  planMeta: { marginTop: 3 },
   pressed: { opacity: 0.72 },
-  greetRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  greetRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   bell: {
     width: s(44),
     height: s(44),
@@ -300,7 +306,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    marginTop: spacing.xs,
   },
   badge: {
     position: 'absolute',
