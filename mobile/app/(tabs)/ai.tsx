@@ -20,6 +20,7 @@ import Animated, {
 import { Icon, Logo, Txt } from '@/components';
 import { useTabBarHeight } from '@/lib/tabBar';
 import { useReducedMotion } from '@/lib/useReducedMotion';
+import { aiConfigured } from '@/services/ai';
 import { analyseMealPhoto, askCoach, MealAnalysis, SUGGESTIONS } from '@/services/coach';
 import { useDerived, useStore } from '@/state/store';
 import { colors, fs, MAX_FONT_SCALE_TIGHT, radius, s, spacing, type } from '@/theme';
@@ -52,24 +53,32 @@ export default function AI() {
       setMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: question }]);
       setThinking(true);
 
-      const reply = await askCoach(question, {
-        profile,
-        medical,
-        calorieTarget: d.calorieTarget,
-        caloriesEaten: d.caloriesEaten,
-        waterGlasses: d.waterGlasses,
-        waterTarget: d.waterTarget,
-        lost: d.lost,
-        toLose: d.toLose,
-        daysSinceWorkout: d.daysSinceWorkout,
-      });
+      const history = messages
+        .filter((m) => !m.analysis && m.text)
+        .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
+
+      const reply = await askCoach(
+        question,
+        {
+          profile,
+          medical,
+          calorieTarget: d.calorieTarget,
+          caloriesEaten: d.caloriesEaten,
+          waterGlasses: d.waterGlasses,
+          waterTarget: d.waterTarget,
+          lost: d.lost,
+          toLose: d.toLose,
+          daysSinceWorkout: d.daysSinceWorkout,
+        },
+        history,
+      );
 
       // A short beat so the typing indicator reads as thought, not lag.
       await new Promise((r) => setTimeout(r, 420));
       setMessages((m) => [...m, { id: `c${Date.now()}`, role: 'coach', text: reply }]);
       setThinking(false);
     },
-    [d, profile, medical, thinking],
+    [d, profile, medical, messages, thinking],
   );
 
   useEffect(() => {
@@ -93,13 +102,13 @@ export default function AI() {
       }
 
       const result = fromCamera
-        ? await picker.launchCameraAsync({ quality: 0.6 })
-        : await picker.launchImageLibraryAsync({ quality: 0.6, mediaTypes: ['images'] });
+        ? await picker.launchCameraAsync({ quality: 0.5, base64: true })
+        : await picker.launchImageLibraryAsync({ quality: 0.5, base64: true, mediaTypes: ['images'] });
       if (result.canceled || !result.assets?.[0]) return;
 
       setMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: '📷 Sent a photo of my meal' }]);
       setThinking(true);
-      const a = await analyseMealPhoto(result.assets[0].uri);
+      const a = await analyseMealPhoto(result.assets[0].uri, result.assets[0].base64 ?? undefined);
       setThinking(false);
       setMessages((m) => [...m, { id: `a${Date.now()}`, role: 'coach', text: '', analysis: a }]);
     },
@@ -120,7 +129,7 @@ export default function AI() {
           <View style={styles.flex}>
             <Txt variant="h3">Your AI coach</Txt>
             <Txt variant="caption" color={colors.muted}>
-              Nutrition, training and your goal
+              {aiConfigured ? 'Live AI · knows your plan' : 'Nutrition, training and your goal'}
             </Txt>
           </View>
         </View>

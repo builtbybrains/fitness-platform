@@ -1,3 +1,4 @@
+import { aiConfigured, chat, ChatTurn, describeImage } from '@/services/ai';
 import type { Budget, Medical, Profile } from '@/state/store';
 
 export interface CoachContext {
@@ -188,7 +189,33 @@ Right now you're at ${c.caloriesEaten} of ${c.calorieTarget} kcal and ${c.waterG
 
 Try telling me about tonight's plans, asking what to eat, or asking for a different workout.`;
 
-export async function askCoach(question: string, context: CoachContext): Promise<string> {
+function systemPrompt(c: CoachContext): string {
+  const lines = [
+    'You are the coach inside VITAL, an AI health and fitness app. Warm, direct, practical. Plain text only: no markdown, no headings, no bullets. At most three short paragraphs.',
+    `User: ${c.profile.firstName || 'the user'}, ${c.profile.age}y, ${c.profile.heightCm}cm, ${c.profile.weightKg}kg, goal ${c.profile.goal} (target ${c.profile.targetWeightKg}kg), activity ${c.profile.activity}.`,
+    `Today: ${c.caloriesEaten} of ${c.calorieTarget} kcal eaten, water ${c.waterGlasses}/${c.waterTarget} glasses, protein target 150g. Weight lost so far ${c.lost.toFixed(1)}kg of ${c.toLose.toFixed(1)}kg.`,
+    `Days since last workout: ${c.daysSinceWorkout}. Today's session: upper body strength, 32 min.`,
+    `Food budget: ${c.profile.budget}. Suggest cheaper proteins (eggs, chicken thighs, tuna, lentils, yogurt) on a low budget.`,
+  ];
+  if (c.medical.injuries.length) lines.push(`Injuries to work around: ${c.medical.injuries.join(', ')}. Never suggest exercises that load these.`);
+  if (c.medical.allergies.length) lines.push(`Food allergies: ${c.medical.allergies.join(', ')}. Never suggest these foods.`);
+  if (c.medical.conditions.length) lines.push(`Medical conditions: ${c.medical.conditions.join(', ')}. Be conservative and suggest checking with a doctor where relevant.`);
+  lines.push('Real-life mode: if the user mentions an event, travel or a late shift, adapt today around it and return to normal tomorrow; never punish or suggest crash dieting. If they missed workouts, be encouraging and restart at previous weights. You are not a medical service.');
+  return lines.join('\n');
+}
+
+export async function askCoach(
+  question: string,
+  context: CoachContext,
+  history: ChatTurn[] = [],
+): Promise<string> {
+  if (aiConfigured) {
+    try {
+      return await chat(systemPrompt(context), history, question);
+    } catch {
+      // Model down or rate-limited: the on-device coach answers instead.
+    }
+  }
   if (API_URL) {
     try {
       const res = await fetch(`${API_URL}/coach`, {
@@ -258,7 +285,38 @@ export interface MealAnalysis {
  * With EXPO_PUBLIC_API_URL set this posts the image to your vision endpoint.
  * Without one it returns a representative local estimate so the flow is usable.
  */
-export async function analyseMealPhoto(uri: string): Promise<MealAnalysis> {
+const VISION_PROMPT = `Analyse this meal photo for a nutrition tracker. Reply with ONLY a JSON object, no prose, matching:
+{"items":[{"name":string,"grams":number,"kcal":number,"protein":number,"confidence":"high"|"medium"|"low"}],"kcalLow":number,"kcalHigh":number,"protein":number,"carbs":number,"fat":number,"confidence":number,"question":string}
+kcalLow/kcalHigh bracket the realistic total. confidence is 0..1 overall. question is ONE short clarifying question about the most uncertain item, or "" if none. Estimate portions from visual cues; be honest about uncertainty via the range and per-item confidence.`;
+
+function parseAnalysis(text: string): MealAnalysis | null {
+  try {
+    const jsonText = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+    const d = JSON.parse(jsonText) as MealAnalysis;
+    if (!Array.isArray(d.items) || !d.items.length || !d.kcalLow || !d.kcalHigh) return null;
+    d.items = d.items.slice(0, 8).map((i) => ({
+      name: String(i.name).slice(0, 40),
+      grams: Math.round(Number(i.grams) || 0),
+      kcal: Math.round(Number(i.kcal) || 0),
+      protein: Math.round(Number(i.protein) || 0),
+      confidence: ['high', 'medium', 'low'].includes(i.confidence) ? i.confidence : 'medium',
+    }));
+    d.confidence = Math.min(1, Math.max(0, Number(d.confidence) || 0.7));
+    return d;
+  } catch {
+    return null;
+  }
+}
+
+export async function analyseMealPhoto(uri: string, base64?: string): Promise<MealAnalysis> {
+  if (aiConfigured && base64) {
+    try {
+      const parsed = parseAnalysis(await describeImage(base64, VISION_PROMPT));
+      if (parsed) return parsed;
+    } catch {
+      // fall through to the local estimate
+    }
+  }
   if (API_URL) {
     try {
       const body = new FormData();
