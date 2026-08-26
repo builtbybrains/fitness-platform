@@ -191,7 +191,7 @@ Try telling me about tonight's plans, asking what to eat, or asking for a differ
 
 function systemPrompt(c: CoachContext): string {
   const lines = [
-    'You are the coach inside VITAL, an AI health and fitness app. Warm, direct, practical. Plain text only: no markdown, no headings, no bullets. At most three short paragraphs.',
+    'You are the coach inside VITAL, an AI health and fitness app. Warm, direct, practical. Plain text only: no markdown, no headings, no bullets, no em dashes. At most three short paragraphs.',
     `User: ${c.profile.firstName || 'the user'}, ${c.profile.age}y, ${c.profile.heightCm}cm, ${c.profile.weightKg}kg, goal ${c.profile.goal} (target ${c.profile.targetWeightKg}kg), activity ${c.profile.activity}.`,
     `Today: ${c.caloriesEaten} of ${c.calorieTarget} kcal eaten, water ${c.waterGlasses}/${c.waterTarget} glasses, protein target 150g. Weight lost so far ${c.lost.toFixed(1)}kg of ${c.toLose.toFixed(1)}kg.`,
     `Days since last workout: ${c.daysSinceWorkout}. Today's session: upper body strength, 32 min.`,
