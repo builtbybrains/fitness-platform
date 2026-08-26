@@ -204,16 +204,22 @@ function systemPrompt(c: CoachContext): string {
   return lines.join('\n');
 }
 
+/** Thrown when the live AI cannot be reached after retries. The UI shows an
+ *  honest connection error instead of quietly swapping in a scripted reply. */
+export class CoachOfflineError extends Error {}
+
 export async function askCoach(
   question: string,
   context: CoachContext,
   history: ChatTurn[] = [],
 ): Promise<string> {
   if (aiConfigured) {
+    // Live AI only, by design. The scripted rules below exist solely for
+    // installs with no key configured; they must never answer for the model.
     try {
       return await chat(systemPrompt(context), history, question);
     } catch {
-      // Model down or rate-limited: the on-device coach answers instead.
+      throw new CoachOfflineError('coach unreachable');
     }
   }
   if (API_URL) {
@@ -282,8 +288,9 @@ export interface MealAnalysis {
  * is quietly wrong is what makes people stop trusting a tracker. Better to show
  * the range, flag what is uncertain, and let the user correct it in one tap.
  *
- * With EXPO_PUBLIC_API_URL set this posts the image to your vision endpoint.
- * Without one it returns a representative local estimate so the flow is usable.
+ * With a key configured the photo goes to the live vision model and nothing
+ * else: a failure raises MealPhotoError so the UI can say so honestly. The
+ * API_URL and local-estimate paths below only serve installs with no key.
  */
 const VISION_PROMPT = `Analyse this meal photo for a nutrition tracker. Reply with ONLY a JSON object, no prose, matching:
 {"items":[{"name":string,"grams":number,"kcal":number,"protein":number,"confidence":"high"|"medium"|"low"}],"kcalLow":number,"kcalHigh":number,"protein":number,"carbs":number,"fat":number,"confidence":number,"question":string}
@@ -308,14 +315,39 @@ function parseAnalysis(text: string): MealAnalysis | null {
   }
 }
 
+/** Thrown when a photo cannot be analysed by the live model. When the model
+ *  itself replied (for example the photo is not food), message carries the
+ *  model's own clarifying question; otherwise message is empty and the UI
+ *  shows a generic connection error. */
+export class MealPhotoError extends Error {}
+
+/** Pull the model's clarifying question out of a reply that failed full
+ *  validation, so a "that is not a meal" answer reaches the user in the
+ *  model's own words. */
+function extractQuestion(text: string): string | null {
+  try {
+    const d = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) as { question?: unknown };
+    return typeof d.question === 'string' && d.question.trim() ? d.question.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function analyseMealPhoto(uri: string, base64?: string): Promise<MealAnalysis> {
-  if (aiConfigured && base64) {
+  if (aiConfigured) {
+    if (!base64) throw new MealPhotoError('I could not read that photo. Try taking it again.');
+    let reply: string;
     try {
-      const parsed = parseAnalysis(await describeImage(base64, VISION_PROMPT));
-      if (parsed) return parsed;
+      reply = await describeImage(base64, VISION_PROMPT);
     } catch {
-      // fall through to the local estimate
+      throw new MealPhotoError('');
     }
+    const parsed = parseAnalysis(reply);
+    if (parsed) return parsed;
+    throw new MealPhotoError(
+      extractQuestion(reply) ??
+        'I could not make out a meal in that photo. Try a clearer shot from above, in good light.',
+    );
   }
   if (API_URL) {
     try {

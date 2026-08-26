@@ -62,11 +62,20 @@ async function complete(body: RequestBody, timeoutMs: number): Promise<string> {
   }
 }
 
-/**
- * One retry on failure, then the caller falls back to the on-device coach.
- * The stealth model rate-limits sporadically, so a single short retry
- * recovers most transient 429s without making the user wait long.
- */
+/** The model rate-limits sporadically and there is no canned fallback behind
+ *  these calls, so transient failures are retried with a short backoff before
+ *  the error is allowed to surface. */
+async function withRetries<T>(fn: () => Promise<T>, delays: number[]): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i >= delays.length) throw e;
+      await new Promise((r) => setTimeout(r, delays[i]));
+    }
+  }
+}
+
 export async function chat(system: string, history: ChatTurn[], question: string): Promise<string> {
   const body: RequestBody = {
     model: AI_MODEL,
@@ -78,12 +87,7 @@ export async function chat(system: string, history: ChatTurn[], question: string
       { role: 'user', content: question },
     ],
   };
-  try {
-    return await complete(body, 45000);
-  } catch {
-    await new Promise((r) => setTimeout(r, 2500));
-    return complete(body, 45000);
-  }
+  return withRetries(() => complete(body, 45000), [2000, 4000]);
 }
 
 /** Vision call for meal photos; returns the model's raw text (expected JSON). */
@@ -102,5 +106,5 @@ export async function describeImage(base64Jpeg: string, prompt: string): Promise
       },
     ],
   };
-  return complete(body, 60000);
+  return withRetries(() => complete(body, 60000), [2500]);
 }

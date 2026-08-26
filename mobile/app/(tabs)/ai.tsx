@@ -30,6 +30,9 @@ interface Message {
   role: 'user' | 'coach';
   text: string;
   analysis?: MealAnalysis;
+  /** Connection or read errors are shown in the thread but kept out of the
+   *  history sent to the model. */
+  error?: boolean;
 }
 
 export default function AI() {
@@ -54,28 +57,35 @@ export default function AI() {
       setThinking(true);
 
       const history = messages
-        .filter((m) => !m.analysis && m.text)
+        .filter((m) => !m.analysis && !m.error && m.text)
         .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
 
-      const reply = await askCoach(
-        question,
-        {
-          profile,
-          medical,
-          calorieTarget: d.calorieTarget,
-          caloriesEaten: d.caloriesEaten,
-          waterGlasses: d.waterGlasses,
-          waterTarget: d.waterTarget,
-          lost: d.lost,
-          toLose: d.toLose,
-          daysSinceWorkout: d.daysSinceWorkout,
-        },
-        history,
-      );
+      let reply: string;
+      let failed = false;
+      try {
+        reply = await askCoach(
+          question,
+          {
+            profile,
+            medical,
+            calorieTarget: d.calorieTarget,
+            caloriesEaten: d.caloriesEaten,
+            waterGlasses: d.waterGlasses,
+            waterTarget: d.waterTarget,
+            lost: d.lost,
+            toLose: d.toLose,
+            daysSinceWorkout: d.daysSinceWorkout,
+          },
+          history,
+        );
+      } catch {
+        failed = true;
+        reply = "I couldn't reach the AI service just now. Check your connection and send that again in a moment.";
+      }
 
       // A short beat so the typing indicator reads as thought, not lag.
       await new Promise((r) => setTimeout(r, 420));
-      setMessages((m) => [...m, { id: `c${Date.now()}`, role: 'coach', text: reply }]);
+      setMessages((m) => [...m, { id: `c${Date.now()}`, role: 'coach', text: reply, error: failed || undefined }]);
       setThinking(false);
     },
     [d, profile, medical, messages, thinking],
@@ -108,9 +118,18 @@ export default function AI() {
 
       setMessages((m) => [...m, { id: `u${Date.now()}`, role: 'user', text: '📷 Sent a photo of my meal' }]);
       setThinking(true);
-      const a = await analyseMealPhoto(result.assets[0].uri, result.assets[0].base64 ?? undefined);
-      setThinking(false);
-      setMessages((m) => [...m, { id: `a${Date.now()}`, role: 'coach', text: '', analysis: a }]);
+      try {
+        const a = await analyseMealPhoto(result.assets[0].uri, result.assets[0].base64 ?? undefined);
+        setMessages((m) => [...m, { id: `a${Date.now()}`, role: 'coach', text: '', analysis: a }]);
+      } catch (e) {
+        const text =
+          e instanceof Error && e.message
+            ? e.message
+            : "I couldn't reach the AI service to read that photo. Check your connection and try again.";
+        setMessages((m) => [...m, { id: `c${Date.now()}`, role: 'coach', text, error: true }]);
+      } finally {
+        setThinking(false);
+      }
     },
     [],
   );
