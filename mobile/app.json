@@ -53,6 +53,16 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b23f2234-0930-4a57-83c2-60ad6ee85dbc"
+      }
+    },
+    "owner": "joeywehbe1",
+    "updates": {
+      "url": "https://u.expo.dev/b23f2234-0930-4a57-83c2-60ad6ee85dbc"
     }
   }
 }
