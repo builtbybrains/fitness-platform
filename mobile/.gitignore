@@ -42,3 +42,5 @@ yarn-error.*
 .env.local
 *.hbc
 .env
+dist/
+node_modules/
