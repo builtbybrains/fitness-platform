@@ -1,0 +1,3 @@
+# The app builds from this directory; nothing here is excluded.
+node_modules
+dist
