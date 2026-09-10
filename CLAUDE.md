@@ -52,6 +52,19 @@ Every NEEDS OMAR line carries its own link and its own instructions:
   app and which screen, in order.
 - One action per numbered line. Two actions means two lines.
 
+Never hand him a GitHub task:
+
+- Opening a pull request, merging one, deleting a branch, changing who has repo
+  access, closing an issue or a pull request: all of that is yours. You have the
+  tools for it. Do it, then list it under DONE.
+- Omar does not use GitHub and will not act on an instruction that sends him there.
+  A NEEDS OMAR line pointing at GitHub is a line that never gets done.
+- NEEDS OMAR is only for what no tool in this session can reach: a dashboard toggle
+  with no API, a password only he holds, a decision or a relationship call that is
+  his to make.
+- Before writing any NEEDS OMAR line, ask whether you could do it yourself. If you
+  could, do it instead and move it to DONE.
+
 The test for every report: could he act on it, correctly, on a phone, in a taxi,
 without replying to ask you what you meant. If not, rewrite it before sending.
 
