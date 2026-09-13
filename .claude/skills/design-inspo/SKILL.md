@@ -46,8 +46,13 @@ Run the recon script on every kept reference (it handles the live site and the s
 node .claude/skills/design-inspo/scripts/recon.mjs <url> [<url> ...]
 ```
 
-For each URL it writes `research/inspo/<host>-390.png`, `<host>-1440.png` and appends a
-block to `research/inspo/recon.json`: fonts in use (display, body, mono), the palette
+Where the browser can reach the site (a Mac-side session, or a host the proxy tunnels) it
+writes `research/inspo/<host>-390.png`, `<host>-1440.png` and appends a block to
+`research/inspo/recon.json`. From the cloud container the browser cannot tunnel to outside
+hosts (tested 2026-09-13: the proxy closes Chromium's TLS tunnels), so the script falls
+back to a static read of the page's HTML, CSS and JS: same fonts, palette, radii, shadows
+and libraries, no screenshot. When a view needs the picture, list the URLs under NEEDS OMAR
+for the Mac-side ferry into `intake/`, and go on with the static read. The block holds: fonts in use (display, body, mono), the palette
 sampled from computed styles (top 8 colors by area), radius and shadow values seen,
 motion and layout libraries detected in the bundle (framer-motion, gsap, lenis, three,
 lottie, tailwind, radix, base-ui), the type scale (h1 to body sizes at 1440 and 390),
