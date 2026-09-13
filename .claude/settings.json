@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "builtbybrains": {
+      "source": {
+        "source": "github",
+        "repo": "builtbybrains/bbb-starter"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "brains-core@builtbybrains": true,
+    "brains-design@builtbybrains": true
+  },
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-opus-5"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/skills/impeccable/scripts/hook.mjs",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
