@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { C } from '../../src/design';
+import { C } from '../../src/design.ts';
 
 export default function AuthLayout() {
   return (
