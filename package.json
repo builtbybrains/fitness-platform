@@ -1,0 +1,13 @@
+{
+  "name": "vital-workspace",
+  "private": true,
+  "description": "Website at this root; Expo app in mobile/. The app talks to Supabase directly (accounts + data) and calls one Edge Function for the AI coach.",
+  "scripts": {
+    "start": "npm --prefix mobile run start",
+    "app": "npm --prefix mobile run start",
+    "android": "npm --prefix mobile run android",
+    "ios": "npm --prefix mobile run ios",
+    "web": "npm --prefix mobile run web",
+    "typecheck": "npm --prefix mobile run typecheck"
+  }
+}

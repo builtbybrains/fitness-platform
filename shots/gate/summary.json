@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-19T10:32:52.783Z",
+  "failures": [
+    "nothing to serve: build first (next build) or pass --url"
+  ],
+  "widths": [
+    360,
+    375,
+    390,
+    430,
+    1440
+  ],
+  "routes": [
+    "/"
+  ],
+  "langs": []
+}

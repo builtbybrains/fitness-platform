@@ -1,0 +1,31 @@
+name: design-gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npx playwright install --with-deps chromium
+      - name: Build
+        run: npm run build --if-present
+      - name: Design gate
+        if: hashFiles('app/**', 'src/**', 'pages/**') != ''
+        run: node scripts/design-gate.mjs
+      - name: No app here
+        if: hashFiles('app/**', 'src/**', 'pages/**') == ''
+        run: echo "no app/ src/ or pages/ in this repo; the gate runs once a demo exists"
+      - name: Upload gate shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-gate-shots
+          path: shots/gate
