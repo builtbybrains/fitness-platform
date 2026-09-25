@@ -1,68 +1,28 @@
 {
   "expo": {
+    "newArchEnabled": true,
     "name": "VITAL",
     "slug": "vital",
+    "version": "0.2.0",
     "scheme": "vital",
-    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#F1F1F3",
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#05070A",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "app.vital.mobile",
-      "infoPlist": {
-        "UIViewControllerBasedStatusBarAppearance": false,
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "supportsTablet": false
     },
     "android": {
-      "package": "app.vital.mobile",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
-      }
+        "backgroundColor": "#05070A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
     },
-    "plugins": [
-      "expo-router",
-      "expo-font",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#F1F1F3",
-          "image": "./assets/splash-icon.png",
-          "imageWidth": 180,
-          "resizeMode": "contain"
-        }
-      ],
-      [
-        "@stripe/stripe-react-native",
-        {
-          "merchantIdentifier": "merchant.app.vital",
-          "enableGooglePay": true
-        }
-      ]
-    ],
     "web": {
-      "bundler": "metro",
-      "output": "single",
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "b23f2234-0930-4a57-83c2-60ad6ee85dbc"
-      }
-    },
-    "owner": "joeywehbe1",
-    "updates": {
-      "url": "https://u.expo.dev/b23f2234-0930-4a57-83c2-60ad6ee85dbc"
     }
   }
 }

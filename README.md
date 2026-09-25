@@ -1,16 +1,5 @@
 # VITAL: AI Diet & Personal Training
 
-This repository holds two products that share one brand:
-
-| Path | What it is |
-| --- | --- |
-| `/` (root) | The marketing website. Static HTML, no build step. |
-| `mobile/` | The Expo / React Native app. See [`mobile/README.md`](mobile/README.md). |
-
-The rest of this document covers the website.
-
-## Website
-
 Marketing website for an AI-powered nutrition and personal training mobile app.
 
 **Zero dependencies, zero build step.** Plain HTML, one stylesheet and one script, so it
@@ -42,6 +31,13 @@ assets/
 it stays sharp from a 30px nav icon up to any size, at roughly 1.5 KB. It is referenced as an
 `<img>` (one cached request rather than inlining it into all seven pages). To swap in a
 different file, replace that path in `logoMark` and the nav and footer both follow.
+
+The raster brand images (`og-cover.png` social card, `icon-180.png` apple-touch icon) are
+generated from the same mark geometry — no image editor needed:
+
+```bash
+node scripts/gen-web-images.mjs
+```
 
 ## Design system
 
