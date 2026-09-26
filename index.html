@@ -1,0 +1,3324 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>VITAL | Your AI-Powered Path to a Healthier You</title>
+  <meta name="description" content="Personalized nutrition, smart fitness guidance, daily reminders, goals and progress tracking, all inside one intelligent app.">
+  <meta name="theme-color" content="#05070a">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://vital.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="VITAL | Your AI-Powered Path to a Healthier You">
+  <meta property="og:description" content="Personalized nutrition, smart fitness guidance, daily reminders, goals and progress tracking, all inside one intelligent app.">
+  <meta property="og:site_name" content="VITAL">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/assets/img/favicon.svg">
+  <link rel="apple-touch-icon" href="/assets/img/icon-180.png">
+  <meta property="og:image" content="https://vital.app/assets/img/og-cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="VITAL — AI-powered diet and personal training app">
+  <meta name="twitter:image" content="https://vital.app/assets/img/og-cover.png">
+  <link rel="preload" as="image" href="/assets/img/logo.svg" fetchpriority="high">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap"></noscript>
+  <style>
+    /* ============================================================
+       VITAL: AI Diet & Personal Training
+       Design system + global styles
+       ============================================================ */
+
+    /* ---------- 1. Tokens ---------- */
+    :root {
+      /* Base */
+      --bg:            #05070a;
+      --bg-elev:       #080b11;
+      --bg-soft:       #0b0f16;
+      --surface:       rgba(255, 255, 255, 0.028);
+      --surface-2:     rgba(255, 255, 255, 0.05);
+      --stroke:        rgba(255, 255, 255, 0.075);
+      --stroke-strong: rgba(255, 255, 255, 0.14);
+
+      /* Ink */
+      --text:      #eef3f8;
+      --text-soft: #c3ccd8;
+      --muted:     #8b96a6;
+      --faint:     #5d6675;
+
+      /* Accent: single, consistent, health + intelligence */
+      --accent:      #34e5a4;
+      --accent-deep: #14b981;
+      --accent-glow: rgba(52, 229, 164, 0.35);
+      --accent-ink:  #03130d;
+      --accent-2:    #79a6ff; /* used only inside gradients, never solid */
+
+      /* Type */
+      --font-display: 'Sora', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+      /* Rhythm */
+      --container: 1200px;
+      --gutter: clamp(20px, 5vw, 40px);
+      --section-y: clamp(84px, 11vw, 150px);
+
+      /* Radius */
+      --r-sm: 10px;
+      --r-md: 16px;
+      --r-lg: 22px;
+      --r-xl: 30px;
+      --r-pill: 999px;
+
+      /* Elevation: soft, premium, never heavy */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 18px 40px -22px rgba(0, 0, 0, 0.9);
+      --shadow-lg: 0 40px 90px -40px rgba(0, 0, 0, 0.95);
+
+      /* Motion */
+      --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --t-fast: 0.18s;
+      --t-med: 0.32s;
+      --t-slow: 0.6s;
+
+      --nav-h: 76px;
+    }
+
+    /* ---------- 2. Reset ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+    * { margin: 0; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      scroll-behavior: smooth;
+      scroll-padding-top: calc(var(--nav-h) + 18px);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.65;
+      letter-spacing: -0.006em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      text-rendering: optimizeLegibility;
+    }
+
+    img, svg, video, canvas { display: block; max-width: 100%; }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { background: none; border: 0; cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    ul, ol { list-style: none; padding: 0; }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    ::selection { background: var(--accent); color: var(--accent-ink); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 99px;
+      border: 3px solid var(--bg);
+    }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .skip-link {
+      position: absolute;
+      left: 50%;
+      top: 10px;
+      transform: translate(-50%, -160%);
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 10px 20px;
+      border-radius: var(--r-pill);
+      font-weight: 600;
+      z-index: 200;
+      transition: transform var(--t-med) var(--ease);
+    }
+    .skip-link:focus { transform: translate(-50%, 0); }
+
+    /* ---------- 3. Typography ---------- */
+    h1, h2, h3, h4 {
+      font-family: var(--font-display);
+      font-weight: 600;
+      line-height: 1.06;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    .h-display {
+      font-size: clamp(2.4rem, 5.9vw, 4.3rem);
+      line-height: 1.0;
+      letter-spacing: -0.045em;
+    }
+    .h-1 { font-size: clamp(2.1rem, 5.2vw, 3.55rem); }
+    .h-2 { font-size: clamp(1.6rem, 3.4vw, 2.3rem); letter-spacing: -0.03em; }
+    .h-3 { font-size: clamp(1.12rem, 1.9vw, 1.32rem); letter-spacing: -0.02em; line-height: 1.3; }
+
+    .lead {
+      font-size: clamp(1.02rem, 1.55vw, 1.19rem);
+      color: var(--text-soft);
+      line-height: 1.68;
+      max-width: 60ch;
+      text-wrap: pretty;
+    }
+    .body-muted { color: var(--muted); line-height: 1.72; text-wrap: pretty; }
+    .accent-text { color: var(--accent); }
+
+    .grad-text {
+      background: linear-gradient(96deg, #ffffff 8%, var(--accent) 58%, #a8d8ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* ---------- 4. Layout ---------- */
+    .container {
+      width: 100%;
+      max-width: var(--container);
+      margin-inline: auto;
+      padding-inline: var(--gutter);
+    }
+    .container-wide { max-width: 1340px; }
+
+    .section { padding-block: var(--section-y); position: relative; }
+    .section-tight { padding-block: clamp(60px, 8vw, 100px); }
+
+    .section-head { max-width: 720px; margin-bottom: clamp(42px, 5.5vw, 72px); }
+    .section-head-center { margin-inline: auto; text-align: center; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 0.735rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .eyebrow::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+      flex: none;
+    }
+    .section-head-center .eyebrow { justify-content: center; }
+
+    /* ---------- 5. Ambient background ---------- */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .ambient::after {
+      /* fine grain, removes banding on large gradients */
+      content: '';
+      position: absolute;
+      inset: -50%;
+      opacity: 0.22;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.5;
+      will-change: transform;
+    }
+    .orb-1 {
+      width: 46vw; height: 46vw;
+      min-width: 380px; min-height: 380px;
+      top: -14vw; left: -8vw;
+      background: radial-gradient(circle, rgba(52,229,164,0.28), transparent 68%);
+      animation: drift-a 26s var(--ease) infinite alternate;
+    }
+    .orb-2 {
+      width: 40vw; height: 40vw;
+      min-width: 320px; min-height: 320px;
+      top: 22vh; right: -12vw;
+      background: radial-gradient(circle, rgba(121,166,255,0.2), transparent 68%);
+      animation: drift-b 32s var(--ease) infinite alternate;
+    }
+    .orb-3 {
+      width: 34vw; height: 34vw;
+      bottom: -10vw; left: 32%;
+      background: radial-gradient(circle, rgba(52,229,164,0.13), transparent 70%);
+      animation: drift-a 38s var(--ease) infinite alternate-reverse;
+    }
+    @keyframes drift-a {
+      from { transform: translate3d(0, 0, 0) scale(1); }
+      to   { transform: translate3d(6vw, 5vh, 0) scale(1.12); }
+    }
+    @keyframes drift-b {
+      from { transform: translate3d(0, 0, 0) scale(1.06); }
+      to   { transform: translate3d(-7vw, 7vh, 0) scale(0.94); }
+    }
+
+    .grid-lines {
+      position: absolute;
+      inset: 0;
+      background-image:
+              linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+      background-size: 76px 76px;
+      mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 20%, transparent 78%);
+      -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 20%, transparent 78%);
+    }
+
+    .divider {
+      height: 1px;
+      border: 0;
+      background: linear-gradient(90deg, transparent, var(--stroke) 22%, var(--stroke) 78%, transparent);
+      margin: 0;
+    }
+
+    /* ---------- 6. Buttons ---------- */
+    .btn {
+      --btn-bg: var(--surface-2);
+      --btn-fg: var(--text);
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 26px;
+      border-radius: var(--r-pill);
+      font-weight: 600;
+      font-size: 0.94rem;
+      letter-spacing: -0.01em;
+      background: var(--btn-bg);
+      color: var(--btn-fg);
+      border: 1px solid var(--stroke);
+      transition: transform var(--t-fast) var(--ease),
+      background-color var(--t-med) var(--ease),
+      border-color var(--t-med) var(--ease),
+      box-shadow var(--t-med) var(--ease);
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-2px); border-color: var(--stroke-strong); background: rgba(255,255,255,0.08); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      --btn-bg: var(--accent);
+      --btn-fg: var(--accent-ink);
+      border-color: transparent;
+      box-shadow: 0 12px 34px -14px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      background: #46f2b1;
+      box-shadow: 0 18px 44px -14px var(--accent-glow);
+    }
+
+    .btn-ghost { background: transparent; }
+    .btn-ghost:hover { background: var(--surface-2); }
+
+    .btn-lg { padding: 17px 34px; font-size: 1rem; }
+    .btn-sm { padding: 10px 18px; font-size: 0.86rem; }
+
+    .btn .arrow { transition: transform var(--t-med) var(--ease); }
+    .btn:hover .arrow { transform: translateX(4px); }
+
+    .link-arrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 0.94rem;
+      color: var(--accent);
+    }
+    .link-arrow svg { transition: transform var(--t-med) var(--ease); }
+    .link-arrow:hover svg { transform: translateX(5px); }
+
+    /* ---------- 7. The signature CTA: animated energy line ---------- */
+    .cta-orbit {
+      position: relative;
+      display: inline-flex;
+      padding: 12px;            /* room for the line + glow to breathe */
+      isolation: isolate;
+      border-radius: calc(var(--r-pill));
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cta-orbit__svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .cta-orbit__track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.09);
+      stroke-width: 1;
+    }
+    .cta-orbit__snake {
+      fill: none;
+      stroke: url(#orbitGrad);
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      filter: url(#orbitGlow);
+      /* dasharray set inline per-instance so the segment length reads right */
+      animation: orbit-travel 4.6s linear infinite;
+    }
+    .cta-orbit__snake--trail {
+      stroke: var(--accent);
+      stroke-width: 3.4;
+      opacity: 0.16;
+      filter: blur(4px);
+      animation: orbit-travel 4.6s linear infinite;
+    }
+    @keyframes orbit-travel { to { stroke-dashoffset: -1000; } }
+    /* rect uses pathLength="1000", so dash values are normalised and resolution-independent */
+
+    .cta-orbit__btn {
+      position: relative;
+      z-index: 1;
+      transition: transform var(--t-med) var(--ease-out), box-shadow var(--t-med) var(--ease);
+    }
+    .cta-orbit:hover .cta-orbit__btn { transform: scale(1.035); box-shadow: 0 20px 50px -16px var(--accent-glow); }
+    .cta-orbit:hover .cta-orbit__snake,
+    .cta-orbit:hover .cta-orbit__snake--trail { animation-duration: 1.9s; }
+    .cta-orbit:hover .cta-orbit__snake { stroke-width: 2.1; }
+    .cta-orbit:hover .cta-orbit__snake--trail { opacity: 0.3; }
+    .cta-orbit:focus-within .cta-orbit__snake { stroke-width: 2.1; }
+
+    /* Larger, richer variant for the final CTA */
+    .cta-orbit--xl { padding: 20px; }
+    .cta-orbit--xl .cta-orbit__snake { stroke-width: 2.1; animation-duration: 5.4s; }
+    .cta-orbit--xl .cta-orbit__snake--trail { stroke-width: 6; opacity: 0.2; }
+    .cta-orbit--xl::after {
+      content: '';
+      position: absolute;
+      inset: 6%;
+      border-radius: inherit;
+      background: radial-gradient(ellipse at center, var(--accent-glow), transparent 70%);
+      filter: blur(28px);
+      opacity: 0.55;
+      z-index: 0;
+      animation: cta-pulse 3.6s var(--ease) infinite;
+    }
+    @keyframes cta-pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.96); }
+      50%      { opacity: 0.72; transform: scale(1.04); }
+    }
+
+    /* ---------- 8. Cards / glass ---------- */
+    .card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: var(--r-lg);
+      padding: clamp(22px, 2.6vw, 30px);
+      transition: transform var(--t-med) var(--ease-out),
+      border-color var(--t-med) var(--ease),
+      background-color var(--t-med) var(--ease);
+      overflow: hidden;
+    }
+    .card::before {
+      /* hairline top light */
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+      opacity: 0;
+      transition: opacity var(--t-med) var(--ease);
+    }
+    .card:hover { transform: translateY(-4px); border-color: var(--stroke-strong); background: var(--surface-2); }
+    .card:hover::before { opacity: 1; }
+
+    .glass {
+      background: rgba(11, 15, 22, 0.62);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      border: 1px solid var(--stroke);
+    }
+
+    .icon-badge {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      background: linear-gradient(150deg, rgba(52,229,164,0.16), rgba(52,229,164,0.04));
+      border: 1px solid rgba(52,229,164,0.2);
+      color: var(--accent);
+      margin-bottom: 20px;
+      flex: none;
+      transition: transform var(--t-med) var(--ease-out), box-shadow var(--t-med) var(--ease);
+    }
+    .icon-badge svg {
+      display: block;
+      width: 20px;
+      height: 20px;
+      margin: auto;
+    }
+    .card:hover .icon-badge { transform: translateY(-2px) scale(1.06); box-shadow: 0 10px 24px -12px var(--accent-glow); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      font-size: 0.79rem;
+      font-weight: 500;
+      color: var(--text-soft);
+    }
+    .pill .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+      animation: dot-breathe 2.6s var(--ease) infinite;
+    }
+    @keyframes dot-breathe { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    /* ---------- 9. Scroll reveal ---------- */
+    [data-reveal] {
+      opacity: 0;
+      transform: translate3d(0, 22px, 0);
+      transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out);
+      transition-delay: var(--reveal-delay, 0ms);
+      will-change: opacity, transform;
+    }
+    [data-reveal].is-visible { opacity: 1; transform: none; }
+    [data-reveal='left']  { transform: translate3d(-26px, 0, 0); }
+    [data-reveal='right'] { transform: translate3d(26px, 0, 0); }
+    [data-reveal='scale'] { transform: scale(0.96); }
+    [data-reveal='fade']  { transform: none; }
+
+    /* Word-by-word headline reveal */
+    .reveal-words .word {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: top;
+      padding-bottom: 0.09em;
+      margin-bottom: -0.09em;
+    }
+    .reveal-words .word > span {
+      display: inline-block;
+      transform: translateY(105%);
+      transition: transform 0.9s var(--ease-out);
+      transition-delay: var(--word-delay, 0ms);
+    }
+    .reveal-words.is-visible .word > span { transform: none; }
+
+    /* ---------- 10. Navigation ---------- */
+    .nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 100;
+      height: var(--nav-h);
+      display: flex;
+      align-items: center;
+      transition: height var(--t-med) var(--ease),
+      background-color var(--t-med) var(--ease),
+      border-color var(--t-med) var(--ease),
+      backdrop-filter var(--t-med) var(--ease);
+      border-bottom: 1px solid transparent;
+    }
+    .nav.is-scrolled {
+      --nav-h: 62px;
+      background: rgba(5, 7, 10, 0.72);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border-bottom-color: var(--stroke);
+    }
+    .nav__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      width: 100%;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.13rem;
+      letter-spacing: -0.03em;
+      flex: none;
+    }
+    .logo__mark {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      transition: transform var(--t-med) var(--ease-out);
+    }
+    .nav.is-scrolled .logo__mark { width: 30px; height: 30px; }
+    .footer .logo__mark { width: 38px; height: 38px; }
+    .logo:hover .logo__mark { transform: rotate(-8deg) scale(1.06); }
+
+    .nav__links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav__link {
+      position: relative;
+      padding: 8px 14px;
+      border-radius: var(--r-pill);
+      font-size: 0.905rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color var(--t-med) var(--ease), background-color var(--t-med) var(--ease);
+    }
+    .nav__link:hover { color: var(--text); background: var(--surface-2); }
+    .nav__link.is-active { color: var(--text); }
+    .nav__link.is-active::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: 1px;
+      width: 15px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--accent);
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .nav__actions { display: flex; align-items: center; gap: 12px; flex: none; }
+
+    .nav__burger {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      position: relative;
+      flex: none;
+    }
+    .nav__burger span {
+      position: absolute;
+      left: 50%;
+      width: 17px;
+      height: 1.6px;
+      border-radius: 2px;
+      background: var(--text);
+      transform: translateX(-50%);
+      transition: transform var(--t-med) var(--ease-out), opacity var(--t-fast) var(--ease);
+    }
+    .nav__burger span:nth-child(1) { top: 15px; }
+    .nav__burger span:nth-child(2) { top: 20.2px; }
+    .nav__burger span:nth-child(3) { top: 25.4px; }
+    .nav__burger[aria-expanded='true'] span:nth-child(1) { transform: translateX(-50%) translateY(5.2px) rotate(45deg); }
+    .nav__burger[aria-expanded='true'] span:nth-child(2) { opacity: 0; transform: translateX(-50%) scaleX(0.4); }
+    .nav__burger[aria-expanded='true'] span:nth-child(3) { transform: translateX(-50%) translateY(-5.2px) rotate(-45deg); }
+
+    .mobile-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: calc(var(--nav-h) + 24px) var(--gutter) 40px;
+      background: rgba(5, 7, 10, 0.94);
+      backdrop-filter: blur(26px) saturate(150%);
+      -webkit-backdrop-filter: blur(26px) saturate(150%);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: opacity var(--t-med) var(--ease), transform var(--t-med) var(--ease-out), visibility var(--t-med);
+    }
+    .mobile-menu.is-open { opacity: 1; visibility: visible; transform: none; }
+    .mobile-menu__list { display: flex; flex-direction: column; gap: 2px; }
+    .mobile-menu__list a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 4px;
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 7vw, 2.1rem);
+      font-weight: 500;
+      letter-spacing: -0.035em;
+      border-bottom: 1px solid var(--stroke);
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out), color var(--t-fast) var(--ease);
+    }
+    .mobile-menu__list a span { font-size: 0.72rem; color: var(--faint); font-family: var(--font-body); letter-spacing: 0.1em; }
+    .mobile-menu.is-open .mobile-menu__list a { opacity: 1; transform: none; transition-delay: calc(var(--i, 0) * 55ms + 90ms); }
+    .mobile-menu__list a:active { color: var(--accent); }
+    .mobile-menu__foot { margin-top: 34px; display: grid; gap: 14px; }
+
+    body.is-locked { overflow: hidden; }
+
+    /* ---------- 11. Hero ---------- */
+    .hero {
+      position: relative;
+      padding-top: calc(var(--nav-h) + clamp(46px, 8vw, 90px));
+      padding-bottom: clamp(60px, 9vw, 120px);
+      overflow: hidden;
+    }
+    .hero__grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+      gap: clamp(38px, 5vw, 66px);
+      align-items: center;
+    }
+    .hero__copy { max-width: 645px; }
+    .hero__title { margin-bottom: 24px; }
+    .hero__lead { margin-bottom: 34px; font-size: clamp(1.03rem, 1.5vw, 1.17rem); }
+    .hero__cta-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(6px, 2vw, 18px);
+      flex-wrap: wrap;
+      margin-left: -12px; /* compensate .cta-orbit padding */
+    }
+    .hero__proof {
+      display: flex;
+      align-items: center;
+      gap: clamp(20px, 3vw, 38px);
+      margin-top: 44px;
+      padding-top: 28px;
+      border-top: 1px solid var(--stroke);
+      flex-wrap: wrap;
+    }
+    .hero__proof-item .n {
+      font-family: var(--font-display);
+      font-size: 1.42rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      display: block;
+    }
+    .hero__proof-item .l {
+      font-size: 0.775rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ---------- 12. Phone mockup ---------- */
+    .stage {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 560px;
+      perspective: 1400px;
+    }
+    .phone {
+      position: relative;
+      width: clamp(248px, 24vw, 292px);
+      aspect-ratio: 9 / 19.3;
+      border-radius: 42px;
+      padding: 9px;
+      background: linear-gradient(160deg, #1c222c, #0a0d13 42%, #161b23);
+      box-shadow:
+              0 0 0 1px rgba(255, 255, 255, 0.09),
+              var(--shadow-lg),
+              0 0 90px -30px var(--accent-glow);
+      z-index: 2;
+      will-change: transform;
+    }
+    .phone::after {
+      /* screen sheen */
+      content: '';
+      position: absolute;
+      inset: 9px;
+      border-radius: 34px;
+      background: linear-gradient(148deg, rgba(255,255,255,0.09), transparent 38%);
+      pointer-events: none;
+      z-index: 4;
+    }
+    .phone__notch {
+      position: absolute;
+      top: 19px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 74px;
+      height: 20px;
+      border-radius: 99px;
+      background: #05070a;
+      z-index: 5;
+    }
+    .phone__screen {
+      position: relative;
+      height: 100%;
+      border-radius: 34px;
+      overflow: hidden;
+      background:
+              radial-gradient(120% 60% at 50% 0%, rgba(52,229,164,0.13), transparent 60%),
+              linear-gradient(180deg, #0a0f16, #070a0f);
+      display: flex;
+      flex-direction: column;
+      padding: 42px 15px 15px;
+      gap: 11px;
+    }
+    .phone--floating { animation: phone-float 7s var(--ease) infinite alternate; }
+    @keyframes phone-float {
+      from { transform: translate3d(0, 0, 0) rotateY(-4deg) rotateX(1.5deg); }
+      to   { transform: translate3d(0, -14px, 0) rotateY(2deg) rotateX(-1deg); }
+    }
+
+    /* In-screen UI atoms */
+    .ui-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .ui-label { font-size: 0.6rem; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+    .ui-title { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; letter-spacing: -0.02em; }
+    .ui-sub { font-size: 0.63rem; color: var(--muted); line-height: 1.45; }
+    .ui-card {
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 15px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .ui-card--accent {
+      background: linear-gradient(150deg, rgba(52,229,164,0.15), rgba(52,229,164,0.03));
+      border-color: rgba(52,229,164,0.24);
+    }
+    .ui-bar { height: 5px; border-radius: 99px; background: rgba(255,255,255,0.09); overflow: hidden; }
+    .ui-bar > i {
+      display: block;
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+      width: var(--v, 60%);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .ui-metric { font-family: var(--font-display); font-size: 1.28rem; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+    .ui-metric small { font-size: 0.56rem; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+    .ui-chiprow { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ui-chip {
+      font-size: 0.575rem;
+      padding: 3.5px 8px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: var(--text-soft);
+    }
+    .ui-chip--on { background: rgba(52,229,164,0.14); border-color: rgba(52,229,164,0.28); color: var(--accent); }
+    .ui-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+    .ui-thumb {
+      width: 30px; height: 30px;
+      border-radius: 9px;
+      flex: none;
+      background: linear-gradient(145deg, rgba(52,229,164,0.24), rgba(121,166,255,0.14));
+      border: 1px solid rgba(255,255,255,0.09);
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+    }
+    .ui-rings { display: flex; gap: 9px; align-items: center; }
+    .ring { --p: 70; --sz: 42px; width: var(--sz); height: var(--sz); border-radius: 50%; display: grid; place-items: center; flex: none;
+      background: conic-gradient(var(--accent) calc(var(--p) * 1%), rgba(255,255,255,0.08) 0); }
+    .ring::after {
+      content: '';
+      width: calc(var(--sz) - 9px);
+      height: calc(var(--sz) - 9px);
+      border-radius: 50%;
+      background: #090d13;
+      grid-area: 1/1;
+    }
+    .ring span { grid-area: 1/1; z-index: 1; font-size: 0.55rem; font-weight: 700; }
+
+    /* Floating cards around phone */
+    .float-card {
+      position: absolute;
+      z-index: 3;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(12, 17, 24, 0.72);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--stroke-strong);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 158px;
+      animation: card-float 6s var(--ease) infinite alternate;
+      will-change: transform;
+    }
+    .float-card .k { font-size: 0.63rem; color: var(--muted); letter-spacing: 0.03em; display: block; }
+    .float-card .v { font-family: var(--font-display); font-size: 0.95rem; font-weight: 600; letter-spacing: -0.03em; }
+    .float-card .v em { font-style: normal; color: var(--accent); }
+    @keyframes card-float {
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(0, -16px, 0); }
+    }
+    .fc-1 { top: 3%;   left: -13%; animation-duration: 6.4s; }
+    .fc-2 { top: 21%;  right: -9%; animation-duration: 7.6s; animation-delay: -1.2s; }
+    .fc-3 { bottom: 21%; left: -11%; animation-duration: 8.2s; animation-delay: -2.4s; }
+    .fc-4 { bottom: 4%; right: -7%; animation-duration: 6.9s; animation-delay: -3.1s; }
+    .fc-5 { top: 46%;  left: -16%; animation-duration: 7.2s; animation-delay: -0.6s; }
+
+    .float-card__icon {
+      width: 30px; height: 30px;
+      border-radius: 9px;
+      display: grid; place-items: center;
+      background: rgba(52,229,164,0.12);
+      border: 1px solid rgba(52,229,164,0.2);
+      color: var(--accent);
+      flex: none;
+    }
+
+    /* ---------- 13. How it works: steps ---------- */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      counter-reset: step;
+      position: relative;
+    }
+    .step { padding-top: 30px; }
+    .step__num {
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .step__num::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(52,229,164,0.4), transparent);
+    }
+    .step__title { margin-bottom: 12px; }
+    .step__list { margin-top: 16px; display: grid; gap: 7px; }
+    .step__list li {
+      font-size: 0.855rem;
+      color: var(--muted);
+      display: flex;
+      gap: 9px;
+      align-items: baseline;
+    }
+    .step__list li::before {
+      content: '';
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.65;
+      flex: none;
+      transform: translateY(-2px);
+    }
+    .step-rail {
+      position: relative;
+      height: 1px;
+      background: var(--stroke);
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+    .step-rail::after {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 34%;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      animation: rail-sweep 5.5s var(--ease) infinite;
+    }
+    @keyframes rail-sweep {
+      0%   { transform: translateX(-110%); }
+      100% { transform: translateX(400%); }
+    }
+
+    /* ---------- 14. Features grid ---------- */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .feature-card { display: flex; flex-direction: column; }
+    .feature-card h3 { margin-bottom: 9px; }
+    .feature-card p { font-size: 0.895rem; color: var(--muted); line-height: 1.62; }
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      inset: auto -30% -60% -30%;
+      height: 120px;
+      background: radial-gradient(ellipse at center, var(--accent-glow), transparent 70%);
+      opacity: 0;
+      transition: opacity var(--t-slow) var(--ease);
+      pointer-events: none;
+    }
+    .feature-card:hover::after { opacity: 0.28; }
+
+    /* ---------- 15. Split showcase (diet / trainer) ---------- */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(34px, 5vw, 76px);
+      align-items: center;
+    }
+    .split--reverse .split__media { order: -1; }
+
+    .tabs {
+      display: inline-flex;
+      gap: 4px;
+      padding: 5px;
+      border-radius: var(--r-pill);
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 17px;
+      border-radius: var(--r-pill);
+      font-size: 0.855rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color var(--t-med) var(--ease), background-color var(--t-med) var(--ease);
+    }
+    .tab:hover { color: var(--text); }
+    .tab.is-active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+    .diet-stage { min-height: 600px; }
+    @media (max-width: 940px) {
+      /* Show the phone before the tabs/text on mobile so it's visible as soon as
+         the tabs are, instead of scrolled past below a full column of copy. */
+      #diet .split__media { order: -1; }
+      .diet-stage { min-height: 460px; margin-bottom: 8px; }
+    }
+
+    .screen-swap { position: relative; display: grid; overflow: hidden; }
+    .screen-swap > .screen {
+      grid-area: 1 / 1;
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+      transition: opacity 0.45s var(--ease-out), transform 0.45s var(--ease-out);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      height: 100%;
+      min-height: 0;
+    }
+    .screen-swap > .screen.is-active { opacity: 1; transform: none; pointer-events: auto; }
+
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 30px;
+    }
+    .stat-strip .s {
+      padding: 16px 14px;
+      border-radius: var(--r-md);
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+    }
+    .stat-strip .s b {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.32rem;
+      font-weight: 600;
+      letter-spacing: -0.035em;
+    }
+    .stat-strip .s span { font-size: 0.76rem; color: var(--muted); }
+
+    .check-list { display: grid; gap: 13px; margin-top: 28px; }
+    .check-list li { display: flex; gap: 12px; align-items: flex-start; font-size: 0.93rem; color: var(--text-soft); }
+    .check-list li svg { flex: none; color: var(--accent); margin-top: 3px; }
+
+    /* Trainer visual: workout board */
+    .board {
+      display: grid;
+      gap: 12px;
+      padding: clamp(18px, 2.4vw, 26px);
+      border-radius: var(--r-xl);
+      background: linear-gradient(165deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow-md);
+    }
+    .board__head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .exercise {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: var(--r-md);
+      background: rgba(255,255,255,0.035);
+      border: 1px solid var(--stroke);
+      transition: transform var(--t-med) var(--ease-out), border-color var(--t-med) var(--ease), background-color var(--t-med) var(--ease);
+    }
+    .exercise:hover { transform: translateX(5px); border-color: var(--stroke-strong); background: rgba(255,255,255,0.06); }
+    .exercise__idx {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: rgba(52,229,164,0.11);
+      border: 1px solid rgba(52,229,164,0.2);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      flex: none;
+    }
+    .exercise__meta { flex: 1; min-width: 0; }
+    .exercise__meta b { display: block; font-size: 0.925rem; font-weight: 600; letter-spacing: -0.015em; }
+    .exercise__meta span { font-size: 0.775rem; color: var(--muted); }
+    .exercise__done { color: var(--accent); flex: none; }
+    .exercise--todo .exercise__done { color: var(--faint); }
+
+    .week-strip { display: flex; gap: 7px; }
+    .week-strip .d {
+      flex: 1;
+      display: grid;
+      gap: 7px;
+      justify-items: center;
+      padding: 11px 3px;
+      border-radius: 13px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--stroke);
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+    .week-strip .d.on { background: rgba(52,229,164,0.1); border-color: rgba(52,229,164,0.26); color: var(--accent); }
+    .week-strip .d i {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(255,255,255,0.14);
+    }
+    .week-strip .d.on i { background: var(--accent); box-shadow: 0 0 9px var(--accent-glow); }
+
+    /* ---------- 16. Timeline ---------- */
+    .timeline { position: relative; padding-left: 34px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 9px;
+      top: 6px;
+      bottom: 6px;
+      width: 1px;
+      background: var(--stroke);
+    }
+    .timeline__progress {
+      position: absolute;
+      left: 9px;
+      top: 6px;
+      width: 1px;
+      background: linear-gradient(180deg, var(--accent), rgba(52,229,164,0.25));
+      box-shadow: 0 0 12px var(--accent-glow);
+      height: 0;
+      transition: height 1.6s var(--ease-out);
+    }
+    .timeline.is-visible .timeline__progress { height: calc(100% - 12px); }
+    .tl-item {
+      position: relative;
+      padding: 0 0 26px 0;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: -30px;
+      top: 8px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1.5px solid var(--stroke-strong);
+      transition: background-color 0.4s var(--ease), border-color 0.4s var(--ease), box-shadow 0.4s var(--ease);
+    }
+    .timeline.is-visible .tl-item::before {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(52,229,164,0.12), 0 0 14px var(--accent-glow);
+      transition-delay: calc(var(--i) * 190ms + 200ms);
+    }
+    .tl-time {
+      font-family: var(--font-display);
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      width: 62px;
+      flex: none;
+      padding-top: 2px;
+    }
+    .tl-body b { display: block; font-size: 0.98rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 3px; }
+    .tl-body span { font-size: 0.855rem; color: var(--muted); }
+
+    .routine-visual {
+      padding: clamp(22px, 3vw, 34px);
+      border-radius: var(--r-xl);
+      background: linear-gradient(165deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012));
+      border: 1px solid var(--stroke);
+    }
+
+    /* ---------- 17. Progress dashboard ---------- */
+    .dash {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .dash__main { grid-column: span 7; }
+    .dash__side { grid-column: span 5; display: grid; gap: 16px; align-content: start; }
+    .dash__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; grid-column: span 12; }
+
+    .goal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 26px; }
+    .big-metric {
+      font-family: var(--font-display);
+      font-size: clamp(2.6rem, 5.5vw, 3.7rem);
+      font-weight: 600;
+      letter-spacing: -0.05em;
+      line-height: 1;
+    }
+    .big-metric sub { font-size: 0.34em; color: var(--muted); font-weight: 500; vertical-align: baseline; letter-spacing: -0.01em; margin-left: 4px; }
+
+    .progress {
+      height: 9px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.07);
+      overflow: hidden;
+      position: relative;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+      box-shadow: 0 0 18px var(--accent-glow);
+      transition: width 1.5s var(--ease-out);
+    }
+    .progress-legend {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 11px;
+      font-size: 0.79rem;
+      color: var(--muted);
+    }
+
+    .spark { display: flex; align-items: flex-end; gap: 6px; height: 96px; margin-top: 20px; }
+    .spark .b {
+      flex: 1;
+      border-radius: 5px 5px 3px 3px;
+      background: linear-gradient(180deg, var(--accent), rgba(52,229,164,0.16));
+      height: 0;
+      transition: height 1.1s var(--ease-out);
+      transition-delay: calc(var(--i) * 65ms);
+      min-height: 4px;
+      opacity: 0.85;
+    }
+    .spark .b.is-peak { background: linear-gradient(180deg, #6ff5c4, var(--accent-deep)); opacity: 1; box-shadow: 0 0 20px -4px var(--accent-glow); }
+
+    .mini-stat { display: flex; align-items: center; gap: 14px; }
+    .mini-stat .big-metric { font-size: clamp(1.8rem, 3.4vw, 2.3rem); }
+
+    /* ---------- 18. Pricing ---------- */
+    .price-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+      gap: clamp(30px, 4.5vw, 60px);
+      align-items: center;
+    }
+    .price-card {
+      position: relative;
+      padding: clamp(28px, 3.6vw, 44px);
+      border-radius: var(--r-xl);
+      background:
+              radial-gradient(120% 80% at 50% 0%, rgba(52,229,164,0.1), transparent 62%),
+              linear-gradient(170deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015));
+      border: 1px solid rgba(52,229,164,0.22);
+      box-shadow: var(--shadow-lg), 0 0 100px -50px var(--accent-glow);
+      overflow: hidden;
+    }
+    .price-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.7;
+    }
+    .price-badge {
+      position: absolute;
+      top: 22px;
+      right: 22px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: var(--r-pill);
+      background: rgba(52,229,164,0.1);
+      border: 1px solid rgba(52,229,164,0.24);
+    }
+    .price-amount {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-family: var(--font-display);
+      letter-spacing: -0.05em;
+      margin: 6px 0 4px;
+    }
+    .price-amount .cur { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 500; color: var(--text-soft); }
+    .price-amount .num { font-size: clamp(3.4rem, 8vw, 5rem); font-weight: 600; line-height: 0.92; }
+    .price-amount .per { font-size: 1rem; color: var(--muted); font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
+    .price-aday {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 16px;
+      padding: 10px 18px;
+      border-radius: var(--r-pill);
+      background: rgba(52,229,164,0.1);
+      border: 1px solid rgba(52,229,164,0.24);
+      font-family: var(--font-display);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+    .price-list { display: grid; gap: 12px; margin: 30px 0; }
+    .price-list li { display: flex; gap: 12px; align-items: flex-start; font-size: 0.925rem; color: var(--text-soft); }
+    .price-list li svg { flex: none; color: var(--accent); margin-top: 3px; }
+    .price-note { font-size: 0.8rem; color: var(--faint); margin-top: 16px; text-align: center; }
+
+    .price-compare { display: grid; gap: 12px; margin-top: 30px; }
+    .price-compare .cmp {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px 18px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      font-size: 0.9rem;
+    }
+    .price-compare .cmp b { font-family: var(--font-display); letter-spacing: -0.02em; color: var(--muted); font-weight: 600; }
+    .price-compare .cmp.is-us { border-color: rgba(52,229,164,0.3); background: rgba(52,229,164,0.06); }
+    .price-compare .cmp.is-us b { color: var(--accent); }
+
+    /* ---------- 19. Why / big statements ---------- */
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--stroke);
+      border: 1px solid var(--stroke);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+    .why-cell {
+      background: var(--bg);
+      padding: clamp(28px, 4vw, 50px);
+      transition: background-color var(--t-slow) var(--ease);
+    }
+    .why-cell:hover { background: var(--bg-soft); }
+    .why-cell h3 {
+      font-size: clamp(1.75rem, 4vw, 2.6rem);
+      letter-spacing: -0.045em;
+      margin-bottom: 14px;
+    }
+    .why-cell p { color: var(--muted); max-width: 40ch; }
+    .why-cell .idx {
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      color: var(--faint);
+      display: block;
+      margin-bottom: 22px;
+      font-weight: 600;
+    }
+
+    /* ---------- 20. About ---------- */
+    .about-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: clamp(34px, 5vw, 70px);
+      align-items: start;
+    }
+    .value-list { display: grid; gap: 2px; }
+    .value-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      padding: 22px 0;
+      border-bottom: 1px solid var(--stroke);
+      align-items: start;
+    }
+    .value-item:first-child { border-top: 1px solid var(--stroke); }
+    .value-item .k {
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.13em;
+      color: var(--accent);
+      padding-top: 4px;
+      width: 46px;
+    }
+    .value-item b { display: block; font-size: 1.02rem; margin-bottom: 5px; letter-spacing: -0.02em; }
+    .value-item span { font-size: 0.9rem; color: var(--muted); }
+
+    /* ---------- 21. Contact ---------- */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+      gap: clamp(32px, 5vw, 64px);
+      align-items: start;
+    }
+    .form { display: grid; gap: 18px; }
+    .field { display: grid; gap: 8px; }
+    .field label { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; color: var(--text-soft); }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: var(--r-md);
+      background: rgba(255,255,255,0.035);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      font-size: 0.94rem;
+      transition: border-color var(--t-med) var(--ease), background-color var(--t-med) var(--ease), box-shadow var(--t-med) var(--ease);
+      outline: none;
+    }
+    .field textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+    .field input::placeholder, .field textarea::placeholder { color: var(--faint); }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: rgba(52,229,164,0.45);
+      background: rgba(255,255,255,0.055);
+      box-shadow: 0 0 0 4px rgba(52,229,164,0.09);
+    }
+    .field.has-error input, .field.has-error textarea { border-color: rgba(255,110,110,0.55); }
+    .field__err { font-size: 0.78rem; color: #ff8a8a; min-height: 0; display: none; }
+    .field.has-error .field__err { display: block; }
+    .form__status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: var(--r-md);
+      background: rgba(52,229,164,0.09);
+      border: 1px solid rgba(52,229,164,0.26);
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+    .form__status.is-shown { display: flex; }
+
+    .contact-cards { display: grid; gap: 14px; }
+    .contact-card { display: flex; gap: 16px; align-items: flex-start; }
+    .contact-card b { display: block; font-size: 0.98rem; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .contact-card div > span { display: block; font-size: 0.875rem; color: var(--muted); }
+    .contact-card a { display: inline-block; margin-top: 8px; color: var(--accent); font-size: 0.875rem; }
+    .contact-card a:hover { text-decoration: underline; }
+
+    /* ---------- 22. Final CTA ---------- */
+    .final-cta {
+      position: relative;
+      text-align: center;
+      padding-block: clamp(90px, 13vw, 170px);
+      overflow: hidden;
+    }
+    .final-cta::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 45%;
+      width: min(1000px, 120vw);
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(52,229,164,0.14), transparent 62%);
+      pointer-events: none;
+    }
+    .final-cta__inner { position: relative; }
+    .final-cta h2 { margin-bottom: 20px; }
+    .final-cta .lead { margin: 0 auto 42px; text-align: center; }
+    .final-cta__badges {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 0.83rem;
+    }
+    .final-cta__badges span,
+    .final-cta__badges a { display: inline-flex; align-items: center; gap: 7px; }
+
+    /* ---------- 23. Footer ---------- */
+    .footer {
+      border-top: 1px solid var(--stroke);
+      padding-block: clamp(50px, 6vw, 74px) 34px;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.012));
+    }
+    .footer__top {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+      gap: clamp(28px, 4vw, 54px);
+      padding-bottom: 42px;
+    }
+    .footer__brand p { font-size: 0.885rem; color: var(--muted); max-width: 34ch; margin-top: 16px; }
+    .footer h4 {
+      font-family: var(--font-body);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 18px;
+    }
+    .footer__links { display: grid; gap: 11px; }
+    .footer__links a { font-size: 0.9rem; color: var(--muted); transition: color var(--t-fast) var(--ease); width: fit-content; }
+    .footer__links a:hover { color: var(--accent); }
+    .footer__bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding-top: 26px;
+      border-top: 1px solid var(--stroke);
+      font-size: 0.83rem;
+      color: var(--faint);
+    }
+    .socials { display: flex; gap: 9px; }
+    .socials a {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      color: var(--muted);
+      transition: color var(--t-med) var(--ease), border-color var(--t-med) var(--ease), transform var(--t-med) var(--ease-out), background-color var(--t-med) var(--ease);
+    }
+    .socials a:hover { color: var(--accent); border-color: rgba(52,229,164,0.3); background: rgba(52,229,164,0.07); transform: translateY(-2px); }
+
+    /* ---------- 24. Page header (inner pages) ---------- */
+    .page-head {
+      padding-top: calc(var(--nav-h) + clamp(56px, 8vw, 96px));
+      padding-bottom: clamp(34px, 5vw, 56px);
+      position: relative;
+    }
+    .page-head__inner { max-width: 760px; }
+    .crumb { font-size: 0.78rem; color: var(--faint); letter-spacing: 0.08em; margin-bottom: 18px; }
+    .crumb a:hover { color: var(--accent); }
+
+    /* ---------- 25. FAQ ---------- */
+    .faq { display: grid; gap: 2px; max-width: 800px; margin-inline: auto; }
+    .faq details {
+      border-bottom: 1px solid var(--stroke);
+      padding: 6px 0;
+    }
+    .faq details:first-child { border-top: 1px solid var(--stroke); }
+    .faq summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 22px 44px 22px 0;
+      font-family: var(--font-display);
+      font-size: clamp(1rem, 1.7vw, 1.12rem);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      position: relative;
+      transition: color var(--t-fast) var(--ease);
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary:hover { color: var(--accent); }
+    .faq summary::after {
+      content: '';
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border-right: 1.6px solid var(--muted);
+      border-bottom: 1.6px solid var(--muted);
+      transform: translateY(-70%) rotate(45deg);
+      transition: transform var(--t-med) var(--ease-out), border-color var(--t-med) var(--ease);
+    }
+    .faq details[open] summary::after { transform: translateY(-20%) rotate(-135deg); border-color: var(--accent); }
+    .faq details p {
+      padding: 0 44px 24px 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      animation: faq-open 0.4s var(--ease-out);
+    }
+    @keyframes faq-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+    /* ---------- 26. Utilities ---------- */
+    .mt-0 { margin-top: 0; }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .mt-32 { margin-top: 32px; }
+    .mt-40 { margin-top: 40px; }
+    .text-center { text-align: center; }
+    .mx-auto { margin-inline: auto; }
+    .flex-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    .bg-soft { background: linear-gradient(180deg, transparent, rgba(255,255,255,0.018), transparent); }
+
+    /* Page load: only ever hides content when JS is running */
+    .no-js [data-reveal],
+    .no-js .reveal-words .word > span { opacity: 1 !important; transform: none !important; }
+    .no-js .timeline__progress { height: calc(100% - 12px); }
+
+    html:not(.no-js) .page-loading .hero__copy > *,
+    html:not(.no-js) .page-loading .stage { opacity: 0; }
+    body:not(.page-loading) .hero__copy > * { animation: rise-in 0.85s var(--ease-out) backwards; }
+    body:not(.page-loading) .hero__copy > *:nth-child(1) { animation-delay: 0.05s; }
+    body:not(.page-loading) .hero__copy > *:nth-child(2) { animation-delay: 0.14s; }
+    body:not(.page-loading) .hero__copy > *:nth-child(3) { animation-delay: 0.22s; }
+    body:not(.page-loading) .hero__copy > *:nth-child(4) { animation-delay: 0.3s; }
+    body:not(.page-loading) .hero__copy > *:nth-child(5) { animation-delay: 0.38s; }
+    body:not(.page-loading) .stage { animation: rise-in 1.1s var(--ease-out) 0.22s backwards; }
+    @keyframes rise-in {
+      from { opacity: 0; transform: translate3d(0, 20px, 0); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ---------- 27. Responsive ---------- */
+    @media (max-width: 1080px) {
+      .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 20px; }
+      .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .footer__top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; }
+      .fc-5 { display: none; }
+    }
+
+    @media (max-width: 940px) {
+      /* Horizontal reveal offsets would push past the viewport edge on narrow screens */
+      [data-reveal='left'], [data-reveal='right'] { transform: translate3d(0, 22px, 0); }
+
+      .nav__links { display: none; }
+      .nav__actions .btn { display: none; }
+      .nav__burger { display: block; }
+
+      .hero { padding-top: calc(var(--nav-h) + 40px); }
+      .hero__grid { grid-template-columns: minmax(0, 1fr); gap: 52px; }
+      .hero__copy { max-width: 680px; }
+      .hero__cta-row { margin-left: -12px; }
+      .stage { min-height: 500px; }
+
+      .split { grid-template-columns: minmax(0, 1fr); gap: 44px; }
+      .split--reverse .split__media { order: 0; }
+      .price-wrap { grid-template-columns: minmax(0, 1fr); }
+      .about-grid, .contact-grid { grid-template-columns: minmax(0, 1fr); }
+      .dash__main, .dash__side { grid-column: span 12; }
+      .why-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 620px) {
+      :root { --nav-h: 66px; }
+      .feature-grid, .steps { grid-template-columns: minmax(0, 1fr); }
+      .steps { gap: 4px; }
+      .step {
+        padding: 22px 0;
+        border-bottom: 1px solid var(--stroke);
+      }
+      .step:last-child { border-bottom: 0; }
+      .stat-strip { grid-template-columns: minmax(0, 1fr); }
+      .dash__row { grid-template-columns: minmax(0, 1fr); }
+      .footer__top { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+      .footer__bottom { justify-content: center; text-align: center; }
+
+      /* Hero visual: keep it clean, drop the busiest floating cards */
+      .stage { min-height: 470px; }
+      .phone { width: min(238px, 68vw); }
+      .fc-2, .fc-3 { display: none; }
+      .fc-1 { top: 2%; left: -2%; }
+      .fc-4 { bottom: 3%; right: -2%; }
+      .float-card { min-width: 0; padding: 10px 12px; gap: 9px; }
+
+      .hero__cta-row { width: 100%; margin-left: 0; gap: 4px; }
+      .hero__cta-row .cta-orbit { width: 100%; padding: 10px; }
+      .hero__cta-row .cta-orbit .btn { width: 100%; }
+      .hero__cta-row > .btn { width: 100%; margin: 0; }
+
+      .btn { padding: 14px 22px; }
+      .btn-lg { padding: 16px 26px; }
+      .timeline { padding-left: 28px; }
+      .tl-item { flex-direction: column; gap: 4px; }
+      .tl-time { width: auto; }
+      .price-card { padding: 26px 22px; }
+      .final-cta__inner .cta-orbit { width: 100%; }
+      .final-cta__inner .cta-orbit .btn { width: 100%; }
+      .why-cell { padding: 30px 24px; }
+    }
+
+    @media (max-width: 620px) {
+      .hero__proof {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .hero__proof-item .n { font-size: 1.15rem; }
+      .hero__proof-item .l { font-size: 0.7rem; line-height: 1.35; display: block; }
+    }
+
+    @media (max-width: 380px) {
+      .float-card .v { font-size: 0.85rem; }
+    }
+
+    /* Touch devices: hover transforms feel wrong */
+    @media (hover: none) {
+      .card:hover, .btn:hover, .exercise:hover { transform: none; }
+    }
+
+    /* ---------- 28. Reduced motion ---------- */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+      [data-reveal] { opacity: 1 !important; transform: none !important; }
+      .reveal-words .word > span { transform: none !important; }
+      .orb { animation: none; }
+      .phone--floating, .float-card { animation: none; }
+    }
+
+    /* ---------- 29. Print ---------- */
+    @media print {
+      .nav, .mobile-menu, .ambient, .cta-orbit__svg, .final-cta { display: none !important; }
+      body { background: #fff; color: #000; }
+    }
+
+    /* Final CTA store links */
+    .final-cta__badges a { transition: color var(--t-fast) var(--ease); }
+    .final-cta__badges a:hover { color: var(--accent); }
+
+    /* ============================================================
+       30. Roadmap: scroll-scrubbed process timeline
+       The rail fills and the markers light up as the page scrolls;
+       cards reveal once and stay, so nothing disappears on scroll-up.
+       ============================================================ */
+    .roadmap {
+      position: relative;
+      display: grid;
+      gap: clamp(26px, 3.6vw, 46px);
+      padding-block: 8px;
+    }
+
+    .roadmap__rail {
+      position: absolute;
+      left: 50%;
+      top: 22px;
+      bottom: 22px;
+      width: 2px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, transparent, var(--stroke) 5%, var(--stroke) 95%, transparent);
+      border-radius: 2px;
+    }
+    .roadmap__fill {
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 0;
+      border-radius: 2px;
+      background: linear-gradient(180deg, var(--accent-deep), var(--accent));
+      box-shadow: 0 0 14px var(--accent-glow);
+      will-change: height;
+    }
+    .roadmap__fill::after {
+      /* the travelling head of the line */
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      transform: translate(-50%, 50%);
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(52, 229, 164, 0.14), 0 0 18px var(--accent-glow);
+      opacity: 0;
+      transition: opacity 0.35s var(--ease);
+    }
+    .roadmap.is-running .roadmap__fill::after { opacity: 1; }
+
+    .roadmap__step {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .roadmap__marker {
+      grid-column: 2;
+      justify-self: center;
+      position: relative;
+      z-index: 2;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--bg-elev);
+      border: 1px solid var(--stroke);
+      font-family: var(--font-display);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--faint);
+      transition: color 0.45s var(--ease), background-color 0.45s var(--ease),
+      border-color 0.45s var(--ease), box-shadow 0.45s var(--ease),
+      transform 0.45s var(--ease-out);
+    }
+    .roadmap__step.is-reached .roadmap__marker {
+      color: var(--accent-ink);
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 5px rgba(52, 229, 164, 0.12), 0 0 26px var(--accent-glow);
+      transform: scale(1.07);
+    }
+
+    .roadmap__card {
+      position: relative;
+      overflow: visible;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out),
+      border-color var(--t-med) var(--ease), background-color var(--t-med) var(--ease);
+    }
+    .roadmap__step.is-left  .roadmap__card { grid-column: 1; transform: translate(-16px, 20px); }
+    .roadmap__step.is-right .roadmap__card { grid-column: 3; transform: translate(16px, 20px); }
+    .roadmap__step.is-seen .roadmap__card { opacity: 1; transform: none; }
+    .roadmap__card:hover { transform: none; }
+
+    /* hairline connecting each card to its marker */
+    .roadmap__card::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 22px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--stroke), transparent);
+      opacity: 0;
+      transition: opacity 0.5s var(--ease) 0.15s;
+    }
+    .roadmap__step.is-left  .roadmap__card::after { right: -22px; background: linear-gradient(90deg, var(--stroke-strong), transparent); }
+    .roadmap__step.is-right .roadmap__card::after { left: -22px;  background: linear-gradient(270deg, var(--stroke-strong), transparent); }
+    .roadmap__step.is-seen .roadmap__card::after { opacity: 1; }
+
+    .roadmap__eyebrow {
+      display: block;
+      font-size: 0.71rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .roadmap__card h3 { margin-bottom: 10px; }
+    .roadmap__card > p { font-size: 0.9rem; color: var(--muted); line-height: 1.62; }
+
+    @media (max-width: 860px) {
+      .roadmap { gap: 20px; }
+      .roadmap__rail { left: 25px; transform: none; }
+      .roadmap__step {
+        grid-template-columns: 50px minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+      }
+      .roadmap__marker { grid-column: 1; }
+      .roadmap__step.is-left .roadmap__card,
+      .roadmap__step.is-right .roadmap__card { grid-column: 2; transform: translateY(20px); }
+      .roadmap__step.is-seen .roadmap__card { transform: none; }
+      .roadmap__card::after { display: none; }
+    }
+
+    /* ---------- 31. Reading progress ---------- */
+    .scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      z-index: 101;
+      transform: scaleX(0);
+      transform-origin: 0 50%;
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent) 70%, #9df5d2);
+      will-change: transform;
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .roadmap__card { opacity: 1 !important; transform: none !important; }
+      .roadmap__card::after { opacity: 1 !important; }
+    }
+
+  </style>
+  <script>document.documentElement.classList.remove('no-js');</script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "VITAL",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "iOS, Android",
+      "description": "Personalized AI nutrition, personal training and daily accountability, all inside one intelligent app.",
+      "offers": {
+        "@type": "Offer",
+        "price": "30.00",
+        "priceCurrency": "USD",
+        "priceValidUntil": "2026-12-31",
+        "url": "https://vital.app/#pricing"
+      }
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {"@type": "Question", "name": "Is there a free trial?", "acceptedAnswer": {"@type": "Answer", "text": "You can explore the app and complete setup before subscribing, so you see your generated plan before you pay for it."}},
+        {"@type": "Question", "name": "Can I cancel anytime?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Cancel from inside the app in a couple of taps. You keep access until the end of the period you have already paid for."}},
+        {"@type": "Question", "name": "Why only one plan?", "acceptedAnswer": {"@type": "Answer", "text": "Because tiers force you to guess which version of a product you need. Nutrition and training work together, so splitting them into packages would make the product worse."}},
+        {"@type": "Question", "name": "Do you charge for updates?", "acceptedAnswer": {"@type": "Answer", "text": "No. New features are included in the same subscription."}},
+        {"@type": "Question", "name": "What payment methods do you accept?", "acceptedAnswer": {"@type": "Answer", "text": "Payment is handled through the App Store and Google Play, so any method already on your account works."}}
+      ]
+    }
+  </script>
+</head>
+<body class="page-loading">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="ambient" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="grid-lines"></div>
+</div>
+
+<header class="nav" id="nav">
+  <div class="container nav__inner">
+    <a class="logo" href="#home" aria-label="VITAL home">
+      <img class="logo__mark" src="/assets/img/logo.svg" alt="" width="34" height="34">
+      <span>VITAL</span>
+    </a>
+
+    <nav aria-label="Primary">
+      <ul class="nav__links">
+        <li><a class="nav__link" href="#home" data-spy="home">Home</a></li>
+        <li><a class="nav__link" href="#how" data-spy="how">How It Works</a></li>
+        <li><a class="nav__link" href="#features" data-spy="features">Features</a></li>
+        <li><a class="nav__link" href="#pricing" data-spy="pricing">Pricing</a></li>
+        <li><a class="nav__link" href="#about" data-spy="about">About Us</a></li>
+        <li><a class="nav__link" href="#contact" data-spy="contact">Contact Us</a></li>
+      </ul>
+    </nav>
+
+    <div class="nav__actions">
+      <a class="btn btn-primary btn-sm" href="#download"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19h16"/></svg><span>Download App</span></a>
+      <button class="nav__burger" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="scroll-progress" aria-hidden="true"></div>
+
+<div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+  <nav aria-label="Mobile">
+    <ul class="mobile-menu__list">
+      <li style="--i:0"><a href="#home">Home<span>01</span></a></li>
+      <li style="--i:1"><a href="#how">How It Works<span>02</span></a></li>
+      <li style="--i:2"><a href="#features">Features<span>03</span></a></li>
+      <li style="--i:3"><a href="#pricing">Pricing<span>04</span></a></li>
+      <li style="--i:4"><a href="#about">About Us<span>05</span></a></li>
+      <li style="--i:5"><a href="#contact">Contact Us<span>06</span></a></li>
+    </ul>
+  </nav>
+  <div class="mobile-menu__foot">
+    <a class="btn btn-primary btn-lg" href="#download"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19h16"/></svg><span>Download the app</span></a>
+    <p class="body-muted" style="font-size:.86rem">$30 / month. That&rsquo;s about $1 a day.</p>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ===== Hero ===== -->
+  <section class="hero" id="home">
+    <div class="container hero__grid">
+      <div class="hero__copy">
+        <span class="pill"><i class="dot"></i> AI nutrition &middot; training &middot; accountability</span>
+        <h1 class="h-display hero__title">Your <span class="grad-text">AI-Powered</span> Path to a Healthier You.</h1>
+        <p class="lead hero__lead">Personalized nutrition, smart fitness guidance, daily reminders, goals and progress tracking, all inside one intelligent app.</p>
+        <div class="hero__cta-row">
+          <div class="cta-orbit">
+            <svg class="cta-orbit__svg" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="orbitGrad-hero" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#34e5a4" stop-opacity="0"/>
+                  <stop offset="35%" stop-color="#34e5a4"/>
+                  <stop offset="70%" stop-color="#9df5d2"/>
+                  <stop offset="100%" stop-color="#79a6ff" stop-opacity="0.6"/>
+                </linearGradient>
+                <filter id="orbitGlow-hero" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="2.6" result="b"/>
+                  <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <rect class="cta-orbit__track" x="0" y="0" width="100%" height="100%" rx="40" pathLength="1000"/>
+              <rect class="cta-orbit__snake cta-orbit__snake--trail" x="0" y="0" width="100%" height="100%" rx="40"
+                    pathLength="1000" stroke-dasharray="78 922" style="stroke:#34e5a4"/>
+              <rect class="cta-orbit__snake" x="0" y="0" width="100%" height="100%" rx="40"
+                    pathLength="1000" stroke-dasharray="170 830" style="stroke:url(#orbitGrad-hero);filter:url(#orbitGlow-hero)"/>
+            </svg>
+            <a class="btn btn-primary cta-orbit__btn" href="#download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19h16"/></svg><span>DOWNLOAD THE APP</span>
+            </a>
+          </div>
+          <a class="btn btn-ghost" href="#how">See how it works <svg class="arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="hero__proof" data-activate>
+          <div class="hero__proof-item">
+            <span class="n"><span data-count="30" data-prefix="$">$0</span>/mo</span>
+            <span class="l">About $1 a day</span>
+          </div>
+          <div class="hero__proof-item">
+            <span class="n"><span data-count="2" data-decimals="0">0</span> min</span>
+            <span class="l">To your first plan</span>
+          </div>
+          <div class="hero__proof-item">
+            <span class="n"><span data-count="1" data-suffix=" app">0</span></span>
+            <span class="l">Diet, training &amp; tracking</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage" data-parallax>
+        <div class="phone phone--floating" data-depth="0.4" role="img" aria-label="VITAL app home screen showing calories, an AI meal suggestion, today's workout and daily goal progress">
+          <div class="phone__notch"></div>
+          <div class="phone__screen">
+            <div class="ui-row">
+              <div>
+                <span class="ui-label">Tuesday</span>
+                <div class="ui-title">Good morning, Alex</div>
+              </div>
+              <span class="ui-dot"></span>
+            </div>
+
+            <div class="ui-card ui-card--accent">
+              <div class="ui-row">
+                <span class="ui-label">Calories left</span>
+                <span class="ui-label">2,100 goal</span>
+              </div>
+              <div class="ui-metric">840 <small>kcal</small></div>
+              <div class="ui-bar"><i style="--v:60%"></i></div>
+            </div>
+
+            <div class="ui-card">
+              <div class="ui-row">
+                <span class="ui-label">AI meal suggestion</span>
+                <span class="ui-chip ui-chip--on">Lunch</span>
+              </div>
+              <div class="ui-row" style="gap:10px;justify-content:flex-start">
+                <span class="ui-thumb">&#127837;</span>
+                <div>
+                  <div class="ui-title" style="font-size:.78rem">Grilled chicken bowl</div>
+                  <div class="ui-sub">612 kcal &middot; 48g protein</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ui-card">
+              <div class="ui-row"><span class="ui-label">Today's workout</span><span class="ui-sub">32 min</span></div>
+              <div class="ui-title" style="font-size:.78rem">Upper body &middot; Strength</div>
+              <div class="ui-chiprow">
+                <span class="ui-chip ui-chip--on">4 done</span>
+                <span class="ui-chip">2 left</span>
+              </div>
+            </div>
+
+            <div class="ui-card">
+              <div class="ui-row" style="justify-content:flex-start;gap:9px">
+                <span class="ui-dot"></span>
+                <div>
+                  <div class="ui-title" style="font-size:.74rem">Water reminder</div>
+                  <div class="ui-sub">6 of 8 glasses &middot; next at 15:30</div>
+                </div>
+              </div>
+              <div class="ui-bar"><i style="--v:75%"></i></div>
+            </div>
+
+            <div class="ui-card" style="margin-top:auto">
+              <div class="ui-rings">
+                <div class="ring" style="--p:72"><span>72%</span></div>
+                <div>
+                  <div class="ui-title" style="font-size:.78rem">Daily goal</div>
+                  <div class="ui-sub">Water 6/8 &middot; Steps 7.4k</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="float-card fc-1" data-depth="1.5" aria-hidden="true">
+          <span class="float-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="5" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 9.8h17.2M8.2 3v4M15.8 3v4"/><path d="m8.8 14.9 2.3 2.3 4.1-4.4"/></svg></span>
+          <div><span class="k">Daily streak</span><span class="v"><em>24</em> days</span></div>
+        </div>
+        <div class="float-card fc-2" data-depth="1.2" aria-hidden="true">
+          <span class="float-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2c3.6 3.7 5.6 6.9 5.6 9.6a5.6 5.6 0 1 1-11.2 0c0-2.7 2-5.9 5.6-9.6Z"/><path d="M9.2 13.4a2.8 2.8 0 0 0 2.8 2.8"/></svg></span>
+          <div><span class="k">Water reminder</span><span class="v">6 / 8 glasses</span></div>
+        </div>
+        <div class="float-card fc-3" data-depth="1.8" aria-hidden="true">
+          <span class="float-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3.6v16.8h16.4"/><path d="m7.6 16.2 3.4-4 3 2.2 4.6-6.4"/><circle cx="11" cy="12.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="14" cy="14.4" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+          <div><span class="k">Weight progress</span><span class="v"><em>&minus;7.2</em> kg</span></div>
+        </div>
+        <div class="float-card fc-4" data-depth="1.1" aria-hidden="true">
+          <span class="float-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg></span>
+          <div><span class="k">Goal completion</span><span class="v">72% today</span></div>
+        </div>
+        <div class="float-card fc-5" data-depth="1.6" aria-hidden="true">
+          <span class="float-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.4" r="7.4"/><path d="M12 9.6v3.8l2.8 1.7"/><path d="M6.2 5.7 3.9 8.1M17.8 5.7l2.3 2.4"/></svg></span>
+          <div><span class="k">Next up</span><span class="v">Workout 18:00</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ===== How it works ===== -->
+  <section class="section" id="how">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">How it works</span>
+        <h2 class="h-1" data-words>Your Plan. Your Goals. Powered by AI.</h2>
+      </div>
+      <div class="roadmap" data-roadmap>
+        <div class="roadmap__rail" aria-hidden="true"><span class="roadmap__fill"></span></div>
+        <article class="roadmap__step is-left">
+          <div class="roadmap__marker" aria-hidden="true">01</div>
+          <div class="card roadmap__card">
+            <span class="roadmap__eyebrow">Step 01</span>
+            <h3 class="h-3">Tell Us About You</h3>
+            <p>A short setup that captures what actually matters for your plan.</p>
+            <ul class="step__list">
+              <li>Current weight &amp; height</li>
+              <li>Age &amp; activity level</li>
+              <li>Your goal and timeline</li>
+              <li>Food preferences</li>
+            </ul>
+          </div>
+        </article>
+        <article class="roadmap__step is-right">
+          <div class="roadmap__marker" aria-hidden="true">02</div>
+          <div class="card roadmap__card">
+            <span class="roadmap__eyebrow">Step 02</span>
+            <h3 class="h-3">AI Builds Your Plan</h3>
+            <p>Your nutrition targets and training approach are generated around your goal, not a template.</p>
+            <ul class="step__list">
+              <li>Calorie &amp; macro targets</li>
+              <li>Meal recommendations</li>
+              <li>Weekly training structure</li>
+              <li>Realistic pacing</li>
+            </ul>
+          </div>
+        </article>
+        <article class="roadmap__step is-left">
+          <div class="roadmap__marker" aria-hidden="true">03</div>
+          <div class="card roadmap__card">
+            <span class="roadmap__eyebrow">Step 03</span>
+            <h3 class="h-3">Follow Your Daily Plan</h3>
+            <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
+            <ul class="step__list">
+              <li>Meals for the day</li>
+              <li>Today&rsquo;s workout</li>
+              <li>Water &amp; step targets</li>
+              <li>Timely reminders</li>
+            </ul>
+          </div>
+        </article>
+        <article class="roadmap__step is-right">
+          <div class="roadmap__marker" aria-hidden="true">04</div>
+          <div class="card roadmap__card">
+            <span class="roadmap__eyebrow">Step 04</span>
+            <h3 class="h-3">Track. Improve. Repeat.</h3>
+            <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
+            <ul class="step__list">
+              <li>Weight &amp; measurements</li>
+              <li>Streaks &amp; consistency</li>
+              <li>Weekly review</li>
+              <li>Plan adjustments</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Features ===== -->
+  <section class="section bg-soft" id="features">
+    <div class="container">
+      <div class="section-head section-head-center">
+        <span class="eyebrow">What the app offers</span>
+        <h2 class="h-1" data-words>Everything You Need to Stay on Track.</h2>
+        <p class="lead mt-16 mx-auto">One app covering nutrition, training and the daily habits that hold the two together.</p>
+      </div>
+      <h3 class="h-3 mt-40" style="margin-bottom:18px;color:var(--muted)">Nutrition</h3>
+      <div class="feature-grid" data-stagger="60">
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 12.4h17.6a8.8 8.8 0 0 1-17.6 0Z"/><path d="M12 9.6c0-3.4 2.3-5.6 6.1-6-.2 3.8-2.4 5.9-6.1 6Z"/><path d="M12 9.6C11.4 6.7 9.7 4.8 7 4"/></svg></span>
+          <h3 class="h-3">AI Personalized Diet</h3>
+          <p>Meal recommendations built around your goals, preferences and daily targets, regenerated whenever something changes.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2c3.6 3.7 5.6 6.9 5.6 9.6a5.6 5.6 0 1 1-11.2 0c0-2.7 2-5.9 5.6-9.6Z"/><path d="M9.2 13.4a2.8 2.8 0 0 0 2.8 2.8"/></svg></span>
+          <h3 class="h-3">Hydration Tracking</h3>
+          <p>Water targets split across the day, with small timed reminders instead of one large goal.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3.6v16.8h16.4"/><path d="m7.6 16.2 3.4-4 3 2.2 4.6-6.4"/><circle cx="11" cy="12.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="14" cy="14.4" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+          <h3 class="h-3">Macro Balance</h3>
+          <p>Protein, carbohydrates and fats tracked against targets, with a clear daily progress view.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.8 7h16.4M3.8 12h16.4M3.8 17h16.4"/><circle cx="9" cy="7" r="2.2" fill="var(--bg,#05070a)"/><circle cx="15.4" cy="12" r="2.2" fill="var(--bg,#05070a)"/><circle cx="7.6" cy="17" r="2.2" fill="var(--bg,#05070a)"/></svg></span>
+          <h3 class="h-3">Personalized Recommendations</h3>
+          <p>The app adapts as your progress, schedule and preferences change over time.</p>
+        </article>
+      </div>
+      <h3 class="h-3 mt-40" style="margin-bottom:18px;color:var(--muted)">Training</h3>
+      <div class="feature-grid" data-stagger="60">
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.2" y="7.4" width="4.2" height="9.2" rx="1.7"/><rect x="16.6" y="7.4" width="4.2" height="9.2" rx="1.7"/><path d="M7.4 12h9.2"/></svg></span>
+          <h3 class="h-3">AI Personal Training</h3>
+          <p>Workout guidance designed around your goal, experience level and the time you actually have.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 8.2A8.8 8.8 0 1 1 15.8 3.6"/><path d="M16.2 12a4.2 4.2 0 1 1-4.2-4.2"/><path d="m12 12 8-8"/><path d="M16.4 4h3.6v3.6"/></svg></span>
+          <h3 class="h-3">Goal Setting</h3>
+          <p>Set a specific target and get a clear, realistic path toward reaching it.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="5" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 9.8h17.2M8.2 3v4M15.8 3v4"/><path d="m8.8 14.9 2.3 2.3 4.1-4.4"/></svg></span>
+          <h3 class="h-3">Daily Accountability</h3>
+          <p>Streaks and daily check-ins turn intention into a routine you keep.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 1.9"/></svg></span>
+          <h3 class="h-3">Progress Tracking</h3>
+          <p>Weight, consistency, completion and achievements in one continuous timeline.</p>
+        </article>
+      </div>
+      <h3 class="h-3 mt-40" style="margin-bottom:18px;color:var(--muted)">Staying consistent</h3>
+      <div class="feature-grid" data-stagger="60">
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.4" r="7.4"/><path d="M12 9.6v3.8l2.8 1.7"/><path d="M6.2 5.7 3.9 8.1M17.8 5.7l2.3 2.4"/></svg></span>
+          <h3 class="h-3">Daily Reminders</h3>
+          <p>Gentle nudges at the right moments for meals, water, movement and workouts.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.4" y="2.6" width="11.2" height="18.8" rx="2.6"/><path d="M10.2 18.6h3.6"/><circle cx="18.4" cy="5.6" r="2.5" fill="currentColor" stroke="none"/></svg></span>
+          <h3 class="h-3">Smart Notifications</h3>
+          <p>Context-aware, not noisy. If you already logged lunch, you will not be reminded about it.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg></span>
+          <h3 class="h-3">Weekly Review</h3>
+          <p>A short summary of the week: what you hit, what slipped and what changes next.</p>
+        </article>
+        <article class="card feature-card" data-reveal>
+          <span class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 19 6v5.6c0 4.3-2.8 7.8-7 9.4-4.2-1.6-7-5.1-7-9.4V6Z"/><path d="m9.2 12.1 2 2 3.6-3.9"/></svg></span>
+          <h3 class="h-3">Your Data, Yours</h3>
+          <p>Your information is used to build your plan, not to be sold on to anyone else.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== AI diet ===== -->
+  <section class="section" id="diet">
+    <div class="container split">
+      <div class="split__body">
+        <span class="eyebrow">AI nutrition</span>
+        <h2 class="h-1" data-words>A Diet Plan That Adapts to You.</h2>
+        <p class="lead mt-24">Your targets are calculated from your body, your goal and your routine, then refined as you log meals and progress. No rigid meal plans, no guesswork.</p>
+        <div class="tabs mt-32" role="tablist" aria-label="Diet screens" data-tabs="diet-screens">
+          <button class="tab is-active" type="button" role="tab" aria-selected="true">Today&rsquo;s meals</button>
+          <button class="tab" type="button" role="tab" aria-selected="false">Macros &amp; water</button>
+          <button class="tab" type="button" role="tab" aria-selected="false">Adaptive plan</button>
+        </div>
+        <ul class="check-list">
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Breakfast, lunch, dinner and snacks with calories and macros for each.</span></li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Protein, carbohydrate, fat and water tracked against daily targets.</span></li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Recommendations respect allergies, dislikes, budget and prep time.</span></li>
+        </ul>
+        <div class="stat-strip" data-reveal>
+          <div class="s"><b><span data-count="2100" data-format="comma">0</span></b><span>Daily calorie target</span></div>
+          <div class="s"><b><span data-count="150" data-suffix="g">0</span></b><span>Protein goal</span></div>
+          <div class="s"><b><span data-count="88" data-suffix="%">0</span></b><span>Today&rsquo;s progress</span></div>
+        </div>
+      </div>
+
+      <div class="split__media stage diet-stage">
+        <div class="phone phone--floating">
+          <div class="phone__notch"></div>
+          <div class="phone__screen screen-swap" id="diet-screens">
+            <div class="screen is-active">
+              <div class="ui-row">
+                <div><span class="ui-label">Today</span><div class="ui-title">Your meals</div></div>
+                <span class="ui-chip ui-chip--on">1,842 kcal</span>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row" style="justify-content:flex-start;gap:10px">
+                  <span class="ui-thumb">&#127859;</span>
+                  <div><div class="ui-title" style="font-size:.76rem">Breakfast</div><div class="ui-sub">Greek yogurt, berries, oats</div></div>
+                </div>
+                <div class="ui-sub">420 kcal &middot; P 32g &middot; C 48g &middot; F 9g</div>
+              </div>
+              <div class="ui-card ui-card--accent">
+                <div class="ui-row" style="justify-content:flex-start;gap:10px">
+                  <span class="ui-thumb">&#129388;</span>
+                  <div><div class="ui-title" style="font-size:.76rem">Lunch</div><div class="ui-sub">Chicken, quinoa, greens</div></div>
+                </div>
+                <div class="ui-sub">612 kcal &middot; P 48g &middot; C 55g &middot; F 16g</div>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row" style="justify-content:flex-start;gap:10px">
+                  <span class="ui-thumb">&#127843;</span>
+                  <div><div class="ui-title" style="font-size:.76rem">Dinner</div><div class="ui-sub">Salmon, sweet potato</div></div>
+                </div>
+                <div class="ui-sub">640 kcal &middot; P 44g &middot; C 50g &middot; F 22g</div>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row" style="justify-content:flex-start;gap:10px">
+                  <span class="ui-thumb">&#127822;</span>
+                  <div><div class="ui-title" style="font-size:.76rem">Snacks</div><div class="ui-sub">Apple &middot; almonds</div></div>
+                </div>
+                <div class="ui-sub">170 kcal &middot; P 6g &middot; C 21g &middot; F 8g</div>
+              </div>
+              <div class="ui-card ui-card--accent" style="margin-top:auto">
+                <div class="ui-row"><span class="ui-label">Daily progress</span><span class="ui-sub">88%</span></div>
+                <div class="ui-bar"><i style="--v:88%"></i></div>
+              </div>
+            </div>
+            <div class="screen">
+              <div class="ui-row">
+                <div><span class="ui-label">Macros</span><div class="ui-title">Daily balance</div></div>
+                <span class="ui-chip ui-chip--on">On track</span>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row"><span class="ui-label">Protein</span><span class="ui-sub">130 / 150 g</span></div>
+                <div class="ui-bar"><i style="--v:87%"></i></div>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row"><span class="ui-label">Carbohydrates</span><span class="ui-sub">174 / 210 g</span></div>
+                <div class="ui-bar"><i style="--v:83%"></i></div>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row"><span class="ui-label">Fats</span><span class="ui-sub">55 / 68 g</span></div>
+                <div class="ui-bar"><i style="--v:81%"></i></div>
+              </div>
+              <div class="ui-card ui-card--accent">
+                <div class="ui-row"><span class="ui-label">Water</span><span class="ui-sub">6 / 8 glasses</span></div>
+                <div class="ui-bar"><i style="--v:75%"></i></div>
+                <div class="ui-sub">Next reminder at 15:30</div>
+              </div>
+              <div class="ui-card" style="margin-top:auto">
+                <div class="ui-row"><span class="ui-label">Daily progress</span><span class="ui-sub">88%</span></div>
+                <div class="ui-bar"><i style="--v:88%"></i></div>
+              </div>
+            </div>
+            <div class="screen">
+              <div class="ui-row">
+                <div><span class="ui-label">Adaptive plan</span><div class="ui-title">This week</div></div>
+                <span class="ui-chip ui-chip--on">Updated</span>
+              </div>
+              <div class="ui-card ui-card--accent">
+                <div class="ui-sub" style="color:var(--text-soft)">You hit your protein target 6 days in a row. Your plan now adds 120 kcal on training days.</div>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row"><span class="ui-label">Training days</span><span class="ui-sub">2,220 kcal</span></div>
+                <div class="ui-bar"><i style="--v:92%"></i></div>
+              </div>
+              <div class="ui-card">
+                <div class="ui-row"><span class="ui-label">Rest days</span><span class="ui-sub">2,100 kcal</span></div>
+                <div class="ui-bar"><i style="--v:78%"></i></div>
+              </div>
+              <div class="ui-card">
+                <span class="ui-label">Preferences applied</span>
+                <div class="ui-chiprow">
+                  <span class="ui-chip ui-chip--on">High protein</span>
+                  <span class="ui-chip ui-chip--on">No shellfish</span>
+                  <span class="ui-chip">Quick prep</span>
+                  <span class="ui-chip">Budget</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Personal trainer ===== -->
+  <section class="section bg-soft" id="training">
+    <div class="container split split--reverse">
+      <div class="split__body">
+        <span class="eyebrow">AI personal training</span>
+        <h2 class="h-1" data-words>Your Personal Trainer. Always With You.</h2>
+        <p class="lead mt-24">Every session is matched to your goal, your experience and the time you actually have. Finish a workout and the next one is already adjusted.</p>
+        <ul class="check-list">
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Workout recommendations that fit your week, not the other way round.</span></li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Structured exercise plans with sets, reps and progression built in.</span></li>
+          <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Streaks and completion tracking keep the habit visible.</span></li>
+        </ul>
+        <div class="flex-row mt-32">
+          <a class="btn btn-primary" href="#download"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19h16"/></svg><span>Download the app</span></a>
+          <a class="link-arrow" href="#features">Explore all features <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+      </div>
+
+      <div class="split__media">
+        <div class="board" data-reveal="right">
+          <div class="board__head">
+            <div>
+              <span class="eyebrow" style="margin-bottom:6px">Today &middot; Upper body</span>
+              <h3 class="h-3">Strength &middot; 32 min</h3>
+            </div>
+            <span class="pill"><i class="dot"></i> In progress</span>
+          </div>
+
+          <div class="exercise">
+            <span class="exercise__idx">1</span>
+            <div class="exercise__meta"><b>Incline dumbbell press</b><span>4 &times; 10 &middot; 16 kg</span></div>
+            <span class="exercise__done"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg></span>
+          </div>
+          <div class="exercise">
+            <span class="exercise__idx">2</span>
+            <div class="exercise__meta"><b>Seated row</b><span>4 &times; 12 &middot; 40 kg</span></div>
+            <span class="exercise__done"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg></span>
+          </div>
+          <div class="exercise">
+            <span class="exercise__idx">3</span>
+            <div class="exercise__meta"><b>Lateral raise</b><span>3 &times; 15 &middot; 8 kg</span></div>
+            <span class="exercise__done"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg></span>
+          </div>
+          <div class="exercise exercise--todo">
+            <span class="exercise__idx">4</span>
+            <div class="exercise__meta"><b>Cable triceps push-down</b><span>3 &times; 12 &middot; 25 kg</span></div>
+            <span class="exercise__done"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 1.9"/></svg></span>
+          </div>
+
+          <div class="week-strip mt-16" aria-label="This week's completed workouts">
+            <div class="d on">Mon<i></i></div>
+            <div class="d on">Tue<i></i></div>
+            <div class="d">Wed<i></i></div>
+            <div class="d on">Thu<i></i></div>
+            <div class="d on">Fri<i></i></div>
+            <div class="d">Sat<i></i></div>
+            <div class="d">Sun<i></i></div>
+          </div>
+
+          <div class="stat-strip" style="margin-top:4px">
+            <div class="s"><b><span data-count="24">0</span></b><span>Day streak</span></div>
+            <div class="s"><b><span data-count="18">0</span></b><span>Workouts this month</span></div>
+            <div class="s"><b><span data-count="92" data-suffix="%">0</span></b><span>Plan completion</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Daily accountability ===== -->
+  <section class="section" id="accountability">
+    <div class="container split">
+      <div class="split__body">
+        <span class="eyebrow">Daily accountability</span>
+        <h2 class="h-1" data-words>Small Actions. Every Day. Big Results.</h2>
+        <p class="lead mt-24">VITAL isn&rsquo;t a plan you read once. It&rsquo;s a system that shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
+        <div class="stat-strip" data-reveal>
+          <div class="s"><b><span data-count="8">0</span></b><span>Touchpoints a day</span></div>
+          <div class="s"><b>&lt; 2 min</b><span>Total daily logging</span></div>
+          <div class="s"><b><span data-count="24">0</span></b><span>Day streak example</span></div>
+        </div>
+      </div>
+
+      <div class="split__media">
+        <div class="routine-visual">
+          <div class="timeline">
+            <div class="timeline__progress" aria-hidden="true"></div>
+            <div class="tl-item" style="--i:0">
+              <span class="tl-time">07:00</span>
+              <div class="tl-body"><b>Morning check-in</b><span>Weight, sleep and how you feel. Takes 20 seconds.</span></div>
+            </div>
+            <div class="tl-item" style="--i:1">
+              <span class="tl-time">08:00</span>
+              <div class="tl-body"><b>Breakfast reminder</b><span>Your first meal, matched to today&rsquo;s targets.</span></div>
+            </div>
+            <div class="tl-item" style="--i:2">
+              <span class="tl-time">10:30</span>
+              <div class="tl-body"><b>Water reminder</b><span>Small, timed nudges instead of one big goal.</span></div>
+            </div>
+            <div class="tl-item" style="--i:3">
+              <span class="tl-time">12:30</span>
+              <div class="tl-body"><b>Lunch</b><span>Logged in a tap, macros update instantly.</span></div>
+            </div>
+            <div class="tl-item" style="--i:4">
+              <span class="tl-time">15:00</span>
+              <div class="tl-body"><b>Activity reminder</b><span>A short walk keeps your step target on pace.</span></div>
+            </div>
+            <div class="tl-item" style="--i:5">
+              <span class="tl-time">18:00</span>
+              <div class="tl-body"><b>Workout</b><span>Today&rsquo;s session, with sets and reps ready to go.</span></div>
+            </div>
+            <div class="tl-item" style="--i:6">
+              <span class="tl-time">20:00</span>
+              <div class="tl-body"><b>Dinner</b><span>Balance the day with what you have left.</span></div>
+            </div>
+            <div class="tl-item" style="--i:7">
+              <span class="tl-time">21:30</span>
+              <div class="tl-body"><b>Daily progress</b><span>Your day summarised, and tomorrow adjusted.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Goals & progress ===== -->
+  <section class="section bg-soft" id="progress">
+    <div class="container">
+      <div class="section-head section-head-center">
+        <span class="eyebrow">Goals &amp; progress</span>
+        <h2 class="h-1" data-words>See Exactly How Far You&rsquo;ve Come.</h2>
+        <p class="lead mt-16 mx-auto">Progress you can actually see is what keeps people going. Here&rsquo;s what a real dashboard looks like after three months.</p>
+      </div>
+
+      <div class="dash" data-stagger="80">
+        <div class="card dash__main" data-reveal>
+          <div class="goal-head">
+            <div>
+              <span class="eyebrow" style="margin-bottom:8px">Goal</span>
+              <h3 class="h-2">Lose 10 kg</h3>
+            </div>
+            <span class="pill"><i class="dot"></i> On track</span>
+          </div>
+          <div class="big-metric"><span data-count="7.2" data-decimals="1">0.0</span><sub>kg lost</sub></div>
+          <div class="progress mt-24" data-progress="72"><i></i></div>
+          <div class="progress-legend"><span>Start &middot; 92 kg</span><span>72% complete</span><span>Goal &middot; 82 kg</span></div>
+
+          <span class="eyebrow mt-32" style="margin-bottom:0">Weekly progress</span>
+          <div class="spark" aria-hidden="true">
+            <div class="b" data-h="34" style="--i:0"></div>
+            <div class="b" data-h="46" style="--i:1"></div>
+            <div class="b" data-h="41" style="--i:2"></div>
+            <div class="b" data-h="58" style="--i:3"></div>
+            <div class="b" data-h="66" style="--i:4"></div>
+            <div class="b" data-h="61" style="--i:5"></div>
+            <div class="b" data-h="78" style="--i:6"></div>
+            <div class="b" data-h="72" style="--i:7"></div>
+            <div class="b" data-h="86" style="--i:8"></div>
+            <div class="b" data-h="80" style="--i:9"></div>
+            <div class="b" data-h="94" style="--i:10"></div>
+            <div class="b is-peak" data-h="100" style="--i:11"></div>
+          </div>
+          <div class="progress-legend"><span>Week 1</span><span>Week 12</span></div>
+        </div>
+
+        <div class="dash__side">
+          <div class="card" data-reveal>
+            <div class="mini-stat">
+              <span class="icon-badge" style="margin-bottom:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="5" width="17.2" height="15.4" rx="2.6"/><path d="M3.4 9.8h17.2M8.2 3v4M15.8 3v4"/><path d="m8.8 14.9 2.3 2.3 4.1-4.4"/></svg></span>
+              <div>
+                <div class="big-metric"><span data-count="24">0</span><sub>days</sub></div>
+                <p class="body-muted" style="font-size:.85rem">Current daily streak</p>
+              </div>
+            </div>
+          </div>
+          <div class="card" data-reveal>
+            <div class="ui-row" style="margin-bottom:14px">
+              <b style="font-size:.95rem">Calories</b>
+              <span class="body-muted" style="font-size:.83rem">1,842 / 2,100</span>
+            </div>
+            <div class="progress" data-progress="88"><i></i></div>
+            <div class="ui-row" style="margin:22px 0 14px">
+              <b style="font-size:.95rem">Workout completion</b>
+              <span class="body-muted" style="font-size:.83rem">92%</span>
+            </div>
+            <div class="progress" data-progress="92"><i></i></div>
+            <div class="ui-row" style="margin:22px 0 14px">
+              <b style="font-size:.95rem">Water</b>
+              <span class="body-muted" style="font-size:.83rem">6 / 8 glasses</span>
+            </div>
+            <div class="progress" data-progress="75"><i></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Pricing ===== -->
+  <section class="section" id="pricing">
+    <div class="container">
+      <div class="section-head section-head-center">
+        <span class="eyebrow">Pricing</span>
+        <h2 class="h-1" data-words>Your Health, For About $1 a Day.</h2>
+        <p class="lead mt-16 mx-auto">One subscription. Everything included. No tiers to compare, no upsells.</p>
+      </div>
+
+      <div class="price-wrap">
+        <div data-reveal="left">
+          <h3 class="h-2">Less than you already spend without thinking.</h3>
+          <p class="body-muted mt-16">A personal trainer costs more in one session than VITAL costs in a month. Here&rsquo;s the honest comparison.</p>
+          <div class="price-compare">
+            <div class="cmp"><span>One personal training session</span><b>~$60</b></div>
+            <div class="cmp"><span>Monthly gym membership</span><b>~$45</b></div>
+            <div class="cmp"><span>A nutritionist consultation</span><b>~$90</b></div>
+            <div class="cmp is-us"><span>VITAL, everything every day</span><b>$30</b></div>
+          </div>
+        </div>
+
+        <div class="price-card" data-reveal="right">
+          <span class="price-badge">All included</span>
+          <span class="eyebrow">Full access</span>
+          <div class="price-amount">
+            <span class="cur">$</span>
+            <span class="num" data-count="30">0</span>
+            <span class="per">/ month</span>
+          </div>
+          <div class="price-aday"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg> That&rsquo;s just $1 a day.</div>
+          <ul class="price-list">
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Personalized AI diet guidance</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>AI personal training</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Daily reminders</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Smart notifications</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Goal setting</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Progress tracking</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Personalized recommendations</span></li>
+            <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg><span>Daily accountability</span></li>
+          </ul>
+          <a class="btn btn-primary btn-lg" href="#download" style="width:100%">START YOUR JOURNEY <svg class="arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <p class="price-note">Cancel anytime. No hidden fees.</p>
+        </div>
+      </div>
+      <p class="body-muted mt-40" style="max-width:640px;margin-inline:auto;text-align:center;font-size:.85rem">VITAL is a wellness app, not a medical service, and its guidance does not replace advice from a doctor, dietitian or other qualified professional &mdash; especially if you are pregnant, have an existing condition, or take medication.</p>
+    </div>
+  </section>
+
+  <!-- ===== Pricing FAQ ===== -->
+  <section class="section bg-soft">
+    <div class="container">
+      <div class="section-head section-head-center">
+        <span class="eyebrow">Questions</span>
+        <h2 class="h-1" data-words>Good to know.</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Is there a free trial?</summary>
+          <p>You can explore the app and complete setup before subscribing, so you see your generated plan before you pay for it.</p>
+        </details>
+        <details>
+          <summary>Can I cancel anytime?</summary>
+          <p>Yes. Cancel from inside the app in a couple of taps. You keep access until the end of the period you have already paid for.</p>
+        </details>
+        <details>
+          <summary>Why only one plan?</summary>
+          <p>Because tiers force you to guess which version of a product you need. Nutrition and training work together, so splitting them into packages would make the product worse.</p>
+        </details>
+        <details>
+          <summary>Do you charge for updates?</summary>
+          <p>No. New features are included in the same subscription.</p>
+        </details>
+        <details>
+          <summary>What payment methods do you accept?</summary>
+          <p>Payment is handled through the App Store and Google Play, so any method already on your account works.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== About ===== -->
+  <section class="section bg-soft" id="about">
+    <div class="container about-grid">
+      <div>
+        <span class="eyebrow">About us</span>
+        <h2 class="h-1" data-words>Built for people, not for streak charts.</h2>
+      </div>
+      <div>
+        <p class="lead">We believe achieving a healthier lifestyle should be simpler, more personal and easier to maintain.</p>
+        <p class="body-muted mt-24">Most people do not fail because they lack discipline. They fail because the plan was never theirs, the advice contradicted itself, and staying on track required more attention than a normal life allows.</p>
+        <p class="body-muted mt-16">VITAL is designed to help people build sustainable habits rather than rely on temporary motivation. The plan adapts to your body, your schedule and your preferences, and it keeps showing up quietly, every day.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="container">
+      <div class="dash__row" data-stagger="80" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+        <div class="card" data-reveal>
+          <div class="big-metric" style="font-size:2.2rem"><span data-count="1">0</span><sub>app</sub></div>
+          <p class="body-muted mt-8" style="font-size:.9rem">Nutrition, training and tracking in one place.</p>
+        </div>
+        <div class="card" data-reveal>
+          <div class="big-metric" style="font-size:2.2rem"><span data-count="30" data-prefix="$">$0</span><sub>/ month</sub></div>
+          <p class="body-muted mt-8" style="font-size:.9rem">About a dollar a day, everything included.</p>
+        </div>
+        <div class="card" data-reveal>
+          <div class="big-metric" style="font-size:2.2rem"><span data-count="2">0</span><sub>minutes</sub></div>
+          <p class="body-muted mt-8" style="font-size:.9rem">From signing up to your first full plan.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-soft">
+    <div class="container about-grid">
+      <div>
+        <span class="eyebrow">What we believe</span>
+        <h2 class="h-2">Four principles behind every decision we make.</h2>
+      </div>
+      <div class="value-list">
+        <div class="value-item" data-reveal>
+          <span class="k">01</span>
+          <div><b>Personal by default</b><span>A plan that is not built around your body, goal and preferences is just advice. We start from you and never ship a generic template.</span></div>
+        </div>
+        <div class="value-item" data-reveal>
+          <span class="k">02</span>
+          <div><b>Quiet, not noisy</b><span>Notifications should reduce effort, not add to it. If a reminder is not useful at that exact moment, it should not exist.</span></div>
+        </div>
+        <div class="value-item" data-reveal>
+          <span class="k">03</span>
+          <div><b>Honest pacing</b><span>Sustainable beats dramatic. We would rather you lose seven kilos and keep them off than fifteen and rebound.</span></div>
+        </div>
+        <div class="value-item" data-reveal>
+          <span class="k">04</span>
+          <div><b>One place for everything</b><span>Nutrition and training are one system. Splitting them across apps is how consistency dies.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Why choose us ===== -->
+  <section class="section" id="why">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Why this app</span>
+        <h2 class="h-1" data-words>Why Choose Us?</h2>
+      </div>
+      <div class="why-grid" data-stagger="90">
+        <div class="why-cell" data-reveal>
+          <span class="idx">01</span>
+          <h3>Personalized</h3>
+          <p>Your experience is built around your goals, your body and your preferences.</p>
+        </div>
+        <div class="why-cell" data-reveal>
+          <span class="idx">02</span>
+          <h3>Intelligent</h3>
+          <p>AI creates your plan and keeps adapting it as your progress changes.</p>
+        </div>
+        <div class="why-cell" data-reveal>
+          <span class="idx">03</span>
+          <h3>Consistent</h3>
+          <p>Daily reminders and accountability keep you on track long after motivation fades.</p>
+        </div>
+        <div class="why-cell" data-reveal>
+          <span class="idx">04</span>
+          <h3>Simple</h3>
+          <p>Nutrition, training and tracking live in one app. Nothing else to manage.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Contact ===== -->
+  <section class="section bg-soft" id="contact">
+    <div class="container contact-grid">
+      <div>
+        <span class="eyebrow">Contact us</span>
+        <h2 class="h-1" data-words>Let&rsquo;s talk.</h2>
+        <p class="body-muted mt-16">Questions, partnerships or support. A real person reads every message.</p>
+        <div class="contact-cards mt-32">
+          <div class="card contact-card">
+            <span class="icon-badge" style="margin-bottom:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.4" y="2.6" width="11.2" height="18.8" rx="2.6"/><path d="M10.2 18.6h3.6"/><circle cx="18.4" cy="5.6" r="2.5" fill="currentColor" stroke="none"/></svg></span>
+            <div><b>Questions?</b><span>Anything about the plan, the app or how it works.</span></div>
+          </div>
+          <div class="card contact-card">
+            <span class="icon-badge" style="margin-bottom:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.2" cy="12" r="5.6"/><circle cx="14.8" cy="12" r="5.6"/></svg></span>
+            <div><b>Partnerships?</b><span>Coaches, clinics and brands are welcome to get in touch.</span><a href="mailto:partners@vital.app">partners@vital.app</a></div>
+          </div>
+          <div class="card contact-card">
+            <span class="icon-badge" style="margin-bottom:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 19 6v5.6c0 4.3-2.8 7.8-7 9.4-4.2-1.6-7-5.1-7-9.4V6Z"/><path d="m9.2 12.1 2 2 3.6-3.9"/></svg></span>
+            <div><b>Support?</b><span>Account, billing or technical help.</span><a href="mailto:support@vital.app">support@vital.app</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:clamp(24px,3vw,36px)">
+        <form class="form" data-form novalidate>
+          <div class="field">
+            <label for="c-name">Name</label>
+            <input id="c-name" name="name" type="text" autocomplete="name" placeholder="Alex Moreau" required>
+            <span class="field__err"></span>
+          </div>
+          <div class="field">
+            <label for="c-email">Email</label>
+            <input id="c-email" name="email" type="email" autocomplete="email" placeholder="alex@example.com" required>
+            <span class="field__err"></span>
+          </div>
+          <div class="field">
+            <label for="c-message">Message</label>
+            <textarea id="c-message" name="message" placeholder="How can we help?" required></textarea>
+            <span class="field__err"></span>
+          </div>
+          <button class="btn btn-primary btn-lg" type="submit" style="width:100%">SEND MESSAGE</button>
+          <p class="form__status" role="status" tabindex="-1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg> Thanks. Your message is on its way. We&rsquo;ll reply within one business day.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Legal ===== -->
+  <section class="section" id="legal">
+    <div class="container">
+      <div class="section-head section-head-center">
+        <span class="eyebrow">Legal</span>
+        <h2 class="h-1" data-words>Privacy &amp; Terms.</h2>
+        <p class="lead mt-16 mx-auto">Last updated: January 2026.</p>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Privacy Policy &mdash; what we collect</summary>
+          <p>To build your plan we collect the information you provide during setup, such as weight, height, age, activity level, goals and food preferences, along with what you log day to day, such as meals, workouts, water and progress measurements.</p>
+        </details>
+        <details>
+          <summary>Privacy Policy &mdash; how we use it</summary>
+          <p>Your information is used to generate and adapt your nutrition and training recommendations, to send the reminders you have enabled, and to show you your own progress. We also use aggregated, non-identifying usage data to improve the product. We do not sell your personal information, share your health data with advertisers, or use your data to build profiles for third parties.</p>
+        </details>
+        <details>
+          <summary>Privacy Policy &mdash; storage, security &amp; your rights</summary>
+          <p>Data is stored encrypted in transit and at rest, with internal access limited to the people who need it to operate and support the service. You can export your data or delete your account at any time from inside the app; deleting your account removes your personal data from our production systems, with backups aging out on a rolling schedule. Questions: <a href="mailto:privacy@vital.app" style="color:var(--accent)">privacy@vital.app</a>.</p>
+        </details>
+        <details>
+          <summary>Terms of Service &mdash; using VITAL</summary>
+          <p>VITAL provides personalized nutrition and fitness guidance generated by software. You must be at least 16 years old to create an account, and you are responsible for keeping your account credentials secure. VITAL is a wellness product, not a medical service, and its recommendations do not replace advice from a doctor, dietitian or other qualified professional.</p>
+        </details>
+        <details>
+          <summary>Terms of Service &mdash; billing &amp; acceptable use</summary>
+          <p>Access is provided through a $30 monthly subscription, billed through the App Store or Google Play, and renews automatically until cancelled; you can cancel anytime and keep access until the end of the paid period. Do not attempt to disrupt the service, reverse engineer it, or use it to distribute unlawful or harmful content. If a change materially reduces what you have paid for, we will tell you in advance. Questions: <a href="mailto:legal@vital.app" style="color:var(--accent)">legal@vital.app</a>.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Final download CTA ===== -->
+  <section class="final-cta" id="download">
+    <div class="container final-cta__inner">
+      <h2 class="h-display" data-words>Your Health Journey Starts Today.</h2>
+      <p class="lead" data-reveal style="--reveal-delay:120ms">One app. One plan. One day at a time.</p>
+      <div data-reveal="scale" style="--reveal-delay:200ms">
+        <div class="cta-orbit cta-orbit--xl">
+          <svg class="cta-orbit__svg" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="orbitGrad-final" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#34e5a4" stop-opacity="0"/>
+                <stop offset="35%" stop-color="#34e5a4"/>
+                <stop offset="70%" stop-color="#9df5d2"/>
+                <stop offset="100%" stop-color="#79a6ff" stop-opacity="0.6"/>
+              </linearGradient>
+              <filter id="orbitGlow-final" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="2.6" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <rect class="cta-orbit__track" x="0" y="0" width="100%" height="100%" rx="40" pathLength="1000"/>
+            <rect class="cta-orbit__snake cta-orbit__snake--trail" x="0" y="0" width="100%" height="100%" rx="40"
+                  pathLength="1000" stroke-dasharray="95 905" style="stroke:#34e5a4"/>
+            <rect class="cta-orbit__snake" x="0" y="0" width="100%" height="100%" rx="40"
+                  pathLength="1000" stroke-dasharray="215 785" style="stroke:url(#orbitGrad-final);filter:url(#orbitGlow-final)"/>
+          </svg>
+          <a class="btn btn-primary btn-lg cta-orbit__btn" href="https://vital.app/get">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19h16"/></svg><span>DOWNLOAD THE APP</span>
+          </a>
+        </div>
+      </div>
+      <div class="final-cta__badges" data-reveal style="--reveal-delay:300ms">
+        <a href="https://vital.app/ios" rel="noopener"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.6-1.9-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.8-1.7 0-3.2 1-4.1 2.5-1.7 3-.4 7.4 1.3 9.8.8 1.2 1.8 2.5 3.1 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-1-2.4-3.7zM14 5.4c.7-.8 1.1-2 1-3.2-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.3z"/></svg> App Store</a>
+        <a href="https://vital.app/android" rel="noopener"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 3.2c0-.9 1-1.5 1.8-1L19.4 10c.8.4.8 1.5 0 2L5.8 19.8c-.8.5-1.8-.1-1.8-1z"/></svg> Google Play</a>
+        <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.5 2.5 4.7-5"/></svg> Cancel anytime</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <a class="logo" href="#home" aria-label="VITAL home"><img class="logo__mark" src="/assets/img/logo.svg" alt="" width="38" height="38"><span>VITAL</span></a>
+        <p>Personalized AI nutrition, personal training and daily accountability, all inside one intelligent app.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul class="footer__links">
+          <li><a href="#how">How It Works</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul class="footer__links">
+          <li><a href="#about">About</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="#contact">Partnerships</a></li>
+          <li><a href="#contact">Support</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <ul class="footer__links">
+          <li><a href="#legal">Privacy Policy</a></li>
+          <li><a href="#legal">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>&copy; <span data-year>2026</span> VITAL. All rights reserved.</p>
+      <div class="socials">
+        <a href="#" aria-label="VITAL on X"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 3h3.1l-6.8 7.8L21.8 21h-6.2l-4.9-6.4L5.1 21H2l7.3-8.3L2.4 3h6.4l4.4 5.8zm-1.1 16.1h1.7L7.7 4.8H5.9z"/></svg></a>
+        <a href="#" aria-label="VITAL on Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="16.9" cy="7.1" r="1" fill="currentColor" stroke="none"/></svg></a>
+        <a href="#" aria-label="VITAL on LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.9 8.5H3.6V21h3.3zM5.2 3a1.9 1.9 0 100 3.9 1.9 1.9 0 000-3.9zM20.4 13.7c0-3.4-1.8-5-4.3-5-1.9 0-2.8 1.1-3.3 1.9V8.5H9.5V21h3.3v-6.9c0-1.5.8-2.4 2-2.4s2.3.8 2.3 2.5V21h3.3z"/></svg></a>
+        <a href="#" aria-label="VITAL on YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.5 2.5 0 00-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 002.4 7.2 26 26 0 002 12a26 26 0 00.4 4.8 2.5 2.5 0 001.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 001.8-1.8A26 26 0 0022 12a26 26 0 00-.4-4.8zM10 15V9l5.2 3z"/></svg></a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ============================================================
+     VITAL: interaction layer
+     No dependencies. Everything degrades gracefully.
+     ============================================================ */
+  (function () {
+    'use strict';
+
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var $  = function (sel, ctx) { return (ctx || document).querySelector(sel); };
+    var $$ = function (sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
+
+    /* ---------- Page load ---------- */
+    document.documentElement.classList.remove('no-js');
+    window.addEventListener('load', function () {
+      document.body.classList.remove('page-loading');
+    });
+    // Safety: never leave the page hidden if `load` is slow.
+    setTimeout(function () { document.body.classList.remove('page-loading'); }, 1200);
+
+    /* ---------- Navigation: compact on scroll ---------- */
+    var nav = $('.nav');
+    if (nav) {
+      var lastScrolled = null;
+      var onScroll = function () {
+        var scrolled = window.scrollY > 24;
+        if (scrolled !== lastScrolled) {
+          nav.classList.toggle('is-scrolled', scrolled);
+          lastScrolled = scrolled;
+        }
+      };
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }
+
+    /* ---------- Mobile menu ---------- */
+    var burger = $('.nav__burger');
+    var menu = $('.mobile-menu');
+    if (burger && menu) {
+      var setMenu = function (open) {
+        burger.setAttribute('aria-expanded', String(open));
+        menu.classList.toggle('is-open', open);
+        menu.setAttribute('aria-hidden', String(!open));
+        document.body.classList.toggle('is-locked', open);
+      };
+      burger.addEventListener('click', function () {
+        setMenu(burger.getAttribute('aria-expanded') !== 'true');
+      });
+      $$('a', menu).forEach(function (a) {
+        a.addEventListener('click', function () { setMenu(false); });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+          setMenu(false);
+          burger.focus();
+        }
+      });
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 940 && menu.classList.contains('is-open')) setMenu(false);
+      });
+    }
+
+    /* ---------- Headline word reveal ---------- */
+    $$('[data-words]').forEach(function (el) {
+      if (el.dataset.wordsReady) return;
+      var words = el.textContent.trim().split(/\s+/);
+      el.textContent = '';
+      words.forEach(function (w, i) {
+        var outer = document.createElement('span');
+        outer.className = 'word';
+        var inner = document.createElement('span');
+        inner.textContent = w;
+        inner.style.setProperty('--word-delay', (i * 52) + 'ms');
+        outer.appendChild(inner);
+        el.appendChild(outer);
+        if (i < words.length - 1) el.appendChild(document.createTextNode(' '));
+      });
+      el.classList.add('reveal-words');
+      el.dataset.wordsReady = '1';
+    });
+
+    /* ---------- Number counters ---------- */
+    function animateCount(el) {
+      var target = parseFloat(el.dataset.count);
+      var decimals = parseInt(el.dataset.decimals || '0', 10);
+      var prefix = el.dataset.prefix || '';
+      var suffix = el.dataset.suffix || '';
+      var duration = parseInt(el.dataset.duration || '1400', 10);
+      var format = el.dataset.format === 'comma';
+
+      var render = function (v) {
+        var s = v.toFixed(decimals);
+        if (format) s = Number(s).toLocaleString('en-US');
+        el.textContent = prefix + s + suffix;
+      };
+
+      if (reduceMotion) { render(target); return; }
+
+      var start = null;
+      var step = function (ts) {
+        if (start === null) start = ts;
+        var p = Math.min((ts - start) / duration, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        render(target * eased);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    /* ---------- Reveal / activation observer ---------- */
+    function activate(el) {
+      el.classList.add('is-visible');
+
+      $$('[data-count]', el).forEach(animateCount);
+      if (el.hasAttribute('data-count')) animateCount(el);
+
+      $$('[data-progress]', el).forEach(function (bar) {
+        var fill = bar.querySelector('i') || bar;
+        fill.style.width = bar.dataset.progress + '%';
+      });
+
+      $$('[data-h]', el).forEach(function (b) {
+        b.style.height = b.dataset.h + '%';
+      });
+    }
+
+    var revealTargets = $$('[data-reveal], [data-words], .timeline, [data-activate]');
+    if ('IntersectionObserver' in window && !reduceMotion) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          activate(entry.target);
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.16, rootMargin: '0px 0px -8% 0px' });
+      revealTargets.forEach(function (el) { io.observe(el); });
+    } else {
+      revealTargets.forEach(activate);
+    }
+
+    /* ---------- Staggered reveal groups ---------- */
+    $$('[data-stagger]').forEach(function (group) {
+      var gap = parseInt(group.dataset.stagger, 10) || 70;
+      $$('[data-reveal]', group).forEach(function (child, i) {
+        child.style.setProperty('--reveal-delay', (i * gap) + 'ms');
+      });
+    });
+
+    /* ---------- Tabs / app screen switcher ---------- */
+    $$('[data-tabs]').forEach(function (group) {
+      var tabs = $$('.tab', group);
+      var panelHost = document.getElementById(group.dataset.tabs);
+      if (!panelHost) return;
+      var panels = $$('.screen', panelHost);
+      var timer = null;
+
+      function show(i) {
+        tabs.forEach(function (t, ti) {
+          t.classList.toggle('is-active', ti === i);
+          t.setAttribute('aria-selected', String(ti === i));
+        });
+        panels.forEach(function (p, pi) { p.classList.toggle('is-active', pi === i); });
+      }
+
+      function autoplay() {
+        if (reduceMotion) return;
+        clearInterval(timer);
+        timer = setInterval(function () {
+          if (document.hidden) return;
+          var current = tabs.findIndex(function (t) { return t.classList.contains('is-active'); });
+          show((current + 1) % tabs.length);
+        }, 4200);
+      }
+
+      tabs.forEach(function (tab, i) {
+        tab.addEventListener('click', function () { show(i); autoplay(); });
+      });
+
+      show(0);
+      // Only autoplay while the phone itself is on screen (not just the
+      // section it lives in — on mobile the section is much taller than the
+      // phone since the text column stacks above it, so watching the whole
+      // section made the screens cycle while the phone was still off-screen).
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) autoplay(); else clearInterval(timer);
+          });
+        }, { threshold: 0.6 }).observe(panelHost);
+      } else {
+        autoplay();
+      }
+    });
+
+    /* ---------- CTA orbit: keep the energy line pill-shaped ---------- */
+    function sizeOrbits() {
+      $$('.cta-orbit').forEach(function (orbit) {
+        var r = Math.min(orbit.offsetWidth, orbit.offsetHeight) / 2;
+        $$('rect', orbit).forEach(function (rect) {
+          rect.setAttribute('rx', String(r));
+          rect.setAttribute('ry', String(r));
+        });
+      });
+    }
+    sizeOrbits();
+    window.addEventListener('resize', debounce(sizeOrbits, 150));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeOrbits);
+
+    /* ---------- Subtle pointer parallax on the hero stage ---------- */
+    var stage = $('[data-parallax]');
+    if (stage && !reduceMotion && window.matchMedia('(hover: hover) and (min-width: 941px)').matches) {
+      var tx = 0, ty = 0, cx = 0, cy = 0, raf = null;
+      var layers = $$('[data-depth]', stage);
+
+      stage.addEventListener('pointermove', function (e) {
+        var rect = stage.getBoundingClientRect();
+        tx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+        ty = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+        if (!raf) raf = requestAnimationFrame(loop);
+      });
+      stage.addEventListener('pointerleave', function () {
+        tx = 0; ty = 0;
+        if (!raf) raf = requestAnimationFrame(loop);
+      });
+
+      function loop() {
+        cx += (tx - cx) * 0.08;
+        cy += (ty - cy) * 0.08;
+        layers.forEach(function (layer) {
+          var d = parseFloat(layer.dataset.depth) || 0;
+          layer.style.transform = 'translate3d(' + (cx * d * 16).toFixed(2) + 'px,' + (cy * d * 16).toFixed(2) + 'px,0)';
+        });
+        if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
+          raf = requestAnimationFrame(loop);
+        } else {
+          raf = null;
+        }
+      }
+    }
+
+    /* ---------- Contact form ---------- */
+    var form = $('[data-form]');
+    if (form) {
+      var status = $('.form__status', form);
+
+      var validators = {
+        name: function (v) { return v.trim().length >= 2 || 'Please enter your name.'; },
+        email: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Please enter a valid email address.'; },
+        message: function (v) { return v.trim().length >= 10 || 'Please tell us a little more (10+ characters).'; }
+      };
+
+      function validateField(input) {
+        var rule = validators[input.name];
+        if (!rule) return true;
+        var result = rule(input.value);
+        var field = input.closest('.field');
+        var err = field && field.querySelector('.field__err');
+        var ok = result === true;
+        if (field) field.classList.toggle('has-error', !ok);
+        if (err) err.textContent = ok ? '' : result;
+        return ok;
+      }
+
+      $$('input, textarea', form).forEach(function (input) {
+        input.addEventListener('blur', function () { validateField(input); });
+        input.addEventListener('input', function () {
+          var field = input.closest('.field');
+          if (field && field.classList.contains('has-error')) validateField(input);
+        });
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var fields = $$('input, textarea', form);
+        var valid = fields.map(validateField).every(Boolean);
+        if (!valid) {
+          var firstBad = $('.field.has-error input, .field.has-error textarea', form);
+          if (firstBad) firstBad.focus();
+          return;
+        }
+        // No backend in this static build. Wire this up to your endpoint.
+        var btn = $('button[type="submit"]', form);
+        if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Sending…'; }
+        setTimeout(function () {
+          form.reset();
+          if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'Send message'; }
+          if (status) {
+            status.classList.add('is-shown');
+            status.focus();
+          }
+        }, 700);
+      });
+    }
+
+    /* ---------- Roadmap: scroll-scrubbed rail, markers and cards ----------
+       The rail fills against a "playhead" line sitting ~62% down the viewport.
+       Markers track it live in both directions; cards reveal once and stay put. */
+    var roadmaps = $$('[data-roadmap]');
+    if (roadmaps.length) {
+      var rmParts = roadmaps.map(function (rm) {
+        return {
+          el: rm,
+          rail: $('.roadmap__rail', rm),
+          fill: $('.roadmap__fill', rm),
+          steps: $$('.roadmap__step', rm).map(function (s) {
+            return { el: s, marker: $('.roadmap__marker', s) };
+          })
+        };
+      });
+
+      if (reduceMotion) {
+        rmParts.forEach(function (rm) {
+          if (rm.fill) rm.fill.style.height = '100%';
+          rm.steps.forEach(function (s) { s.el.classList.add('is-reached', 'is-seen'); });
+        });
+      } else {
+        var rmTicking = false;
+        var drawRoadmaps = function () {
+          rmTicking = false;
+          var playhead = window.innerHeight * 0.62;
+          rmParts.forEach(function (rm) {
+            if (!rm.rail || !rm.fill) return;
+            var r = rm.rail.getBoundingClientRect();
+            if (r.bottom < -200 || r.top > window.innerHeight + 200) return;
+            var p = r.height ? (playhead - r.top) / r.height : 0;
+            p = Math.max(0, Math.min(1, p));
+            rm.fill.style.height = (p * 100).toFixed(2) + '%';
+            rm.el.classList.toggle('is-running', p > 0.001 && p < 0.999);
+            rm.steps.forEach(function (s) {
+              var m = s.marker.getBoundingClientRect();
+              var reached = m.top + m.height / 2 <= playhead;
+              s.el.classList.toggle('is-reached', reached);
+              if (reached) s.el.classList.add('is-seen');
+            });
+          });
+        };
+        var queueRoadmaps = function () {
+          if (!rmTicking) { rmTicking = true; requestAnimationFrame(drawRoadmaps); }
+        };
+        drawRoadmaps();
+        window.addEventListener('scroll', queueRoadmaps, { passive: true });
+        window.addEventListener('resize', queueRoadmaps);
+        window.addEventListener('load', drawRoadmaps);
+      }
+    }
+
+    /* ---------- Reading progress ---------- */
+    var progressBar = $('.scroll-progress');
+    if (progressBar) {
+      var pTicking = false;
+      var drawProgress = function () {
+        pTicking = false;
+        var max = document.documentElement.scrollHeight - window.innerHeight;
+        var p = max > 0 ? window.scrollY / max : 0;
+        progressBar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, p)).toFixed(4) + ')';
+      };
+      drawProgress();
+      window.addEventListener('scroll', function () {
+        if (!pTicking) { pTicking = true; requestAnimationFrame(drawProgress); }
+      }, { passive: true });
+      window.addEventListener('resize', drawProgress);
+    }
+
+    /* ---------- Scroll-spy: highlight the section you're reading ---------- */
+    var spyLinks = $$('[data-spy]');
+    if (spyLinks.length) {
+      var spyTargets = spyLinks
+              .map(function (a) { return { link: a, section: document.getElementById(a.dataset.spy) }; })
+              .filter(function (t) { return t.section; });
+
+      if (spyTargets.length) {
+        var sTicking = false;
+        var drawSpy = function () {
+          sTicking = false;
+          // Sit the reading line comfortably below where an anchor jump lands a
+          // section (scroll-padding-top), so clicking a nav link activates it too.
+          var navH = nav ? nav.offsetHeight : 70;
+          var line = window.scrollY + Math.max(navH + 150, window.innerHeight * 0.3);
+          var current = spyTargets[0];
+          spyTargets.forEach(function (t) {
+            if (t.section.offsetTop <= line) current = t;
+          });
+          // Snap to the last section once the page bottom is reached.
+          if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+            current = spyTargets[spyTargets.length - 1];
+          }
+          spyLinks.forEach(function (a) { a.classList.remove('is-active'); });
+          current.link.classList.add('is-active');
+        };
+        drawSpy();
+        window.addEventListener('scroll', function () {
+          if (!sTicking) { sTicking = true; requestAnimationFrame(drawSpy); }
+        }, { passive: true });
+        window.addEventListener('resize', drawSpy);
+      }
+    }
+
+    /* ---------- Footer year ---------- */
+    $$('[data-year]').forEach(function (el) { el.textContent = String(new Date().getFullYear()); });
+
+    /* ---------- Helpers ---------- */
+    function debounce(fn, wait) {
+      var t;
+      return function () {
+        var args = arguments, ctx = this;
+        clearTimeout(t);
+        t = setTimeout(function () { fn.apply(ctx, args); }, wait);
+      };
+    }
+  })();
+
+</script>
+</body>
+</html>
