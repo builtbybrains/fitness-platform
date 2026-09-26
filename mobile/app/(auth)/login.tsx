@@ -1,6 +1,6 @@
 /* Sign in. */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,11 +9,20 @@ import { C, screen, sectionLabel } from '../../src/design';
 import { useAuth } from '../../src/auth';
 
 export default function LoginScreen() {
-  const { signIn, continueOffline } = useAuth();
+  const { signIn, continueOffline, session, localMode, ready } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // The root gate unmounts when it routes here, so a successful sign-in gets
+  // no redirect from it. Watch auth state instead: as soon as a session or a
+  // local identity exists, hand control back to the gate (which routes to
+  // onboarding or the tabs). This also makes "Continue without an account"
+  // work, since it only flips localMode.
+  useEffect(() => {
+    if (ready && (session || localMode)) router.replace('/');
+  }, [ready, session, localMode]);
 
   async function submit() {
     setBusy(true);
