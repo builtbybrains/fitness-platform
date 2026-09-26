@@ -102,3 +102,15 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ─────────────────────── privileges ───────────────────────
+-- RLS restricts which ROWS each role can touch; these GRANTs let the API
+-- reach the TABLES at all. Some newer projects don't grant these when tables
+-- are created via the SQL Editor, which shows up as HTTP 403 /
+-- "permission denied for table ..." on every request.
+grant usage on schema public to anon, authenticated;
+grant all on public.profiles       to anon, authenticated;
+grant all on public.plan_days      to anon, authenticated;
+grant all on public.water          to anon, authenticated;
+grant all on public.weights        to anon, authenticated;
+grant all on public.coach_messages to anon, authenticated;

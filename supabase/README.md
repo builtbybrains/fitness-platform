@@ -41,7 +41,7 @@ Dashboard → Settings → **API** → copy the **Project URL** and **anon publi
 
 ```bash
 cd mobile
-cp .env.example .env
+cp .env .env
 # edit .env with your URL + anon key
 ```
 
