@@ -1,6 +1,10 @@
 // VITAL AI coach — the ONLY place the AI key lives.
 // Deploy: supabase functions deploy coach --project-ref <ref>
-// Set the key as a secret: supabase secrets set OPENAI_API_KEY=sk-...
+// AI provider (first set wins):
+//   supabase secrets set OPENROUTER_API_KEY=sk-or-...   # OpenRouter (any model)
+//   supabase secrets set OPENAI_API_KEY=sk-...          # OpenAI directly
+// Optional: supabase secrets set AI_MODEL=openai/gpt-4o-mini
+// With no key at all the function answers with built-in coaching rules.
 //
 // The client calls this with the user's Supabase JWT; the function reads the
 // user's real stats from Postgres (RLS applies through the user's token),
@@ -78,16 +82,37 @@ Deno.serve(async (req) => {
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.body }));
 
     let reply: string;
-    const key = Deno.env.get('OPENAI_API_KEY');
-    if (!key) {
+    // Prefer OpenRouter when its key is set; else OpenAI; else built-in rules.
+    const orKey = Deno.env.get('OPENROUTER_API_KEY');
+    const oaKey = Deno.env.get('OPENAI_API_KEY');
+    const ai = orKey
+      ? {
+          url: 'https://openrouter.ai/api/v1/chat/completions',
+          key: orKey,
+          model: Deno.env.get('AI_MODEL') ?? 'openai/gpt-4o-mini',
+          extra: { 'HTTP-Referer': 'https://vital.app', 'X-Title': 'VITAL' } as Record<string, string>,
+        }
+      : oaKey
+        ? {
+            url: 'https://api.openai.com/v1/chat/completions',
+            key: oaKey,
+            model: Deno.env.get('AI_MODEL') ?? 'gpt-4o-mini',
+            extra: {},
+          }
+        : null;
+    if (!ai) {
       reply = rulesReply(userMessage, facts);
     } else {
       try {
-        const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        const r = await fetch(ai.url, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${ai.key}`,
+            ...ai.extra,
+          },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: ai.model,
             messages: [
               { role: 'system', content: system },
               ...turns,
