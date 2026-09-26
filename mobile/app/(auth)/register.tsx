@@ -1,7 +1,7 @@
 /* Create account. The name travels as signup metadata; a server trigger
    turns it into the profile row. */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -10,7 +10,7 @@ import { C, screen } from '../../src/design';
 import { useAuth } from '../../src/auth';
 
 export default function RegisterScreen() {
-  const { signUp } = useAuth();
+  const { signUp, session } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +18,13 @@ export default function RegisterScreen() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // If signup returns a session (email confirmation off), go straight in.
+  // With confirmation on there is no session yet — the info message below
+  // stays on screen and the user signs in from the login screen afterwards.
+  useEffect(() => {
+    if (session) router.replace('/');
+  }, [session]);
 
   async function submit() {
     if (password !== confirm) {
