@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { C, card as cardStyle, screen, sectionLabel, subtitle, title } from '../../src/design';
 import { useAuth } from '../../src/auth';
+import { usePlan } from '../../src/planStore';
 import { useReminders } from '../../src/useReminders';
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -22,34 +23,28 @@ function StatsTargetsCard() {
   const { profile, saveProfile } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [height, setHeight] = useState(profile?.height_cm != null ? String(profile.height_cm) : '');
+  const [weight, setWeight] = useState(profile?.weight_kg != null ? String(profile.weight_kg) : '');
   const [age, setAge] = useState(profile?.age != null ? String(profile.age) : '');
   const [gender, setGender] = useState(profile?.gender ?? '');
-  const [kcal, setKcal] = useState(String(profile?.kcal_target ?? 2200));
-  const [water, setWater] = useState(String(profile?.water_target ?? 8));
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function save() {
     const h = Number.parseFloat(height.replace(',', '.'));
+    const w = Number.parseFloat(weight.replace(',', '.'));
     const a = Number.parseInt(age, 10);
-    const k = Number.parseInt(kcal, 10);
-    const w = Number.parseInt(water, 10);
 
     if (height && (!Number.isFinite(h) || h < 120 || h > 230)) {
       setErr('Height should be 120–230 cm');
       return;
     }
+    if (weight && (!Number.isFinite(w) || w < 30 || w > 300)) {
+      setErr('Weight should be 30–300 kg');
+      return;
+    }
     if (age && (!Number.isFinite(a) || a < 14 || a > 100)) {
       setErr('Age should be 14–100');
-      return;
-    }
-    if (!Number.isFinite(k) || k < 800 || k > 6000) {
-      setErr('Calorie target should be 800–6000');
-      return;
-    }
-    if (!Number.isFinite(w) || w < 2 || w > 20) {
-      setErr('Water target should be 2–20 glasses');
       return;
     }
 
@@ -58,10 +53,9 @@ function StatsTargetsCard() {
     const { error } = await saveProfile({
       name: name.trim(),
       height_cm: height ? Math.round(h) : null,
+      weight_kg: weight ? Math.round(w * 10) / 10 : null,
       age: age ? a : null,
       gender,
-      kcal_target: k,
-      water_target: w,
     });
     setBusy(false);
     if (error) {
@@ -97,8 +91,8 @@ function StatsTargetsCard() {
           <TextInput value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder="178" placeholderTextColor={C.muted} style={field} />
         </View>
         <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ color: C.muted, fontSize: 12 }}>Age</Text>
-          <TextInput value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="32" placeholderTextColor={C.muted} style={field} />
+          <Text style={{ color: C.muted, fontSize: 12 }}>Weight (kg)</Text>
+          <TextInput value={weight} onChangeText={setWeight} keyboardType="decimal-pad" placeholder="74.5" placeholderTextColor={C.muted} style={field} />
         </View>
       </View>
 
@@ -131,16 +125,14 @@ function StatsTargetsCard() {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ color: C.muted, fontSize: 12 }}>Calorie target</Text>
-          <TextInput value={kcal} onChangeText={setKcal} keyboardType="number-pad" style={field} />
-        </View>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ color: C.muted, fontSize: 12 }}>Water (glasses)</Text>
-          <TextInput value={water} onChangeText={setWater} keyboardType="number-pad" style={field} />
-        </View>
+      <View style={{ gap: 8 }}>
+        <Text style={{ color: C.muted, fontSize: 12 }}>Age</Text>
+        <TextInput value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="32" placeholderTextColor={C.muted} style={field} />
       </View>
+
+      <Text style={{ color: C.muted, fontSize: 11 }}>
+        Calorie and water targets are set by your AI coach from these stats.
+      </Text>
 
       {err ? <Text style={{ color: C.danger, fontSize: 12 }}>{err}</Text> : null}
       {saved ? <Text style={{ color: C.mint, fontSize: 12 }}>Saved ✓</Text> : null}
@@ -158,6 +150,63 @@ function StatsTargetsCard() {
       >
         <Text style={{ color: '#04120C', fontWeight: '800', fontSize: 15 }}>Save</Text>
       </Pressable>
+    </View>
+  );
+}
+
+function AiTargetsCard() {
+  const { profile } = useAuth();
+  const { generating, aiPlan, regenerate } = usePlan();
+  const [result, setResult] = useState<string | null>(null);
+  const [goal, setGoal] = useState('');
+
+  async function run() {
+    const res = await regenerate(goal.trim() || undefined);
+    setResult(res.ok ? 'New plan ready ✓' : `Couldn't regenerate: ${res.error ?? 'try again'}`);
+    setTimeout(() => setResult(null), 4000);
+  }
+
+  return (
+    <View style={[cardStyle, { gap: 10 }]}>
+      <Text style={sectionLabel}>AI coach targets</Text>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 12, alignItems: 'center' }}>
+          <Text style={{ color: C.mint, fontSize: 20, fontWeight: '800' }}>{profile?.kcal_target ?? '—'}</Text>
+          <Text style={{ color: C.muted, fontSize: 11 }}>kcal / day</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 12, alignItems: 'center' }}>
+          <Text style={{ color: C.mint, fontSize: 20, fontWeight: '800' }}>{profile?.water_target ?? '—'}</Text>
+          <Text style={{ color: C.muted, fontSize: 11 }}>glasses / day</Text>
+        </View>
+      </View>
+      <Text style={{ color: C.muted, fontSize: 11 }}>
+        {aiPlan
+          ? 'Set from your stats when your coach built your plan.'
+          : 'Sign-in + stats save a plan automatically. Changes to stats apply next time you regenerate.'}
+      </Text>
+      <TextInput
+        value={goal}
+        onChangeText={setGoal}
+        placeholder="Optional goal, e.g. lose 4kg by December"
+        placeholderTextColor={C.muted}
+        style={{ color: C.text, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }}
+      />
+      <Pressable
+        onPress={run}
+        disabled={generating}
+        style={({ pressed }) => ({
+          backgroundColor: C.mint,
+          borderRadius: 12,
+          paddingVertical: 13,
+          alignItems: 'center',
+          opacity: generating || pressed ? 0.8 : 1,
+        })}
+      >
+        <Text style={{ color: '#04120C', fontWeight: '800', fontSize: 15 }}>
+          {generating ? 'Coach is planning…' : 'Regenerate my plan'}
+        </Text>
+      </Pressable>
+      {result ? <Text style={{ color: generating ? C.muted : C.mint, fontSize: 12 }}>{result}</Text> : null}
     </View>
   );
 }
@@ -222,6 +271,8 @@ function ProfileBody() {
       </View>
 
       <StatsTargetsCard />
+
+      <AiTargetsCard />
 
       <RemindersCard />
 
