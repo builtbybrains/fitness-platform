@@ -28,10 +28,15 @@ export type Profile = {
   height_cm: number | null;
   age: number | null;
   gender: string; // '' | 'male' | 'female'
+  weight_kg: number | null;
 };
 
 type AuthCtx = {
   ready: boolean;
+  /** True once the signed-in user's profile fetch has settled (or there is
+      no cloud user). The entry gate waits for this before routing so the
+      onboarding redirect can't lose a race with the profile fetch. */
+  profileLoaded: boolean;
   userId: string | null;
   email: string | null;
   session: Session | null;
@@ -50,6 +55,7 @@ type AuthCtx = {
     height_cm?: number | null;
     age?: number | null;
     gender?: string;
+    weight_kg?: number | null;
   }) => Promise<{ error?: string }>;
 };
 
@@ -63,10 +69,12 @@ const fallbackProfile = (id: string, name: string): Profile => ({
   height_cm: null,
   age: null,
   gender: '',
+  weight_kg: null,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [offline, setOffline] = useState(false);
@@ -166,12 +174,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load the profile row whenever the signed-in user changes.
   const cloudUserId = session?.user?.id ?? null;
   useEffect(() => {
-    if (!supabaseConfigured) return;
+    if (!supabaseConfigured) {
+      setProfileLoaded(true);
+      return;
+    }
     if (!cloudUserId) {
       if (!localMode) setProfile(null);
+      setProfileLoaded(true);
       return;
     }
     let alive = true;
+    setProfileLoaded(false);
     (async () => {
       const metaName = (session?.user.user_metadata?.name as string | undefined) ?? '';
       try {
@@ -180,8 +193,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(data ? (data as Profile) : fallbackProfile(cloudUserId, metaName));
       } catch {
         if (alive) setProfile(fallbackProfile(cloudUserId, metaName));
+      } finally {
+        if (alive) setProfileLoaded(true);
       }
     })();
+    return () => {
+      alive = false;
+    };
   }, [cloudUserId, localMode, session]);
 
   async function signUp(email: string, password: string, name: string) {
@@ -217,8 +235,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         /* already signed out */
       }
     }
+    // Leave local mode (unless Supabase was never configured): the gate only
+    // routes to the login screen when localMode is off, so without this a
+    // past "continue without an account" would make sign-out do nothing.
+    await AsyncStorage.removeItem('vital.localMode').catch(() => {});
     setSession(null);
     setProfile(null);
+    setLocalMode(!supabaseConfigured);
     // Keep vital.localUser: the local identity (and its data) survives so
     // "continue without an account" still sees the same plan.
   }
@@ -247,6 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     height_cm?: number | null;
     age?: number | null;
     gender?: string;
+    weight_kg?: number | null;
   }) {
     setProfile((prev) => (prev ? ({ ...prev, ...patch } as Profile) : prev));
     if (localMode || !cloudUserId) {
@@ -278,9 +302,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const email = session?.user?.email ?? null;
 
   const value = useMemo<AuthCtx>(
-    () => ({ ready, userId, email, session, profile, offline, localMode, signUp, signIn, signOut, continueOffline, refreshProfile, saveProfile }),
+    () => ({ ready, profileLoaded, userId, email, session, profile, offline, localMode, signUp, signIn, signOut, continueOffline, refreshProfile, saveProfile }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ready, userId, email, session, profile, offline, localMode],
+    [ready, profileLoaded, userId, email, session, profile, offline, localMode],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
