@@ -1,15 +1,15 @@
-/* First-run personal stats: height, age, gender. Saves to the profile and
-   suggests a calorie target from the Mifflin-St Jeor estimate. */
+/* First-run personal stats: height, weight, age, gender. Saves the profile,
+   then asks the AI planner for targets + a full week plan (rules-based
+   fallback when the planner is unavailable). */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { C, card as cardStyle, screen, sectionLabel, title } from '../../src/design';
 import { useAuth } from '../../src/auth';
-import { tdeeSuggestion } from '../../src/stats';
-import { fetchWeights } from '../../src/data';
+import { usePlan } from '../../src/planStore';
 
 const GENDERS = [
   { id: 'male', label: 'Male' },
@@ -18,36 +18,25 @@ const GENDERS = [
 
 export default function StatsScreen() {
   const { profile, saveProfile, userId } = useAuth();
+  const { regenerate, generating } = usePlan();
   const [height, setHeight] = useState(profile?.height_cm ? String(profile.height_cm) : '');
+  const [weight, setWeight] = useState(profile?.weight_kg ? String(profile.weight_kg) : '');
   const [age, setAge] = useState(profile?.age ? String(profile.age) : '');
   const [gender, setGender] = useState(profile?.gender ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [suggestion, setSuggestion] = useState<number | null>(null);
-
-  // A calorie suggestion needs a weight; pull the latest logged one.
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    fetchWeights(userId).then(({ entries }) => {
-      if (!alive) return;
-      const latest = entries?.length ? entries[entries.length - 1].kg : null;
-      const h = Number.parseFloat(height.replace(',', '.'));
-      const a = Number.parseInt(age, 10);
-      setSuggestion(
-        tdeeSuggestion({ gender, age: Number.isFinite(a) ? a : null, height_cm: Number.isFinite(h) ? h : null, latestKg: latest }),
-      );
-    });
-    return () => {
-      alive = false;
-    };
-  }, [userId, height, age, gender]);
+  const [phase, setPhase] = useState<'form' | 'saving' | 'planning'>('form');
 
   async function submit() {
     const h = Number.parseFloat(height.replace(',', '.'));
+    const w = Number.parseFloat(weight.replace(',', '.'));
     const a = Number.parseInt(age, 10);
     if (!Number.isFinite(h) || h < 120 || h > 230) {
       setErr('Height should be between 120 and 230 cm');
+      return;
+    }
+    if (!Number.isFinite(w) || w < 30 || w > 300) {
+      setErr('Weight should be between 30 and 300 kg');
       return;
     }
     if (!Number.isFinite(a) || a < 14 || a > 100) {
@@ -60,14 +49,28 @@ export default function StatsScreen() {
     }
     setErr(null);
     setBusy(true);
+    setPhase('planning');
+
+    // The AI planner recomputes targets from these stats; saving them first
+    // (weight also seeds the weight log) keeps every screen consistent.
     await saveProfile({
       height_cm: Math.round(h),
+      weight_kg: Math.round(w * 10) / 10,
       age: a,
       gender,
-      ...(suggestion != null ? { kcal_target: suggestion } : {}),
     });
+
+    let planOk = false;
+    if (userId) {
+      const res = await regenerate();
+      planOk = res.ok;
+    }
     setBusy(false);
+    setPhase('form');
     router.replace('/(tabs)');
+    if (!planOk) {
+      // The fallback week is already in place; targets stay at profile defaults.
+    }
   }
 
   function skip() {
@@ -84,6 +87,8 @@ export default function StatsScreen() {
     fontSize: 15,
   } as const;
 
+  const planning = phase === 'planning';
+
   return (
     <SafeAreaView style={screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: 24, gap: 16, paddingBottom: 40 }}>
@@ -91,21 +96,35 @@ export default function StatsScreen() {
           <Text style={sectionLabel}>VITAL · SETUP</Text>
           <Text style={title}>About you</Text>
           <Text style={{ color: C.muted, fontSize: 14, lineHeight: 21 }}>
-            Three quick facts so your targets fit you — not the average person.
+            Four quick facts. Your coach uses them to set your calorie and water
+            targets and build your first training week — no manual math.
           </Text>
         </View>
 
         <View style={[cardStyle, { gap: 14 }]}>
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>Height (cm)</Text>
-            <TextInput
-              value={height}
-              onChangeText={setHeight}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 178"
-              placeholderTextColor={C.muted}
-              style={field}
-            />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>Height (cm)</Text>
+              <TextInput
+                value={height}
+                onChangeText={setHeight}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 178"
+                placeholderTextColor={C.muted}
+                style={field}
+              />
+            </View>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>Weight (kg)</Text>
+              <TextInput
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 74.5"
+                placeholderTextColor={C.muted}
+                style={field}
+              />
+            </View>
           </View>
 
           <View style={{ gap: 8 }}>
@@ -145,20 +164,10 @@ export default function StatsScreen() {
               })}
             </View>
             <Text style={{ color: C.muted, fontSize: 12 }}>
-              Used only to calibrate calorie math — never shared.
+              Used only to calibrate your plan — never shared.
             </Text>
           </View>
         </View>
-
-        {suggestion != null ? (
-          <View style={[cardStyle, { gap: 6 }]}>
-            <Text style={sectionLabel}>Suggested target</Text>
-            <Text style={{ color: C.text, fontSize: 15, lineHeight: 22 }}>
-              Around <Text style={{ color: C.mint, fontWeight: '800' }}>{suggestion} kcal</Text> a
-              day for you, based on your stats and training load. You can change it anytime in Profile.
-            </Text>
-          </View>
-        ) : null}
 
         {err ? <Text style={{ color: C.danger, fontSize: 13 }}>{err}</Text> : null}
 
@@ -174,15 +183,21 @@ export default function StatsScreen() {
           })}
         >
           <Text style={{ color: '#04120C', fontWeight: '800', fontSize: 16 }}>
-            {busy ? 'Saving…' : 'Save and start'}
+            {planning ? 'Building your plan…' : 'Save and build my plan'}
           </Text>
         </Pressable>
 
-        <Pressable onPress={skip}>
-          <Text style={{ color: C.muted, textAlign: 'center', fontSize: 14 }}>
-            I'll do this later
+        {planning ? (
+          <Text style={{ color: C.muted, fontSize: 12, textAlign: 'center' }}>
+            Your AI coach is setting targets and scheduling your week — this takes a moment.
           </Text>
-        </Pressable>
+        ) : (
+          <Pressable onPress={skip}>
+            <Text style={{ color: C.muted, textAlign: 'center', fontSize: 14 }}>
+              I'll do this later
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
