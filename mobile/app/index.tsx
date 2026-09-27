@@ -11,9 +11,9 @@ import { useAuth } from '../src/auth';
 import { supabaseConfigured } from '../supabase.config';
 
 export default function Gate() {
-  const { ready, session, profile, localMode } = useAuth();
+  const { ready, profileLoaded, session, profile, localMode } = useAuth();
 
-  if (!ready) {
+  if (!ready || (session && !profileLoaded)) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
         <Text style={{ color: C.mint, fontSize: 30, fontWeight: '900', letterSpacing: 6 }}>VITAL</Text>
@@ -28,7 +28,7 @@ export default function Gate() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  const needsStats = profile != null && (profile.height_cm == null || profile.age == null || !profile.gender);
+  const needsStats = profile != null && (profile.height_cm == null || profile.weight_kg == null || profile.age == null || !profile.gender);
   if (needsStats) return <Redirect href="/(onboarding)/stats" />;
 
   return <Redirect href="/(tabs)" />;
