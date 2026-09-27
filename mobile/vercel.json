@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install --no-audit --no-fund",
-  "buildCommand": "npx expo export --platform web && sed -i 's/import\\.meta\\.env/undefined/g' dist/_expo/static/js/web/*.js",
+  "buildCommand": "npx expo export --platform web && node -e \"const fs = require('fs'), path = require('path'); const dir = 'dist/_expo/static/js/web'; if (fs.existsSync(dir)){ fs.readdirSync(dir).forEach(f => { if (f.endsWith('.js')) { const p = path.join(dir, f); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/import\\.meta\\.env/g, 'undefined')); }); }\"",
   "outputDirectory": "dist",
   "rewrites": [
     {
