@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 
 import { C, screen, sectionLabel } from '../../src/design';
 import { useAuth } from '../../src/auth';
+import { VitalLogo } from '../../src/components/VitalLogo';
 
 export default function LoginScreen() {
   const { signIn, continueOffline, session, localMode, ready } = useAuth();
@@ -35,8 +36,11 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={screen} edges={['top', 'bottom']}>
       <View style={{ flex: 1, padding: 24, justifyContent: 'center', gap: 18 }}>
-        <View style={{ gap: 6 }}>
-          <Text style={{ color: C.mint, fontSize: 34, fontWeight: '900', letterSpacing: 8 }}>VITAL</Text>
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <VitalLogo size={44} />
+            <Text style={{ color: C.mint, fontSize: 32, fontWeight: '900', letterSpacing: 8 }}>VITAL</Text>
+          </View>
           <Text style={{ color: C.muted, fontSize: 14 }}>AI diet & personal training, in your pocket.</Text>
         </View>
 
