@@ -13,6 +13,7 @@ create table if not exists public.profiles (
   height_cm real,
   age int,
   gender text not null default '',
+  weight_kg real,
   created_at timestamptz not null default now()
 );
 
@@ -55,6 +56,23 @@ create index if not exists coach_messages_user_idx
 alter table public.profiles add column if not exists height_cm real;
 alter table public.profiles add column if not exists age int;
 alter table public.profiles add column if not exists gender text not null default '';
+alter table public.profiles add column if not exists weight_kg real;
+
+-- ─────────────────────── AI-generated plans ───────────────────────
+-- One active plan per user. Full payload (workout days, meals, targets) as
+-- JSON; goal columns extracted for quick reads and RLS-safe access.
+create table if not exists public.ai_plans (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  plan jsonb not null,
+  kcal_target int,
+  water_target int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.ai_plans enable row level security;
+create policy "own ai plan" on public.ai_plans
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Weight history index for the Progress tab's chart.
 create index if not exists weights_user_day_idx
@@ -102,3 +120,16 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ─────────────────────── privileges ───────────────────────
+-- RLS restricts which ROWS each role can touch; these GRANTs let the API
+-- reach the TABLES at all. Some newer projects don't grant these when tables
+-- are created via the SQL Editor, which shows up as HTTP 403 /
+-- "permission denied for table ..." on every request.
+grant usage on schema public to anon, authenticated, service_role;
+grant all on public.profiles       to anon, authenticated, service_role;
+grant all on public.plan_days      to anon, authenticated, service_role;
+grant all on public.water          to anon, authenticated, service_role;
+grant all on public.weights        to anon, authenticated, service_role;
+grant all on public.coach_messages to anon, authenticated, service_role;
+grant all on public.ai_plans       to anon, authenticated, service_role;
