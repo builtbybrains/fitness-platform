@@ -14,7 +14,7 @@ import React, {
 } from 'react';
 
 import { buildWeek, PlanDay, PlanDayDone } from './planData';
-import { fetchWeekDone, saveDayProgress } from './data';
+import { clearWeekProgress, fetchWeekDone, saveDayProgress } from './data';
 import { applyPlanToWeek, fetchStoredPlan, generateAiPlan, StoredPlan } from './aiPlan';
 import { useAuth } from './auth';
 
@@ -90,6 +90,10 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       setGenerating(true);
       try {
         const plan = await generateAiPlan(goal);
+        // A new plan replaces the old one: old checkmarks don't map onto the
+        // new exercises/meals, so the week starts with a clean checklist.
+        setBaseDays((prev) => prev.map((d) => ({ ...d, done: { workout: false, exercises: [], meals: [] } })));
+        await clearWeekProgress(userId!, baseDays[0]?.id ?? '', baseDays[6]?.id ?? '');
         setAiPlan(plan); // the days memo applies it to the week immediately
         // The planner mirrors kcal/water targets onto the profile; pick them up
         // so the Today ring and water card show the new targets right away.
@@ -101,7 +105,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setGenerating(false);
       }
     },
-    [session, refreshProfile],
+    [session, userId, refreshProfile, baseDays],
   );
 
   const patchDay = useCallback(
