@@ -220,9 +220,11 @@ async function generatePlan(
             { role: 'system', content: SYSTEM },
             { role: 'user', content: userMsg },
           ],
-          max_tokens: 2600,
+          max_tokens: 3000,
           temperature: 0.7,
-          response_format: { type: 'json_object' },
+          // Reasoning models otherwise spend the token budget on
+          // chain-of-thought; this makes them answer with the plan directly.
+          reasoning: { enabled: false },
         }),
       });
       if (!r.ok) throw new Error(`AI ${r.status}`);
@@ -239,7 +241,12 @@ async function generatePlan(
 
 function parsePlan(raw: string, stats: Record<string, unknown>): WeekPlan | null {
   try {
-    const p = JSON.parse(raw);
+    // Models sometimes wrap the JSON in prose or code fences — extract the
+    // outermost object before parsing.
+    const s = raw.indexOf('{');
+    const e = raw.lastIndexOf('}');
+    if (s === -1 || e <= s) return null;
+    const p = JSON.parse(raw.slice(s, e + 1));
     if (!Array.isArray(p?.days) || p.days.length !== 7) return null;
     const slots = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
     const days: PlanDay[] = p.days.map((d: any) => {
