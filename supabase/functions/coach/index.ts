@@ -118,8 +118,11 @@ Deno.serve(async (req) => {
               ...turns,
               { role: 'user', content: userMessage },
             ],
-            max_tokens: 220,
+            max_tokens: 320,
             temperature: 0.6,
+            // Reasoning models otherwise spend the token budget (and leak)
+            // chain-of-thought; this makes them answer directly.
+            reasoning: { enabled: false },
           }),
         });
         if (!r.ok) throw new Error(`OpenAI ${r.status}`);
