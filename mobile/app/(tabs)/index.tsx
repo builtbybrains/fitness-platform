@@ -12,6 +12,7 @@ import { usePlan } from '../../src/planStore';
 import { PlanWorkout } from '../../src/planData';
 import { workoutStreak } from '../../src/streak';
 import { useWater } from '../../src/useWater';
+import { useFoodLogs } from '../../src/foodLogs';
 import { useAuth } from '../../src/auth';
 
 function StreakChip({ count }: { count: number }) {
@@ -132,16 +133,66 @@ function TrainingCard() {
   );
 }
 
+function CoachTipCard({
+  workoutDone,
+  mealsDone,
+  mealsTotal,
+  waterCount,
+  waterTarget,
+  kcalRemaining,
+}: {
+  workoutDone: boolean;
+  mealsDone: number;
+  mealsTotal: number;
+  waterCount: number;
+  waterTarget: number;
+  kcalRemaining: number;
+}) {
+  const router = useRouter();
+  // Pick the most useful nudge from the day's real state.
+  let tip: string;
+  if (!workoutDone) {
+    tip = kcalRemaining < 400
+      ? 'Workout still open — even half of it counts. Log it and close the day strong.'
+      : 'Workout is still open. Smallest next step: one set of the first exercise.';
+  } else if (waterCount < waterTarget) {
+    tip = `Training done ✓ — ${waterTarget - waterCount} glass${waterTarget - waterCount === 1 ? '' : 'es'} of water left. Finish it before 6pm.`;
+  } else if (mealsDone < mealsTotal) {
+    tip = `Workout ✓, water ✓. ${mealsTotal - mealsDone} meal${mealsTotal - mealsDone === 1 ? '' : 's'} left — keep the protein anchored.`;
+  } else {
+    tip = kcalRemaining > 600
+      ? `Everything logged ✓ — ${kcalRemaining} kcal still on the table. A protein-focused extra snack is fair game.`
+      : 'All boxes ticked ✓ — textbook day. Recovery is the work now: sleep is the next workout.';
+  }
+  return (
+    <Pressable
+      onPress={() => router.push('/(tabs)/coach')}
+      style={({ pressed }) => [
+        cardStyle,
+        { flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.82 : 1 },
+      ]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={sectionLabel}>Coach</Text>
+        <Text style={{ color: C.text, fontSize: 14, marginTop: 4 }}>{tip}</Text>
+      </View>
+      <Text style={{ color: C.mint, fontSize: 20 }}>✦</Text>
+    </Pressable>
+  );
+}
+
 function CalorieRing({
   total,
   target,
   remaining,
   progress,
+  photoKcal,
 }: {
   total: number;
   target: number;
   remaining: number;
   progress: number;
+  photoKcal: number;
 }) {
   return (
     <View style={[cardStyle, { alignItems: 'center', paddingVertical: 22, gap: 16 }]}>
@@ -150,6 +201,11 @@ function CalorieRing({
         <RingValue value={`${total}`} label={`of ${target.toLocaleString()} kcal`} />
       </Ring>
       <Text style={{ color: C.muted, fontSize: 13 }}>{remaining} kcal remaining</Text>
+      {photoKcal > 0 ? (
+        <Text style={{ color: C.mint, fontSize: 12, fontWeight: '700', marginTop: -8 }}>
+          incl. {photoKcal} kcal from photo log
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -236,6 +292,9 @@ export default function TodayTab() {
   const kcalEaten = meals
     .filter((m) => doneMeals.includes(m.slot))
     .reduce((a, m) => a + m.kcal, 0);
+  // AI photo logs (Coach tab) count toward the same ring.
+  const food = useFoodLogs();
+  const totalEaten = kcalEaten + food.kcal;
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
@@ -245,10 +304,11 @@ export default function TodayTab() {
         <TrainingCard />
 
         <CalorieRing
-          total={kcalEaten}
+          total={totalEaten}
           target={kcalTarget}
-          remaining={Math.max(0, kcalTarget - kcalEaten)}
-          progress={kcalTarget > 0 ? kcalEaten / kcalTarget : 0}
+          remaining={Math.max(0, kcalTarget - totalEaten)}
+          progress={kcalTarget > 0 ? totalEaten / kcalTarget : 0}
+          photoKcal={food.kcal}
         />
 
         <View style={[cardStyle, { gap: 10 }]}>
@@ -304,15 +364,14 @@ export default function TodayTab() {
 
         <WaterCard count={water.count} target={water.target} onAdd={water.add} onSub={water.sub} />
 
-        <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={sectionLabel}>Coach</Text>
-            <Text style={{ color: C.text, fontSize: 14, marginTop: 4 }}>
-              “Protein is on track. Push water before 6pm.”
-            </Text>
-          </View>
-          <Text style={{ color: C.mint, fontSize: 20 }}>✦</Text>
-        </View>
+        <CoachTipCard
+          workoutDone={day?.done.workout ?? false}
+          mealsDone={doneMeals.length}
+          mealsTotal={meals.length}
+          waterCount={water.count}
+          waterTarget={water.target}
+          kcalRemaining={Math.max(0, kcalTarget - totalEaten)}
+        />
 
         <Text style={{ color: C.muted, fontSize: 11, textAlign: 'center', marginTop: 4 }}>
           {offline ? 'Offline mode — changes will sync when you sign in' : 'Synced to your account'}
