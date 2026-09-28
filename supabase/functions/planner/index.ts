@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       }).eq('id', user.id);
     }
 
-    return new Response(JSON.stringify({ plan }), {
+    return new Response(JSON.stringify({ plan, stored: !upErr, storeError: upErr?.message ?? null }), {
       headers: { ...CORS, 'content-type': 'application/json' },
     });
   } catch (e) {
