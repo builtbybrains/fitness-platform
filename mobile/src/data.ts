@@ -85,6 +85,24 @@ export async function fetchDayDone(
   };
 }
 
+/** Wipe a week's completion rows. Used when a new plan replaces the old one:
+   old checkmarks don't map onto the new exercises/meals. */
+export async function clearWeekProgress(
+  userId: string,
+  startId: string,
+  endId: string,
+): Promise<boolean> {
+  await saveLocal(userId, 'week', {});
+  if (!supabaseConfigured) return false;
+  const { error } = await supabase
+    .from('plan_days')
+    .delete()
+    .eq('user_id', userId)
+    .gte('day', startId)
+    .lte('day', endId);
+  return !error;
+}
+
 /** Read-modify-write so partial updates never wipe sibling fields. */
 export async function saveDayProgress(
   userId: string,
