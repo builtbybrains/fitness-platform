@@ -9,6 +9,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { C } from '../src/design';
 import { useAuth } from '../src/auth';
 import { supabaseConfigured } from '../supabase.config';
+import { VitalLogo } from '../src/components/VitalLogo';
 
 export default function Gate() {
   const { ready, profileLoaded, session, profile, localMode } = useAuth();
@@ -16,7 +17,8 @@ export default function Gate() {
   if (!ready || (session && !profileLoaded)) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-        <Text style={{ color: C.mint, fontSize: 30, fontWeight: '900', letterSpacing: 6 }}>VITAL</Text>
+        <VitalLogo size={72} />
+        <Text style={{ color: C.mint, fontSize: 26, fontWeight: '900', letterSpacing: 8 }}>VITAL</Text>
         <ActivityIndicator color={C.mint} />
       </View>
     );
