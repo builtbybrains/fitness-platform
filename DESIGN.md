@@ -90,7 +90,7 @@ Rules:
 - App: load with `@expo-google-fonts/sora` and `@expo-google-fonts/inter` via `expo-font`;
   hold the splash screen until loaded, fall back to system on failure.
 - Scale ratio about 1.25. Body 16px minimum on phones. Headlines tight (-0.02em), the
-  `BUILD YOUR BEST.` tagline wide (+0.3em, caps, Light or Regular).
+  `BUILD YOUR BEST.` tagline wide (about +0.5em as measured on the deck, caps, Light or Regular).
 
 ## Shape, space, material
 

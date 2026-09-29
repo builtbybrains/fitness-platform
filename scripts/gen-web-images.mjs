@@ -1,21 +1,75 @@
 #!/usr/bin/env node
-/* Generates the website's raster brand images from the VITAL mark geometry
- * (broken ring, leaves, athlete) — pure Node, no image dependencies.
+/* Rasterises the BUILT brand images from the vector sources in assets/img/.
  *
- *   assets/img/og-cover.png   1200x630  social share card (og:image / twitter:image)
- *   assets/img/icon-180.png    180x180  apple-touch-icon
+ *   assets/img/icon-180.png    180x180   apple-touch-icon (green B on Deep Black, opaque)
+ *   assets/img/og-cover.png   1200x630   social share card (og:image / twitter:image)
  *
- * Run: node scripts/gen-web-images.mjs
+ * With --mobile it also writes the Expo app icons into mobile/assets/:
+ *   icon.png 1024 (opaque), adaptive-icon.png + android-icon-foreground.png 1024
+ *   (transparent, B inside the 66dp safe zone), android-icon-background.png 1024
+ *   (solid), android-icon-monochrome.png 1024 (white B, transparent),
+ *   splash-icon.png 1024 (transparent), favicon.png 48.
+ *
+ * Sources: assets/img/mark.svg (the B path), assets/img/logo-tagline.svg,
+ * assets/img/favicon.svg, assets/img/athlete.jpg, and Inter Regular from
+ * mobile/node_modules/@expo-google-fonts/inter for the og-cover sentence.
+ *
+ * Needs (not a repo dependency; install it anywhere outside the repo):
+ *   playwright-core   e.g.  npm i --prefix /tmp/built-tools playwright-core
+ *                     then  BUILT_TOOLS_DIR=/tmp/built-tools node scripts/gen-web-images.mjs
+ *   a Chromium build  found under $PLAYWRIGHT_BROWSERS_PATH (chromium-*), or set
+ *                     CHROMIUM_PATH to the chrome binary. Never runs `playwright install`.
+ *
+ * Pixels are read back from a canvas and PNG-encoded here, so opaque images
+ * are written as true RGB (no alpha channel; App Store icons must not carry one).
+ *
+ * Run: node scripts/gen-web-images.mjs [--mobile]
  */
 import { deflateSync } from 'node:zlib';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'assets', 'img');
+const IMG = join(ROOT, 'assets', 'img');
+const MOBILE = join(ROOT, 'mobile', 'assets');
+const GREEN = '#A3FF3D';
+const BLACK = '#080808';
 
-/* ---------------- PNG encoder (RGBA, filter 0) ---------------- */
+/* ---------------- tooling lookup ---------------- */
+function loadPlaywright() {
+  const dirs = [process.env.BUILT_TOOLS_DIR, ROOT, join(ROOT, 'mobile')].filter(Boolean);
+  for (const d of dirs) {
+    try {
+      return createRequire(join(d, 'noop.js'))('playwright-core');
+    } catch { /* try the next one */ }
+  }
+  console.error('playwright-core not found. Install it outside the repo and point BUILT_TOOLS_DIR at it:\n' +
+    '  npm i --prefix /tmp/built-tools playwright-core\n' +
+    '  BUILT_TOOLS_DIR=/tmp/built-tools node scripts/gen-web-images.mjs');
+  process.exit(1);
+}
+function chromiumPath() {
+  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+  const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (!base || !existsSync(base)) return undefined;
+  const builds = readdirSync(base).filter((n) => /^chromium-\d+$/.test(n)).sort().reverse();
+  for (const b of builds) {
+    for (const sub of ['chrome-linux/chrome', 'chrome-linux64/chrome', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium']) {
+      const p = join(base, b, sub);
+      if (existsSync(p)) return p;
+    }
+  }
+  return undefined;
+}
+function findFont(rel) {
+  const dirs = [join(ROOT, 'mobile', 'node_modules'), process.env.BUILT_TOOLS_DIR && join(process.env.BUILT_TOOLS_DIR, 'node_modules')].filter(Boolean);
+  for (const d of dirs) if (existsSync(join(d, rel))) return join(d, rel);
+  throw new Error(`font not found: ${rel} (run npm install in mobile/)`);
+}
+
+/* ---------------- PNG encoder (RGB or RGBA, filter 0) ---------------- */
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -38,15 +92,44 @@ function chunk(type, data) {
   crc.writeUInt32BE(crc32(body));
   return Buffer.concat([len, body, crc]);
 }
-function pngEncode(w, h, rgba) {
+function pngEncode(w, h, rgba, { opaque }) {
+  const ch = opaque ? 3 : 4;
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(w, 0);
   ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
-  const raw = Buffer.alloc((w * 4 + 1) * h);
+  ihdr[8] = 8;
+  ihdr[9] = opaque ? 2 : 6;
+  const row = w * ch;
+  const px = Buffer.alloc(row * h);
+  for (let i = 0, d = 0; i < w * h; i++, d += ch) {
+    px[d] = rgba[i * 4]; px[d + 1] = rgba[i * 4 + 1]; px[d + 2] = rgba[i * 4 + 2];
+    if (!opaque) px[d + 3] = rgba[i * 4 + 3];
+  }
+  // per-row adaptive filter (None, Sub, Up, Paeth), smallest sum of |bytes| wins
+  const paeth = (a, b, c) => {
+    const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+    return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+  };
+  const raw = Buffer.alloc((row + 1) * h);
+  const cand = [0, 1, 2, 4].map(() => Buffer.alloc(row));
   for (let y = 0; y < h; y++) {
-    raw[y * (w * 4 + 1)] = 0;
-    rgba.copy(raw, y * (w * 4 + 1) + 1, y * w * 4, (y + 1) * w * 4);
+    const cur = px.subarray(y * row, (y + 1) * row);
+    const up = y ? px.subarray((y - 1) * row, y * row) : Buffer.alloc(row);
+    for (let x = 0; x < row; x++) {
+      const a = x >= ch ? cur[x - ch] : 0, b = up[x], c = x >= ch ? up[x - ch] : 0;
+      cand[0][x] = cur[x];
+      cand[1][x] = (cur[x] - a) & 0xff;
+      cand[2][x] = (cur[x] - b) & 0xff;
+      cand[3][x] = (cur[x] - paeth(a, b, c)) & 0xff;
+    }
+    let best = 0, bestSum = Infinity;
+    cand.forEach((buf, k) => {
+      let s = 0;
+      for (let x = 0; x < row; x++) s += buf[x] < 128 ? buf[x] : 256 - buf[x];
+      if (s < bestSum) { bestSum = s; best = k; }
+    });
+    raw[y * (row + 1)] = [0, 1, 2, 4][best];
+    cand[best].copy(raw, y * (row + 1) + 1);
   }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -56,171 +139,123 @@ function pngEncode(w, h, rgba) {
   ]);
 }
 
-/* ---------------- tiny vector kit (y-down screen space) ---------------- */
-const TAU = Math.PI * 2;
-const lerp = (a, b, t) => a + (b - a) * t;
-const mix = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
+/* ---------------- sources ---------------- */
+const dataUri = (file, mime) => `data:${mime};base64,${readFileSync(file).toString('base64')}`;
+const markSvg = readFileSync(join(IMG, 'mark.svg'), 'utf8');
+const MARK_D = markSvg.match(/<path[^>]*\sd="([^"]+)"/)[1];
+const MARK_W = 127.5, MARK_H = 100; // mark.svg viewBox
+const markUri = (fill) => 'data:image/svg+xml;base64,' + Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MARK_W} ${MARK_H}" width="${MARK_W * 8}" height="${MARK_H * 8}"><path fill="${fill}" d="${MARK_D}"/></svg>`,
+).toString('base64');
 
-function segDist(px, py, ax, ay, bx, by) {
-  const dx = bx - ax, dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
-  t = clamp01(t);
-  const x = ax + t * dx - px, y = ay + t * dy - py;
-  return Math.hypot(x, y);
-}
-function angleIn(px, py, cx, cy, a0deg, a1deg) {
-  // clockwise (increasing atan2 angle in y-down space) from a0 to a1
-  let a = (Math.atan2(py - cy, px - cx) * 180) / Math.PI;
-  const span = ((a1deg - a0deg) % 360 + 360) % 360;
-  const rel = ((a - a0deg) % 360 + 360) % 360;
-  return rel <= span;
-}
-const inCircle = (px, py, cx, cy, r) => (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
-const inLens = (px, py, ax, ay, bx, by, r) => inCircle(px, py, ax, ay, r) && inCircle(px, py, bx, by, r);
-
-/* ---------------- the VITAL mark, parameterised ---------------- */
-/* Draws into a shape list. Scale s maps the 64x64 logo viewBox to pixels;
-   ox/oy place the viewBox origin. Order follows logo.svg (ring, leaves,
-   midribs, athlete) so overlaps composite the same way. */
-function markShapes(s, ox, oy) {
-  const X = (x) => ox + x * s;
-  const Y = (y) => oy + y * s;
-  const W = (svgWidth) => (svgWidth / 2) * s; // stroke width -> capsule radius
-
-  return [
-    // broken ring — green arc (top-left), silver arc (right/bottom-right)
-    { hit: (x, y) => Math.abs(Math.hypot(x - X(32), y - Y(32)) - 26.4 * s) <= W(4) && angleIn(x, y, X(32), Y(32), 177.8, 305.7),
-      color: (x, y) => mix([0x14, 0x95, 0x4a], [0x9b, 0xf4, 0x57], clamp01((Y(32) - y) / (52 * s) + 0.5)) },
-    { hit: (x, y) => Math.abs(Math.hypot(x - X(32), y - Y(32)) - 26.4 * s) <= W(4) && angleIn(x, y, X(32), Y(32), 347.5, 119.3),
-      color: (x, y) => mix([0xff, 0xff, 0xff], [0x8b, 0x9a, 0xab], clamp01((y - Y(8)) / (52 * s))) },
-
-    // leaves (two-circle lenses) + midribs
-    { hit: (x, y) => inLens(x, y, X(6.6), Y(23.2), X(31.8), Y(47.3), 20 * s),
-      color: (x, y) => mix([0x9b, 0xf4, 0x57], [0x14, 0x95, 0x4a], clamp01(segDist(x, y, X(6.6), Y(23.2), X(31.8), Y(47.3)) / (34.9 * s))) },
-    { hit: (x, y) => segDist(x, y, X(6.6), Y(23.2), X(31.8), Y(47.3)) <= 3 && inLens(x, y, X(6.6), Y(23.2), X(31.8), Y(47.3), 20 * s),
-      color: () => [0x0b, 0x6f, 0x33], alpha: 0.5 },
-    { hit: (x, y) => inLens(x, y, X(7), Y(40.5), X(26.6), Y(57.2), 15 * s),
-      color: (x, y) => mix([0xae, 0xf8, 0x6e], [0x1e, 0xaa, 0x52], clamp01(segDist(x, y, X(7), Y(40.5), X(26.6), Y(57.2)) / (25.7 * s))) },
-    { hit: (x, y) => segDist(x, y, X(7), Y(40.5), X(26.6), Y(57.2)) <= 2.6 && inLens(x, y, X(7), Y(40.5), X(26.6), Y(57.2), 15 * s),
-      color: () => [0x0b, 0x6f, 0x33], alpha: 0.45 },
-
-    // athlete: head, body swoosh (tapered capsules), arm
-    { hit: (x, y) => inCircle(x, y, X(32.9), Y(17.2), 6.9 * s),
-      color: (x, y) => mix([0xff, 0xff, 0xff], [0xae, 0xbc, 0xcb], clamp01((y - Y(10)) / (14 * s))) },
-    { hit: (x, y) => segDist(x, y, X(40.6), Y(26.2), X(29), Y(42)) <= 7.5,
-      color: (x, y) => mix([0xff, 0xff, 0xff], [0xae, 0xbc, 0xcb], clamp01((y - Y(22)) / (36 * s))) },
-    { hit: (x, y) => segDist(x, y, X(29), Y(42), X(20), Y(52)) <= 9,
-      color: (x, y) => mix([0xff, 0xff, 0xff], [0xae, 0xbc, 0xcb], clamp01((y - Y(22)) / (36 * s))) },
-    { hit: (x, y) => segDist(x, y, X(20), Y(52), X(15.2), Y(58.8)) <= 6.5,
-      color: (x, y) => mix([0xff, 0xff, 0xff], [0xae, 0xbc, 0xcb], clamp01((y - Y(22)) / (36 * s))) },
-    { hit: (x, y) => segDist(x, y, X(36.4), Y(28.6), X(22.4), Y(51)) <= 4.5,
-      color: () => [0xff, 0xff, 0xff], alpha: 0.35 },
-    { hit: (x, y) => segDist(x, y, X(38.9), Y(31.3), X(51.4), Y(34.8)) <= W(7.4) || segDist(x, y, X(51.4), Y(34.8), X(46.3), Y(21.3)) <= W(7.4),
-      color: (x, y) => mix([0xff, 0xff, 0xff], [0xae, 0xbc, 0xcb], clamp01((y - Y(18)) / (20 * s))) },
-  ];
-}
-
-/* Blocky geometric caps for the VITAL wordmark — unit boxes, thick strokes. */
-const GLYPHS = {
-  V: [[[0, 0], [0.5, 1]], [[1, 0], [0.5, 1]]],
-  I: [[[0.5, 0], [0.5, 1]]],
-  T: [[[0, 0], [1, 0]], [[0.5, 0], [0.5, 1]]],
-  A: [[[0, 1], [0.5, 0]], [[0.5, 0], [1, 1]], [[0.22, 0.64], [0.78, 0.64]]],
-  L: [[[0, 0], [0, 1]], [[0, 1], [1, 1]]],
-};
-function wordmarkShapes(text, x0, y0, cap, gap) {
-  const shapes = [];
-  let x = x0;
-  for (const ch of text) {
-    const g = GLYPHS[ch];
-    const letterX = x; // capture per-letter: the hit closures must not see later mutations
-    if (!g) { x += cap; continue; }
-    for (const [[ax, ay], [bx, by]] of g) {
-      shapes.push({
-        hit: (px, py) => segDist(px, py, letterX + ax * cap, y0 + ay * cap, letterX + bx * cap, y0 + by * cap) <= cap * 0.085,
-        color: () => [0xee, 0xf3, 0xf8],
-      });
-    }
-    x += cap * 0.74 + gap;
-  }
-  return { shapes, endX: x };
-}
-
-/* ---------------- renderer ---------------- */
-function render(w, h, paint) {
-  const out = Buffer.alloc(w * h * 4);
-  const SS = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let r = 0, g = 0, b = 0;
-      for (const [sx, sy] of SS) {
-        const [cr, cg, cb] = paint(x + sx, y + sy);
-        r += cr; g += cg; b += cb;
+/* ---------------- in-page canvas renderer ---------------- */
+// `job` is serialisable: { w, h, bg, layers:[{img, x, y, w, h, fadeLeft?}], text?:{...} }
+async function renderJob(page, job) {
+  const b64 = await page.evaluate(async (job) => {
+    const load = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+    const c = document.createElement('canvas');
+    c.width = job.w; c.height = job.h;
+    const ctx = c.getContext('2d');
+    if (job.bg) { ctx.fillStyle = job.bg; ctx.fillRect(0, 0, job.w, job.h); }
+    for (const L of job.layers) {
+      const img = await load(L.img);
+      ctx.drawImage(img, L.x, L.y, L.w, L.h);
+      if (L.fadeLeft) {
+        // solid Deep Black at the photo's left edge, easing to clear over fadeLeft px
+        const g = ctx.createLinearGradient(L.x, 0, L.x + L.fadeLeft, 0);
+        g.addColorStop(0, 'rgba(8,8,8,1)');
+        g.addColorStop(0.45, 'rgba(8,8,8,0.55)');
+        g.addColorStop(1, 'rgba(8,8,8,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(L.x, L.y, L.fadeLeft, L.h);
       }
-      const i = (y * w + x) * 4;
-      out[i] = Math.round(r / SS.length);
-      out[i + 1] = Math.round(g / SS.length);
-      out[i + 2] = Math.round(b / SS.length);
-      out[i + 3] = 255;
     }
-  }
-  return out;
+    if (job.text) {
+      const t = job.text;
+      const face = new FontFace('BuiltInter', `url(${t.font})`);
+      await face.load();
+      document.fonts.add(face);
+      ctx.font = `${t.size}px BuiltInter`;
+      ctx.fillStyle = t.color;
+      ctx.textBaseline = 'alphabetic';
+      const words = t.body.split(' ');
+      let line = '', y = t.y;
+      for (const w of words) {
+        const test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > t.maxWidth && line) { ctx.fillText(line, t.x, y); line = w; y += t.lineHeight; }
+        else line = test;
+      }
+      if (line) ctx.fillText(line, t.x, y);
+    }
+    const px = ctx.getImageData(0, 0, job.w, job.h).data;
+    let s = '';
+    for (let i = 0; i < px.length; i += 0x8000) s += String.fromCharCode.apply(null, px.subarray(i, i + 0x8000));
+    return btoa(s);
+  }, job);
+  return Buffer.from(b64, 'base64');
 }
 
-/* ---------------- og-cover.png ---------------- */
-function genOgCover() {
+async function write(page, file, job, opaque) {
+  const rgba = await renderJob(page, job);
+  writeFileSync(file, pngEncode(job.w, job.h, rgba, { opaque }));
+  console.log(`${file.replace(ROOT + '/', '')}  ${job.w}x${job.h}${opaque ? '' : '  (transparent)'}`);
+}
+
+// the B centred in a square tile, `frac` of the tile width
+const markLayer = (size, frac, fill) => {
+  const w = size * frac, h = (w * MARK_H) / MARK_W;
+  return { img: markUri(fill), x: (size - w) / 2, y: (size - h) / 2, w, h };
+};
+
+/* ---------------- jobs ---------------- */
+async function webImages(page) {
+  await write(page, join(IMG, 'icon-180.png'), { w: 180, h: 180, bg: BLACK, layers: [markLayer(180, 0.6, GREEN)] }, true);
+
+  // og-cover: lockup + brand sentence left, the athlete right fading into black
   const W = 1200, H = 630;
-  const BG = [0x05, 0x07, 0x0a];
-  const glows = [
-    { cx: 250, cy: 130, R: 460, k: 0.42, c: [52, 229, 164] },
-    { cx: 1060, cy: 430, R: 520, k: 0.22, c: [121, 166, 255] },
-    { cx: 620, cy: 660, R: 420, k: 0.16, c: [52, 229, 164] },
-  ];
-  const shapes = [...markShapes(3.75, 90, 195)];
-  const word = wordmarkShapes('VITAL', 410, 265, 100, 26);
-  shapes.push(...word.shapes);
-  shapes.push({ hit: (x, y) => segDist(x, y, 410, 408, 910, 408) <= 4, color: () => [52, 229, 164], alpha: 0.9 });
-
-  const rgba = render(W, H, (x, y) => {
-    let c = BG;
-    for (const ginfo of glows) {
-      const d = Math.hypot(x - ginfo.cx, y - ginfo.cy);
-      if (d < ginfo.R) c = mix(c, ginfo.c, ginfo.k * (1 - d / ginfo.R) ** 2);
-    }
-    for (const sh of shapes) {
-      if (!sh.hit(x, y)) continue;
-      const a = sh.alpha ?? 1;
-      c = mix(c, sh.color(x, y), a);
-    }
-    return c;
-  });
-  writeFileSync(join(OUT, 'og-cover.png'), pngEncode(W, H, rgba));
-  console.log('og-cover.png  1200x630');
+  const photoH = H, photoW = Math.round((1116 / 1170) * photoH); // athlete.jpg is 1116x1170
+  const logoW = 470, logoH = (logoW * 140) / 482.4;           // logo-tagline.svg viewBox
+  const top = 150;
+  await write(page, join(IMG, 'og-cover.png'), {
+    w: W, h: H, bg: BLACK,
+    layers: [
+      { img: dataUri(join(IMG, 'athlete.jpg'), 'image/jpeg'), x: W - photoW, y: 0, w: photoW, h: photoH, fadeLeft: 110 },
+      { img: dataUri(join(IMG, 'logo-tagline.svg'), 'image/svg+xml'), x: 72, y: top, w: logoW, h: logoH },
+    ],
+    text: {
+      font: dataUri(findFont('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'), 'font/ttf'),
+      body: 'An all-in-one fitness and nutrition platform powered by AI coaching. Built to help you train, fuel, and become a stronger, healthier, better you.',
+      x: 74, y: top + logoH + 64, size: 22, lineHeight: 34, maxWidth: 440, color: '#E9E9E9',
+    },
+  }, true);
 }
 
-/* ---------------- icon-180.png (apple-touch-icon) ---------------- */
-function genIcon180() {
-  const W = 180, H = 180;
-  const BG = [0x05, 0x07, 0x0a];
-  const s = 2.4, ox = (W - 64 * s) / 2, oy = (H - 64 * s) / 2;
-  const shapes = markShapes(s, ox, oy);
-  const rgba = render(W, H, (x, y) => {
-    let c = BG;
-    const d = Math.hypot(x - W / 2, y - H * 0.4);
-    if (d < 120) c = mix(c, [52, 229, 164], 0.16 * (1 - d / 120) ** 2);
-    for (const sh of shapes) {
-      if (!sh.hit(x, y)) continue;
-      c = mix(c, sh.color(x, y), sh.alpha ?? 1);
-    }
-    return c;
-  });
-  writeFileSync(join(OUT, 'icon-180.png'), pngEncode(W, H, rgba));
-  console.log('icon-180.png   180x180');
+async function mobileImages(page) {
+  mkdirSync(MOBILE, { recursive: true });
+  const S = 1024;
+  // B diagonal must sit inside the 66dp-of-108dp safe circle (626px): width 480 gives a 610px diagonal
+  const SAFE = 480 / S;
+  await write(page, join(MOBILE, 'icon.png'), { w: S, h: S, bg: BLACK, layers: [markLayer(S, 0.6, GREEN)] }, true);
+  await write(page, join(MOBILE, 'adaptive-icon.png'), { w: S, h: S, layers: [markLayer(S, SAFE, GREEN)] }, false);
+  await write(page, join(MOBILE, 'android-icon-foreground.png'), { w: S, h: S, layers: [markLayer(S, SAFE, GREEN)] }, false);
+  await write(page, join(MOBILE, 'android-icon-background.png'), { w: S, h: S, bg: BLACK, layers: [] }, true);
+  await write(page, join(MOBILE, 'android-icon-monochrome.png'), { w: S, h: S, layers: [markLayer(S, SAFE, '#FFFFFF')] }, false);
+  await write(page, join(MOBILE, 'splash-icon.png'), { w: S, h: S, layers: [markLayer(S, 0.4, GREEN)] }, false);
+  await write(page, join(MOBILE, 'favicon.png'), {
+    w: 48, h: 48, layers: [{ img: dataUri(join(IMG, 'favicon.svg'), 'image/svg+xml'), x: 0, y: 0, w: 48, h: 48 }],
+  }, false);
 }
 
-mkdirSync(OUT, { recursive: true });
-genOgCover();
-genIcon180();
+/* ---------------- run ---------------- */
+const { chromium } = loadPlaywright();
+const browser = await chromium.launch({ executablePath: chromiumPath() });
+try {
+  const page = await browser.newPage();
+  await page.setContent('<!doctype html><html><body></body></html>');
+  mkdirSync(IMG, { recursive: true });
+  await webImages(page);
+  if (process.argv.includes('--mobile')) await mobileImages(page);
+} finally {
+  await browser.close();
+}
 console.log('done.');
