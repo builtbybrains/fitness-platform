@@ -1,96 +1,82 @@
-/* Stats helpers: date-keyed plan sessions, workout/streak history for the
-   Progress tab, and a calorie-target suggestion from personal stats. */
+/* Stats helpers for the Progress tab: weekly workout history and streak
+   history, both judged against the plan actually in use (pass the plan
+   store's `schedule`; the rules week is only the default), plus a calorie
+   suggestion from personal stats.
 
-import { buildWeek, isoDay, PlanSession } from './planData';
-import { DoneRow } from './data';
+   Pure module: no React, no native imports. */
 
-/** Deterministic session for any date (not just the current week). */
+import { addDays, isoDay, mondayIndex, weekStartDate } from './lib/dates';
+import { buildWeek, DoneMap, PlanSession, RULES_SCHEDULE, WeekSchedule } from './planData';
+import { streakSeries } from './streak';
+
+/** Rules-plan session for any date (not just the current week). */
 export function sessionForDate(date: Date): PlanSession {
-  const week = buildWeek(date);
-  const offset = (date.getDay() + 6) % 7;
-  return week[offset].session;
-}
-
-function mondayStart(d: Date): Date {
-  const m = new Date(d);
-  m.setHours(0, 0, 0, 0);
-  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
-  return m;
+  return buildWeek(date)[mondayIndex(date)].session;
 }
 
 export type WeekBucket = {
   weekStartId: string; // Monday of that week
   label: string; // "This wk", "Last wk", "3w ago", …
-  workoutsDone: number; // completed scheduled workouts that week
-  workoutsPlanned: number; // scheduled workouts up to now (current week) or 7-day total
+  workoutsDone: number; // workouts completed that week
+  workoutsPlanned: number; // training days scheduled up to today (current week) or the whole week
 };
 
 /** Workout history over the past N weeks (oldest first, current week last).
-    Future days of the current week don't count against `planned`. */
+    Future days of the current week don't count against `planned`. A workout
+    done on a day that is now a rest day (an older plan) counts as both
+    planned and done. */
 export function weeklyHistory(
-  done: Record<string, DoneRow>,
+  done: DoneMap,
   weeks = 8,
   today = new Date(),
+  schedule: WeekSchedule = RULES_SCHEDULE,
 ): WeekBucket[] {
-  const tIdx = (today.getDay() + 6) % 7;
+  const todayId = isoDay(today);
+  const thisMonday = isoDay(weekStartDate(today));
   const out: WeekBucket[] = [];
 
   for (let w = weeks - 1; w >= 0; w--) {
-    const ws = mondayStart(today);
-    ws.setDate(ws.getDate() - w * 7);
-
+    const ws = addDays(thisMonday, -7 * w);
     let planned = 0;
     let completed = 0;
     for (let i = 0; i < 7; i++) {
-      const dayDate = new Date(ws);
-      dayDate.setDate(ws.getDate() + i);
-      if (sessionForDate(dayDate).kind !== 'workout') continue;
-      if (w === 0 && i > tIdx) continue; // future day of the current week
-      planned += 1;
-      if (done[isoDay(dayDate)]?.workout) completed += 1;
+      const id = addDays(ws, i);
+      if (id > todayId) continue; // future day of the current week
+      const didWorkout = !!done[id]?.workout;
+      if (schedule[i] === 'workout' || didWorkout) planned += 1;
+      if (didWorkout) completed += 1;
     }
-
     out.push({
-      weekStartId: isoDay(ws),
+      weekStartId: ws,
       label: w === 0 ? 'This wk' : w === 1 ? 'Last wk' : `${w}w ago`,
       workoutsDone: completed,
       workoutsPlanned: planned,
     });
   }
-
   return out;
 }
 
-/** Streak snapshots per week, oldest first (aligned with weeklyHistory's
-    labels): the running streak as of each week's end — today for the current
-    week. Only scheduled workout days move the streak; rest days are neutral. */
+/** Streak snapshots per week, oldest first (aligned with weeklyHistory):
+    the running streak at each week's Sunday, or today for the current week.
+    The last value always equals streak.currentStreak for the same inputs. */
 export function streakHistory(
-  done: Record<string, DoneRow>,
+  done: DoneMap,
   weeks = 8,
   today = new Date(),
+  schedule: WeekSchedule = RULES_SCHEDULE,
 ): number[] {
-  const start = mondayStart(today);
-  start.setDate(start.getDate() - (weeks - 1) * 7);
+  const todayId = isoDay(today);
+  const series = streakSeries(done, schedule, todayId);
+  const thisMonday = isoDay(weekStartDate(today));
 
-  // Daily running streak from the oldest Monday to today.
-  const streakOn = new Map<string, number>();
-  let running = 0;
-  for (let d = new Date(start); isoDay(d) <= isoDay(today); d.setDate(d.getDate() + 1)) {
-    const id = isoDay(d);
-    if (sessionForDate(d).kind === 'workout') {
-      running = done[id]?.workout ? running + 1 : 0;
-    }
-    streakOn.set(id, running);
-  }
+  // The series is contiguous from the first workout in history to today;
+  // days before that first workout have no entry and mean 0.
+  const valueOn = (id: string): number => series.get(id) ?? 0;
 
   const out: number[] = [];
-  for (let w = 0; w < weeks; w++) {
-    const ws = mondayStart(today);
-    ws.setDate(ws.getDate() - (weeks - 1 - w) * 7);
-    const sunday = new Date(ws);
-    sunday.setDate(ws.getDate() + 6);
-    const snapId = isoDay(sunday) > isoDay(today) ? isoDay(today) : isoDay(sunday);
-    out.push(streakOn.get(snapId) ?? 0);
+  for (let w = weeks - 1; w >= 0; w--) {
+    const sunday = addDays(thisMonday, -7 * w + 6);
+    out.push(valueOn(sunday > todayId ? todayId : sunday));
   }
   return out;
 }
@@ -104,8 +90,9 @@ export function tdeeSuggestion(p: {
   const { gender, age, height_cm, latestKg } = p;
   if (!age || !height_cm || !latestKg) return null;
 
-  // Mifflin-St Jeor BMR with a moderate-activity multiplier (plan: ~5 sessions/wk).
+  // Mifflin-St Jeor BMR with a moderate-activity multiplier (plan: ~4 sessions/wk).
   const bmr =
     10 * latestKg + 6.25 * height_cm - 5 * age + (gender === 'male' ? 5 : gender === 'female' ? -161 : 0);
-  return Math.round((bmr * 1.55) / 10) * 10;
+  const floor = gender === 'female' ? 1200 : 1500;
+  return Math.max(floor, Math.round((bmr * 1.55) / 10) * 10);
 }

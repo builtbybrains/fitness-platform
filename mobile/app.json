@@ -1,22 +1,54 @@
 {
   "expo": {
     "newArchEnabled": true,
-    "name": "VITAL",
+    "name": "BUILT",
     "slug": "vital",
     "version": "0.2.0",
     "scheme": "vital",
     "orientation": "portrait",
-    "icon": "../assets/img/icon-180.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#05070A",
+    "backgroundColor": "#080808",
     "ios": {
       "supportsTablet": false
     },
     "android": {
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#080808"
+      }
     },
     "web": {
-      "favicon": "../assets/img/icon-180.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#080808"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BUILT uses your photos to estimate the calories in a meal you choose.",
+          "cameraPermission": "BUILT uses your camera to photograph a meal and estimate its calories.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#A3FF3D"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#080808"
+        }
+      ]
+    ]
   }
 }

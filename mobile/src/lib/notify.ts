@@ -1,7 +1,7 @@
 /* expo-notifications, loaded lazily and wrapped so Expo Go on Android
-   (SDK 53+) degrades gracefully instead of throwing at import time — that
-   static throw is what broke _layout and profile in Step 4. Every call
-   no-ops when notifications are unavailable (Expo Go Android). */
+   (SDK 53+) degrades gracefully instead of throwing at import time (that
+   static throw is what broke _layout and profile in Step 4). Every call
+   no-ops when notifications are unavailable (Expo Go Android, web). */
 
 import { Platform } from 'react-native';
 
