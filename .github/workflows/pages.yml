@@ -3,6 +3,14 @@ name: Publish website to GitHub Pages
 on:
   push:
     branches: [claude/premium-ai-diet-training-site-uqlb73]
+    # Only the website files publish. Commits that touch only mobile/ or
+    # supabase/ (or anything else) do not republish the site.
+    paths:
+      - 'index.html'
+      - 'assets/**'
+      - 'robots.txt'
+      - 'sitemap.xml'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,21 +26,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pages serves files as they are. The Expo app in mobile/ has to be
-      # built before a browser can run it, so it is not part of this.
+      # Allowlist copy: only the public site goes out. Internal files
+      # (.claude/, brain/, scripts/, supabase/, mobile/, CLAUDE.md, DESIGN.md,
+      # README.md, package.json) never reach the gh-pages branch.
       - name: Collect the static site
         run: |
+          set -euo pipefail
           rm -rf _site && mkdir _site
-          rsync -a \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude '_site' \
-            --exclude 'mobile' \
-            --exclude 'vercel.json' \
-            --exclude '.vercelignore' \
-            --exclude 'CLAUDE.md' \
-            ./ _site/
+          cp index.html robots.txt sitemap.xml _site/
+          cp -R assets _site/assets
           touch _site/.nojekyll
+          echo "Publishing:" && (cd _site && find . -type f | sort)
 
       - name: Replace the gh-pages branch with it
         run: |

@@ -1,2 +1,11 @@
-# The website deploys from the repository root; the mobile app is not part of it.
-mobile
+# Allowlist: ignore everything, then let only the public website through.
+# The Expo app (mobile/), the backend (supabase/) and internal files
+# (brain/, scripts/, .claude/, CLAUDE.md, DESIGN.md, README.md, package.json)
+# must never be served.
+/*
+/.*
+!/index.html
+!/assets
+!/robots.txt
+!/sitemap.xml
+!/vercel.json

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://vital.app/sitemap.xml
+Sitemap: https://builtbybrains.github.io/fitness-platform/sitemap.xml
