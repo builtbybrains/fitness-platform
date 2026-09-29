@@ -1,104 +1,158 @@
-/* Profile tab — account, editable personal stats and targets, reminders,
-   sign out. The weight chart moved to the Progress tab. */
+/* Profile: account, today's weigh-in, personal stats, coach targets,
+   reminders and sign out. */
 
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
-import { C, card as cardStyle, screen, sectionLabel, subtitle, title } from '../../src/design';
+import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { usePlan } from '../../src/planStore';
 import { useReminders } from '../../src/useReminders';
+import { showConfirm } from '../../src/lib/dialog';
+import { Button } from '../../src/components/Button';
+import { Field } from '../../src/components/Field';
+import { Notice, ScreenHeader } from '../../src/components/Bits';
+import { Icon } from '../../src/components/Icon';
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+type Feedback = { tone: 'error' | 'success'; text: string } | null;
+
+function useFlash(): [Feedback, (f: Feedback, ms?: number) => void] {
+  const [fb, setFb] = useState<Feedback>(null);
+  const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  return [
+    fb,
+    (f, ms = 3500) => {
+      if (timer) clearTimeout(timer);
+      setFb(f);
+      if (f?.tone === 'success') setTimer(setTimeout(() => setFb(null), ms));
+    },
+  ];
+}
+
+function AccountCard() {
+  const { profile, email } = useAuth();
+  const name = profile?.name?.trim();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
-      <Text style={{ color: C.muted, fontSize: 13 }}>{label}</Text>
-      {children}
+    <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 16 }]}>
+      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.greenTint, alignItems: 'center', justifyContent: 'center' }}>
+        {name ? (
+          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.green }}>{name.charAt(0).toUpperCase()}</Text>
+        ) : (
+          <Icon name="person" size={26} />
+        )}
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={T.h3}>{name || 'Your profile'}</Text>
+        <Text style={T.meta}>{email ?? 'No account. Your data stays on this device.'}</Text>
+      </View>
     </View>
   );
 }
 
-function StatsTargetsCard() {
+function WeighInCard() {
+  const { profile, logWeight } = useAuth();
+  const [kg, setKg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [fb, flash] = useFlash();
+
+  async function save() {
+    const v = Number.parseFloat(kg.replace(',', '.'));
+    if (!Number.isFinite(v) || v < 30 || v > 300) {
+      flash({ tone: 'error', text: 'Enter a weight between 30 and 300 kg.' });
+      return;
+    }
+    setBusy(true);
+    const { error } = await logWeight(v);
+    setBusy(false);
+    if (error) {
+      flash({ tone: 'error', text: error });
+      return;
+    }
+    setKg('');
+    flash({ tone: 'success', text: `Saved ${Math.round(v * 10) / 10} kg for today.` });
+  }
+
+  return (
+    <View style={[cardStyle, { gap: 14 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Icon name="scale" size={26} />
+        <View style={{ flex: 1 }}>
+          <Text style={T.h3} accessibilityRole="header">
+            Today&apos;s weight
+          </Text>
+          <Text style={T.small}>{profile?.weight_kg != null ? `Last saved: ${profile.weight_kg} kg` : 'Nothing logged yet'}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
+        <View style={{ flex: 1 }}>
+          <Field
+            label="Weight (kg)"
+            value={kg}
+            onChangeText={setKg}
+            keyboardType="decimal-pad"
+            placeholder="e.g. 74.5"
+            onSubmitEditing={save}
+            returnKeyType="done"
+          />
+        </View>
+        <Button label="Save" onPress={save} busy={busy} style={{ minHeight: 48, paddingHorizontal: 28 }} accessibilityLabel="Save today's weight" />
+      </View>
+      {fb ? <Notice tone={fb.tone}>{fb.text}</Notice> : null}
+    </View>
+  );
+}
+
+function StatsCard() {
   const { profile, saveProfile } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [height, setHeight] = useState(profile?.height_cm != null ? String(profile.height_cm) : '');
-  const [weight, setWeight] = useState(profile?.weight_kg != null ? String(profile.weight_kg) : '');
   const [age, setAge] = useState(profile?.age != null ? String(profile.age) : '');
   const [gender, setGender] = useState(profile?.gender ?? '');
-  const [err, setErr] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [fb, flash] = useFlash();
 
   async function save() {
     const h = Number.parseFloat(height.replace(',', '.'));
-    const w = Number.parseFloat(weight.replace(',', '.'));
     const a = Number.parseInt(age, 10);
-
     if (height && (!Number.isFinite(h) || h < 120 || h > 230)) {
-      setErr('Height should be 120–230 cm');
+      flash({ tone: 'error', text: 'Enter a height between 120 and 230 cm.' });
       return;
     }
-    if (weight && (!Number.isFinite(w) || w < 30 || w > 300)) {
-      setErr('Weight should be 30–300 kg');
+    if (age && (!Number.isFinite(a) || a < 18 || a > 100)) {
+      flash({ tone: 'error', text: 'Enter an age between 18 and 100.' });
       return;
     }
-    if (age && (!Number.isFinite(a) || a < 14 || a > 100)) {
-      setErr('Age should be 14–100');
-      return;
-    }
-
-    setErr(null);
     setBusy(true);
     const { error } = await saveProfile({
       name: name.trim(),
       height_cm: height ? Math.round(h) : null,
-      weight_kg: weight ? Math.round(w * 10) / 10 : null,
       age: age ? a : null,
       gender,
     });
     setBusy(false);
-    if (error) {
-      setErr(error);
-      return;
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+    if (error) flash({ tone: 'error', text: error });
+    else flash({ tone: 'success', text: 'Saved.' });
   }
 
-  const field = {
-    color: C.text,
-    borderWidth: 1,
-    borderColor: C.line,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 15,
-  } as const;
-
   return (
-    <View style={[cardStyle, { gap: 10 }]}>
-      <Text style={sectionLabel}>Your stats & targets</Text>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: C.muted, fontSize: 12 }}>Name</Text>
-        <TextInput value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={C.muted} style={field} />
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ color: C.muted, fontSize: 12 }}>Height (cm)</Text>
-          <TextInput value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder="178" placeholderTextColor={C.muted} style={field} />
+    <View style={[cardStyle, { gap: 16 }]}>
+      <Text style={T.h3} accessibilityRole="header">
+        About you
+      </Text>
+      <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Sam" autoComplete="given-name" />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Field label="Height (cm)" value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder="e.g. 178" />
         </View>
-        <View style={{ flex: 1, gap: 8 }}>
-          <Text style={{ color: C.muted, fontSize: 12 }}>Weight (kg)</Text>
-          <TextInput value={weight} onChangeText={setWeight} keyboardType="decimal-pad" placeholder="74.5" placeholderTextColor={C.muted} style={field} />
+        <View style={{ flex: 1 }}>
+          <Field label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="e.g. 32" />
         </View>
       </View>
-
       <View style={{ gap: 8 }}>
-        <Text style={{ color: C.muted, fontSize: 12 }}>Gender</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 14, color: C.stone }}>Gender</Text>
+        <View style={{ flexDirection: 'row', gap: 8, padding: 4, backgroundColor: C.surface, borderRadius: R.pill }} accessibilityRole="radiogroup">
           {[
             { id: 'male', label: 'Male' },
             { id: 'female', label: 'Female' },
@@ -108,105 +162,60 @@ function StatsTargetsCard() {
               <Pressable
                 key={g.id}
                 onPress={() => setGender(g.id)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  backgroundColor: on ? C.mint : C.cardStrong,
-                  borderWidth: 1,
-                  borderColor: on ? C.mint : C.line,
-                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: on, selected: on }}
+                accessibilityLabel={g.label}
+                style={{ flex: 1, minHeight: 44, borderRadius: R.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.green : 'transparent' }}
               >
-                <Text style={{ color: on ? '#04120C' : C.text, fontWeight: '700', fontSize: 13 }}>{g.label}</Text>
+                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: on ? C.onGreen : C.text }}>{g.label}</Text>
               </Pressable>
             );
           })}
         </View>
       </View>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ color: C.muted, fontSize: 12 }}>Age</Text>
-        <TextInput value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="32" placeholderTextColor={C.muted} style={field} />
-      </View>
-
-      <Text style={{ color: C.muted, fontSize: 11 }}>
-        Calorie and water targets are set by your AI coach from these stats.
-      </Text>
-
-      {err ? <Text style={{ color: C.danger, fontSize: 12 }}>{err}</Text> : null}
-      {saved ? <Text style={{ color: C.mint, fontSize: 12 }}>Saved ✓</Text> : null}
-
-      <Pressable
-        onPress={save}
-        disabled={busy}
-        style={({ pressed }) => ({
-          backgroundColor: C.mint,
-          borderRadius: 12,
-          paddingVertical: 13,
-          alignItems: 'center',
-          opacity: busy || pressed ? 0.8 : 1,
-        })}
-      >
-        <Text style={{ color: '#04120C', fontWeight: '800', fontSize: 15 }}>Save</Text>
-      </Pressable>
+      <Text style={T.small}>Your coach sets calorie and water targets from these.</Text>
+      {fb ? <Notice tone={fb.tone}>{fb.text}</Notice> : null}
+      <Button label="Save changes" variant="secondary" onPress={save} busy={busy} />
     </View>
   );
 }
 
-function AiTargetsCard() {
+function TargetsCard() {
   const { profile } = useAuth();
   const { generating, aiPlan, regenerate } = usePlan();
-  const [result, setResult] = useState<string | null>(null);
   const [goal, setGoal] = useState('');
+  const [fb, flash] = useFlash();
 
   async function run() {
     const res = await regenerate(goal.trim() || undefined);
-    setResult(res.ok ? 'New plan ready ✓' : `Couldn't regenerate: ${res.error ?? 'try again'}`);
-    setTimeout(() => setResult(null), 4000);
+    if (res.ok) flash({ tone: 'success', text: 'Your new plan is ready.' }, 5000);
+    else flash({ tone: 'error', text: res.error ?? 'Try again in a moment.' });
   }
 
   return (
-    <View style={[cardStyle, { gap: 10 }]}>
-      <Text style={sectionLabel}>AI coach targets</Text>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 12, alignItems: 'center' }}>
-          <Text style={{ color: C.mint, fontSize: 20, fontWeight: '800' }}>{profile?.kcal_target ?? '—'}</Text>
-          <Text style={{ color: C.muted, fontSize: 11 }}>kcal / day</Text>
+    <View style={[cardStyle, { gap: 16 }]}>
+      <Text style={T.h3} accessibilityRole="header">
+        Daily targets
+      </Text>
+      <View style={{ flexDirection: 'row' }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 28, color: C.text }}>
+            {profile?.kcal_target != null ? profile.kcal_target.toLocaleString() : 'Not set'}
+          </Text>
+          <Text style={T.small}>kcal a day</Text>
         </View>
-        <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingVertical: 12, alignItems: 'center' }}>
-          <Text style={{ color: C.mint, fontSize: 20, fontWeight: '800' }}>{profile?.water_target ?? '—'}</Text>
-          <Text style={{ color: C.muted, fontSize: 11 }}>glasses / day</Text>
+        <View style={{ width: 1, backgroundColor: C.lineStrong, marginHorizontal: 16 }} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 28, color: C.text }}>{profile?.water_target ?? 'Not set'}</Text>
+          <Text style={T.small}>glasses of water</Text>
         </View>
       </View>
-      <Text style={{ color: C.muted, fontSize: 11 }}>
-        {aiPlan
-          ? 'Set from your stats when your coach built your plan.'
-          : 'Sign-in + stats save a plan automatically. Changes to stats apply next time you regenerate.'}
+      <Text style={T.meta}>
+        {aiPlan ? 'Set by your coach from your stats.' : 'Starter targets. Your coach tunes them when it builds your plan.'}
       </Text>
-      <TextInput
-        value={goal}
-        onChangeText={setGoal}
-        placeholder="Optional goal, e.g. lose 4kg by December"
-        placeholderTextColor={C.muted}
-        style={{ color: C.text, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }}
-      />
-      <Pressable
-        onPress={run}
-        disabled={generating}
-        style={({ pressed }) => ({
-          backgroundColor: C.mint,
-          borderRadius: 12,
-          paddingVertical: 13,
-          alignItems: 'center',
-          opacity: generating || pressed ? 0.8 : 1,
-        })}
-      >
-        <Text style={{ color: '#04120C', fontWeight: '800', fontSize: 15 }}>
-          {generating ? 'Coach is planning…' : 'Regenerate my plan'}
-        </Text>
-      </Pressable>
-      {result ? <Text style={{ color: generating ? C.muted : C.mint, fontSize: 12 }}>{result}</Text> : null}
+      <Field label="Goal for your next plan (optional)" value={goal} onChangeText={setGoal} placeholder="e.g. lose 4 kg by December" />
+      {fb ? <Notice tone={fb.tone}>{fb.text}</Notice> : null}
+      <Button label={generating ? 'Your coach is planning' : 'Build a new plan'} icon={generating ? undefined : 'refresh'} onPress={run} busy={generating} />
     </View>
   );
 }
@@ -216,102 +225,85 @@ function RemindersCard() {
 
   if (!supported) {
     return (
-      <View style={[cardStyle, { gap: 6 }]}>
-        <Text style={sectionLabel}>Reminders</Text>
-        <Text style={{ color: C.muted, fontSize: 13 }}>
-          Notifications aren't available in Expo Go on Android — install a development build to enable daily water and workout reminders. Your preferences are saved either way.
+      <View style={[cardStyle, { gap: 8 }]}>
+        <Text style={T.h3} accessibilityRole="header">
+          Reminders
+        </Text>
+        <Text style={T.meta}>
+          {Platform.OS === 'web'
+            ? 'Reminders work in the BUILT app on your phone. Your choices are saved either way.'
+            : "Reminders need the full BUILT app build; they aren't available in this preview. Your choices are saved either way."}
         </Text>
       </View>
     );
   }
 
+  const row = (label: string, value: boolean, onChange: (v: boolean) => void) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 52 }}>
+      <Text style={T.body}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        accessibilityLabel={label}
+        trackColor={{ true: C.green, false: '#4A4A4A' }}
+        thumbColor={value ? C.onGreen : C.stone}
+        {...(Platform.OS === 'web' ? { activeThumbColor: C.onGreen } : {})}
+      />
+    </View>
+  );
+
   return (
     <View style={[cardStyle, { gap: 4 }]}>
-      <Text style={sectionLabel}>Reminders</Text>
-      {granted === false ? (
-        <Text style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}>
-          You'll be asked for notification permission when you enable one.
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <Icon name="bell" size={24} />
+        <Text style={T.h3} accessibilityRole="header">
+          Reminders
         </Text>
-      ) : null}
-
-      <Row label="Water reminder (daily)">
-        <Switch
-          value={prefs.water}
-          onValueChange={(v) => void update({ water: v })}
-          trackColor={{ true: C.mint, false: C.cardStrong }}
-          thumbColor={prefs.water ? '#04120C' : C.muted}
-        />
-      </Row>
-      <Row label="Workout reminder (daily)">
-        <Switch
-          value={prefs.workout}
-          onValueChange={(v) => void update({ workout: v })}
-          trackColor={{ true: C.mint, false: C.cardStrong }}
-          thumbColor={prefs.workout ? '#04120C' : C.muted}
-        />
-      </Row>
-      <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>
-        Water at {String(prefs.waterHour).padStart(2, '0')}:00 · workout at{' '}
-        {String(prefs.workoutHour).padStart(2, '0')}:00 — local notifications,
-        no account needed.
+      </View>
+      {row('Water, daily', prefs.water, (v) => void update({ water: v }))}
+      {row('Workout, daily', prefs.workout, (v) => void update({ workout: v }))}
+      <Text style={[T.small, { marginTop: 4 }]}>
+        Water at {String(prefs.waterHour).padStart(2, '0')}:00, workout at {String(prefs.workoutHour).padStart(2, '0')}:00.
+        {granted === false ? " You'll be asked to allow notifications when you turn one on." : ''}
       </Text>
     </View>
   );
 }
 
-function ProfileBody() {
-  const { profile, email, signOut } = useAuth();
-
-  return (
-    <>
-      <View style={{ gap: 2 }}>
-        <Text style={sectionLabel}>VITAL</Text>
-        <Text style={title}>Profile</Text>
-        <Text style={subtitle}>Your stats, targets and reminders</Text>
-      </View>
-
-      <StatsTargetsCard />
-
-      <AiTargetsCard />
-
-      <RemindersCard />
-
-      <View style={[cardStyle, { gap: 10 }]}>
-        <Text style={sectionLabel}>Account</Text>
-        <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>
-          {profile?.name?.trim() || 'Athlete'}
-        </Text>
-        <Text style={{ color: C.muted, fontSize: 13 }}>{email ?? 'not signed in — data stays on this device'}</Text>
-        <Pressable
-          onPress={() => {
-            Alert.alert('Sign out', 'You will return to the sign-in screen. Your data stays on this device.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
-            ]);
-          }}
-          style={({ pressed }) => ({
-            marginTop: 6,
-            borderWidth: 1,
-            borderColor: C.danger,
-            borderRadius: 12,
-            paddingVertical: 12,
-            alignItems: 'center',
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text style={{ color: C.danger, fontWeight: '800' }}>Sign out</Text>
-        </Pressable>
-      </View>
-    </>
-  );
-}
-
 export default function ProfileTab() {
+  const { signOut, session } = useAuth();
+
+  async function confirmSignOut() {
+    const ok = await showConfirm({
+      title: 'Sign out?',
+      message: session
+        ? "You'll return to the sign-in screen. Your data stays in your account."
+        : "You'll return to the sign-in screen. Your data stays on this device.",
+      confirmLabel: 'Sign out',
+      destructive: true,
+    });
+    if (!ok) return;
+    await signOut();
+    // The tabs stay mounted, so go to the sign-in screen explicitly.
+    router.replace('/(auth)/login');
+  }
+
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}>
-        <ProfileBody />
-      </ScrollView>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 48, maxWidth: 640, width: '100%', alignSelf: 'center' }}
+        >
+          <ScreenHeader title="Profile" />
+          <AccountCard />
+          <WeighInCard />
+          <StatsCard />
+          <TargetsCard />
+          <RemindersCard />
+          <Button label="Sign out" variant="danger" onPress={confirmSignOut} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

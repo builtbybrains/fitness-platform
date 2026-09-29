@@ -1,10 +1,13 @@
-/* Progress ring drawn with react-native-svg. Used for calories and water. */
+/* Progress ring drawn with react-native-svg. Fills once on first view
+   (ease-out quart), follows later changes briefly, and holds still when
+   Reduce Motion is on. */
 
 import React from 'react';
 import Svg, { Circle } from 'react-native-svg';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { C } from '../design';
+import { useTween } from './motion';
 
 type Props = {
   size: number;
@@ -13,71 +16,45 @@ type Props = {
   color?: string;
   trackColor?: string;
   children?: React.ReactNode;
+  accessibilityLabel?: string;
 };
 
-export function Ring({
-  size,
-  stroke,
-  progress,
-  color = C.mint,
-  trackColor = C.card,
-  children,
-}: Props) {
+export function Ring({ size, stroke, progress, color = C.green, trackColor = C.raised, children, accessibilityLabel }: Props) {
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const circ = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(1, progress));
+  const shown = useTween(Math.max(0, Math.min(1, progress)), 900);
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+      accessible={!!accessibilityLabel}
+      accessibilityRole={accessibilityLabel ? 'progressbar' : undefined}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityValue={accessibilityLabel ? { min: 0, max: 100, now: Math.round(progress * 100) } : undefined}
+    >
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        <Circle
-          cx={cx}
-          cy={cx}
-          r={r}
-          stroke={trackColor}
-          strokeWidth={stroke}
-          fill="none"
-        />
-        <Circle
-          cx={cx}
-          cy={cx}
-          r={r}
-          stroke={color}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={circ * (1 - clamped)}
-          transform={`rotate(-90 ${cx} ${cx})`}
-        />
+        <Circle cx={cx} cy={cx} r={r} stroke={trackColor} strokeWidth={stroke} fill="none" />
+        {shown > 0.001 ? (
+          <Circle
+            cx={cx}
+            cy={cx}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${circ} ${circ}`}
+            strokeDashoffset={circ * (1 - shown)}
+            transform={`rotate(-90 ${cx} ${cx})`}
+          />
+        ) : null}
       </Svg>
       {children != null ? (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              alignItems: 'center',
-              justifyContent: 'center',
-              // Keep the value inside the ring's inner circle.
-              paddingHorizontal: stroke,
-            },
-          ]}
-        >
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: stroke }]}>
           {children}
         </View>
       ) : null}
-    </View>
-  );
-}
-
-export function RingValue({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <Text style={{ color: C.text, fontSize: 22, fontWeight: '800' }} adjustsFontSizeToFit numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={{ color: C.muted, fontSize: 11, marginTop: 2, textAlign: 'center' }}>{label}</Text>
     </View>
   );
 }

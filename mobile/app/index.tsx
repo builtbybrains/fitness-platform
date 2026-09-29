@@ -1,31 +1,32 @@
-/* Entry gate: splash while the session restores, then route — login when
+/* Entry gate: holds while the session restores, then routes. Login when
    signed out, the stats prompt when the profile is missing personal stats,
-   otherwise the tabs. In local mode ("continue without an account") the
-   app goes straight to onboarding/tabs. */
+   otherwise the tabs. With no account ("Continue without an account") the
+   app goes straight to onboarding or the tabs. */
 
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { C } from '../src/design';
 import { useAuth } from '../src/auth';
-import { supabaseConfigured } from '../supabase.config';
-import { VitalLogo } from '../src/components/VitalLogo';
+import { BuiltMark } from '../src/components/BuiltLogo';
 
 export default function Gate() {
   const { ready, profileLoaded, session, profile, localMode } = useAuth();
 
   if (!ready || (session && !profileLoaded)) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-        <VitalLogo size={72} />
-        <Text style={{ color: C.mint, fontSize: 26, fontWeight: '900', letterSpacing: 8 }}>VITAL</Text>
-        <ActivityIndicator color={C.mint} />
+      <View
+        style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 24 }}
+        accessibilityLabel="Loading BUILT"
+      >
+        <BuiltMark size={64} />
+        <ActivityIndicator color={C.green} />
       </View>
     );
   }
 
-  // Signed-out and not in local mode → the login screen. This is what makes
-  // Profile's sign-out button work: the gate remounts and reacts.
+  // Signed out and not in no-account mode: the login screen. This is what
+  // makes Profile's sign-out work: the gate remounts and reacts.
   if (!session && !localMode) {
     return <Redirect href="/(auth)/login" />;
   }

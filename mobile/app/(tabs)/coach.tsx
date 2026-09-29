@@ -1,195 +1,182 @@
-/* Coach tab: AI chat through the Supabase Edge Function (the only place the
-   AI key lives). History persists in the coach_messages table, scoped to the
-   current conversation ("New chat" starts a fresh thread). When the function
-   isn't configured or the AI is briefly unavailable, the tab answers with
-   built-in coaching rules so it never feels broken.
+/* AI Coach: chat through the coach Edge Function (the only place the AI
+   key lives). History persists per conversation ("New chat" starts a fresh
+   thread). Without an account, or when the coach can't be reached, the tab
+   answers with built-in coaching tips and says why, in plain words.
 
-   Food photos: shoot or pick a meal, the analyze-meal Edge Function (vision
-   model) estimates {label, kcal, protein, confidence}, and after the user
-   confirms it lands in food_logs for today — instantly counted in the Today
-   tab's calorie ring. The camera button is hidden on web (browsers can't
-   open the native camera); the gallery picker works everywhere. */
+   Meal photos: take or pick a photo, it is resized and compressed on the
+   device, the analyze-meal function estimates {label, kcal, protein,
+   confidence}, and only after the person confirms does it land in today's
+   photo log (and the Today ring). The camera button is native only;
+   picking a photo works everywhere. */
 
 import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
-import { C, card as cardStyle, screen, sectionLabel, subtitle, title } from '../../src/design';
+import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { supabase } from '../../src/lib/supabase';
+import { callFunction } from '../../src/lib/functions';
+import { showAlert } from '../../src/lib/dialog';
 import { supabaseConfigured } from '../../supabase.config';
 import { analyzeMealImage, Estimate, useFoodLogs } from '../../src/foodLogs';
 import { todayId } from '../../src/data';
+import { BuiltMark } from '../../src/components/BuiltLogo';
+import { Button, IconButton } from '../../src/components/Button';
+import { ScreenHeader } from '../../src/components/Bits';
 
-type Msg = { role: 'user' | 'coach'; body: string };
+type Msg = { role: 'user' | 'coach'; body: string; note?: string };
+
+const SUGGESTIONS = ['What should I eat after training?', "I'm too tired to train today", 'How do I hit my protein?'];
 
 function rulesReply(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('water') || m.includes('hydrat')) {
-    return 'Water check: aim to finish your target an hour before bed. Smallest next step: one glass now.';
+    return 'Aim to finish your water target an hour before bed. Smallest next step: one glass now.';
   }
-  if (m.includes('protein') || m.includes('eat') || m.includes('meal')) {
+  if (m.includes('protein') || m.includes('eat') || m.includes('meal') || m.includes('food')) {
     return 'Anchor every meal with protein: eggs or Greek yogurt at breakfast, a palm of chicken, fish or lentils later. Budget picks: canned tuna, cottage cheese, frozen veg.';
   }
   if (m.includes('tired') || m.includes('rest') || m.includes('skip')) {
-    return 'Real-life mode: a 10-minute walk still counts. Start with one set — momentum does the rest.';
+    return 'Real-life mode: a 10-minute walk still counts. Start with one set and let momentum do the rest.';
   }
-  return 'Keep it simple today: one workout, protein on every plate, water before 6pm. Smallest next step wins — what is it for you right now?';
-}
-
-type PickerAsset = { uri: string; base64?: string | null };
-type PickerResult = { canceled: boolean; assets?: PickerAsset[] };
-
-type ImageModules = {
-  launchCameraAsync: (opts: unknown) => Promise<PickerResult>;
-  launchImageLibraryAsync: (opts: unknown) => Promise<PickerResult>;
-  requestCameraPermissionsAsync: () => Promise<{ status: string }>;
-  manipulateAsync: (
-    uri: string,
-    actions: unknown[],
-    save: unknown,
-  ) => Promise<{ uri: string | null; base64: string | null }>;
-  SaveFormat: { JPEG: 'jpeg' };
-  MediaTypeOptions: { Images: string };
-};
-
-// Optional native modules: missing gracefully (web rebuilds, etc.).
-let ImageMods: ImageModules | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const picker = require('expo-image-picker');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const manip = require('expo-image-manipulator');
-  ImageMods = {
-    launchCameraAsync: picker.launchCameraAsync,
-    launchImageLibraryAsync: picker.launchImageLibraryAsync,
-    requestCameraPermissionsAsync: picker.requestCameraPermissionsAsync,
-    manipulateAsync: manip.manipulateAsync,
-    SaveFormat: manip.SaveFormat,
-    MediaTypeOptions: picker.MediaTypeOptions,
-  };
-} catch {
-  ImageMods = null;
+  return 'Keep it simple today: one workout, protein on every plate, water before 6pm. What is the smallest next step for you right now?';
 }
 
 const MAX_DIM = 768;
 
-/** Downscale to ~768px JPEG and return bare base64. On web the manipulator
-    can't read blob/file URIs, so we downscale through a canvas instead; on
-    native we use the manipulator and fall back to the picker's own base64. */
-async function imageToBase64(useCamera: boolean): Promise<string> {
-  if (!ImageMods) throw new Error('Image picking is not available on this device');
-  const opts = { mediaTypes: ImageMods.MediaTypeOptions.Images, quality: 0.7 };
+class PermissionDenied extends Error {}
+
+/** Take or pick a photo, then resize to 768px and compress to JPEG on the
+    device. Resolves bare base64, or null when the person cancels. */
+async function takeMealPhoto(useCamera: boolean): Promise<string | null> {
+  const perm = useCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) throw new PermissionDenied(useCamera ? 'camera' : 'photos');
+
+  const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.8 };
   const shot = useCamera
-    ? await ImageMods.launchCameraAsync({ ...opts, allowsEditing: true, aspect: [4, 3] })
-    : await ImageMods.launchImageLibraryAsync(opts);
-  const picked = shot.assets?.[0];
-  if (!picked) throw new Error('canceled');
+    ? await ImagePicker.launchCameraAsync({ ...opts, allowsEditing: true, aspect: [4, 3] })
+    : await ImagePicker.launchImageLibraryAsync(opts);
+  if (shot.canceled || !shot.assets?.length) return null;
+  const asset = shot.assets[0];
 
-  if (Platform.OS === 'web') {
-    const img = document.createElement('img');
-    img.src = picked.uri;
-    await new Promise<void>((res, rej) => {
-      img.onload = () => res();
-      img.onerror = () => rej(new Error('Could not read that image'));
-    });
-    const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(img.width * scale));
-    canvas.height = Math.max(1, Math.round(img.height * scale));
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not process that image');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-    return dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const ctx = ImageManipulator.manipulate(asset.uri);
+  const w = asset.width || 0;
+  const h = asset.height || 0;
+  if (w && h && Math.max(w, h) > MAX_DIM) {
+    const scale = MAX_DIM / Math.max(w, h);
+    ctx.resize({ width: Math.round(w * scale), height: Math.round(h * scale) });
+  } else if (!w || !h) {
+    ctx.resize({ width: MAX_DIM });
   }
-
-  const small = await ImageMods.manipulateAsync(
-    picked.uri,
-    [{ resize: { width: MAX_DIM } }],
-    { compress: 0.6, format: ImageMods.SaveFormat.JPEG, base64: true },
-  );
-  if (small.base64) return small.base64;
-  if (picked.base64) return picked.base64;
-  throw new Error('Could not process that image.');
+  const image = await ctx.renderAsync();
+  const out = await image.saveAsync({ compress: 0.6, format: SaveFormat.JPEG, base64: true });
+  if (!out.base64) throw new Error("Couldn't process that photo. Try another one.");
+  return out.base64;
 }
 
 const CONF_LABEL: Record<Estimate['confidence'], string> = {
-  low: 'rough guess',
-  medium: 'decent read',
+  low: 'rough estimate',
+  medium: 'good estimate',
   high: 'clear photo',
 };
+
+function CoachAvatar() {
+  return (
+    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
+      <BuiltMark size={16} />
+    </View>
+  );
+}
+
+function CoachBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', maxWidth: '92%' }}>
+      <CoachAvatar />
+      <View style={{ flexShrink: 1, backgroundColor: C.card, borderRadius: R.card, borderTopLeftRadius: 6, paddingVertical: 12, paddingHorizontal: 16, gap: 8 }}>
+        {children}
+      </View>
+    </View>
+  );
+}
 
 export default function CoachTab() {
   const { session } = useAuth();
   const [conversationId, setConversationId] = useState('default');
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [input, setInput] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [adding, setAdding] = useState(false);
-  // Confirmed-but-not-yet-logged estimate, with its photo for the preview card.
+  // An estimate waiting for the person to confirm, with its photo.
   const [pending, setPending] = useState<{ est: Estimate; image: string } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const food = useFoodLogs();
+  const online = supabaseConfigured && !!session;
 
   useEffect(() => {
-    if (!supabaseConfigured || !session) return;
     setMessages([]);
+    if (!online) return;
+    let alive = true;
+    setHistoryLoading(true);
+    // Never leave the spinner up for a slow or unreachable server.
+    const giveUp = setTimeout(() => alive && setHistoryLoading(false), 6000);
     supabase
       .from('coach_messages')
       .select('role, body')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
       .limit(50)
-      .then(({ data }) => {
-        if (Array.isArray(data) && data.length) {
-          setMessages(data.map((d) => ({ role: d.role === 'user' ? 'user' : 'coach', body: d.body })));
-        }
-      });
-  }, [session, conversationId]);
+      .then(
+        ({ data }) => {
+          if (!alive) return;
+          if (Array.isArray(data) && data.length) {
+            const loaded: Msg[] = data.map((d) => ({ role: d.role === 'user' ? 'user' : 'coach', body: String(d.body ?? '') }));
+            // Don't overwrite anything typed while the history was loading.
+            setMessages((prev) => (prev.length ? [...loaded, ...prev] : loaded));
+          }
+          setHistoryLoading(false);
+        },
+        () => alive && setHistoryLoading(false),
+      );
+    return () => {
+      alive = false;
+      clearTimeout(giveUp);
+    };
+  }, [online, conversationId]);
 
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages, busy, pending, food.logs.length]);
+    const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    return () => clearTimeout(t);
+  }, [messages, busy]);
 
   async function pickImage(useCamera: boolean) {
-    if (!ImageMods || analyzing || adding) return;
-    if (!session) {
-      Alert.alert('Sign in first', 'Create an account or sign in so your photo log syncs.');
+    if (analyzing || adding) return;
+    if (!online) {
+      await showAlert('Sign in to log meals by photo', 'Photo estimates run on your account. Everything else keeps working on this device.');
       return;
-    }
-    if (useCamera) {
-      let perm: { status: string } = { status: 'granted' };
-      try {
-        perm = await ImageMods.requestCameraPermissionsAsync();
-      } catch {
-        /* web/desktop: permissions API may be a no-op */
-      }
-      if (perm.status !== 'granted') {
-        Alert.alert('Camera access', 'Allow camera access to photograph your meals.');
-        return;
-      }
     }
     setAnalyzing(true);
     try {
-      const base64 = await imageToBase64(useCamera);
+      const base64 = await takeMealPhoto(useCamera);
+      if (!base64) return;
       const est = await analyzeMealImage(base64);
       setPending({ est, image: `data:image/jpeg;base64,${base64}` });
     } catch (e) {
-      const msg = String((e as Error)?.message ?? e);
-      if (msg !== 'canceled') Alert.alert('Photo check failed', msg);
+      if (e instanceof PermissionDenied) {
+        await showAlert(
+          e.message === 'camera' ? 'Camera access is off' : 'Photo access is off',
+          e.message === 'camera'
+            ? 'To photograph a meal, allow camera access for BUILT in your Settings.'
+            : 'To log a meal from a photo, allow photo access for BUILT in your Settings.',
+        );
+      } else {
+        await showAlert("Couldn't read that photo", String((e as Error)?.message ?? e));
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -202,46 +189,31 @@ export default function CoachTab() {
       await food.add(pending.est);
       setPending(null);
     } catch (e) {
-      Alert.alert('Could not log it', String((e as Error)?.message ?? e));
+      await showAlert("Couldn't log it", String((e as Error)?.message ?? e));
     } finally {
       setAdding(false);
     }
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(text = input.trim()) {
     if (!text || busy) return;
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', body: text }]);
     setBusy(true);
 
     let reply = '';
-    let aiError: string | null = null;
-    if (supabaseConfigured && session) {
+    let note: string | undefined;
+    if (online) {
       try {
-        const { data, error } = await supabase.functions.invoke('coach', {
-          body: { message: text, conversationId, localDay: todayId() },
-        });
-        if (error) throw error;
+        const data = await callFunction<{ reply?: string }>('coach', { message: text, conversationId, localDay: todayId() });
         reply = String(data?.reply ?? '').trim();
+        if (!reply) note = "Your coach didn't answer that one. Here's a quick tip for now.";
       } catch (e) {
-        aiError = String((e as Error)?.message ?? e);
+        note = `${String((e as Error)?.message ?? e)} Here's a quick tip for now.`;
       }
-    } else if (!supabaseConfigured) {
-      aiError = 'Supabase is not configured on this device yet.';
     }
-    if (!reply) {
-      reply = rulesReply(text);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'coach',
-          body: aiError ? `⚠️ ${aiError}\n\n${reply}` : reply,
-        },
-      ]);
-    } else {
-      setMessages((prev) => [...prev, { role: 'coach', body: reply }]);
-    }
+    if (!reply) reply = rulesReply(text);
+    setMessages((prev) => [...prev, { role: 'coach', body: reply, note }]);
     setBusy(false);
   }
 
@@ -251,276 +223,201 @@ export default function CoachTab() {
     setConversationId(`chat-${Date.now()}`);
   }
 
-  const showCamera = Platform.OS !== 'web' && !!ImageMods;
+  const showCamera = Platform.OS !== 'web';
+  const canSend = !!input.trim() && !busy;
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={{ padding: 20, paddingBottom: 12, gap: 2 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={sectionLabel}>VITAL</Text>
-              <Text style={title}>Coach</Text>
-            </View>
-            <Pressable
-              onPress={startNewChat}
-              style={({ pressed }) => ({
-                paddingHorizontal: 14,
-                paddingVertical: 9,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: C.mint,
-                backgroundColor: C.mintDim,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ color: C.mint, fontWeight: '800', fontSize: 13 }}>＋ New chat</Text>
-            </Pressable>
-          </View>
-          <Text style={subtitle}>
-            {supabaseConfigured
-              ? 'Your AI coach, grounded in today’s stats'
-              : 'Local coach mode — deploy the coach function for AI answers'}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
+          <ScreenHeader
+            title="AI Coach"
+            right={<Button compact variant="secondary" icon="plus" label="New chat" onPress={startNewChat} accessibilityLabel="Start a new chat" />}
+          />
+          <Text style={[T.meta, { marginTop: 4 }]}>
+            {online ? 'Knows your plan and your day.' : 'Quick tips on this device. Sign in for your AI coach.'}
           </Text>
         </View>
 
-        {/* Photo-estimate confirmation card: sits above the chat while the
-            user decides, so it never gets scrolled away mid-decision. */}
         {pending ? (
-          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-            <View style={[cardStyle, { gap: 10 }]}>
-              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                <Image
-                  source={{ uri: pending.image }}
-                  style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: C.card }}
-                />
+          <View style={{ paddingHorizontal: 20, paddingBottom: 12, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
+            <View style={[cardStyle, { gap: 16, borderWidth: 1, borderColor: C.greenBorder }]}>
+              <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+                <Image source={{ uri: pending.image }} style={{ width: 72, height: 72, borderRadius: R.tile, backgroundColor: C.raised }} accessibilityIgnoresInvertColors />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }} numberOfLines={2}>
+                  <Text style={T.h3} numberOfLines={2}>
                     {pending.est.label}
                   </Text>
-                  <Text style={{ color: C.mint, fontSize: 14, fontWeight: '800' }}>
-                    ≈ {pending.est.kcal} kcal · {pending.est.protein} g protein
+                  <Text style={{ fontFamily: FONT.displaySemi, fontSize: 16, color: C.green }}>
+                    About {pending.est.kcal} kcal · {pending.est.protein} g protein
                   </Text>
-                  <Text style={{ color: C.muted, fontSize: 12 }}>
-                    AI estimate · {CONF_LABEL[pending.est.confidence]}
-                  </Text>
+                  <Text style={T.small}>Estimate from your photo, {CONF_LABEL[pending.est.confidence]}</Text>
                 </View>
               </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Pressable
-                  onPress={() => setPending(null)}
-                  disabled={adding}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 11,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: C.line,
-                    alignItems: 'center',
-                    opacity: adding ? 0.5 : 1,
-                  }}
-                >
-                  <Text style={{ color: C.text, fontWeight: '700' }}>Retake</Text>
-                </Pressable>
-                <Pressable
-                  onPress={confirmPending}
-                  disabled={adding}
-                  style={{
-                    flex: 2,
-                    paddingVertical: 11,
-                    borderRadius: 12,
-                    backgroundColor: C.mint,
-                    alignItems: 'center',
-                    opacity: adding ? 0.6 : 1,
-                  }}
-                >
-                  {adding ? (
-                    <ActivityIndicator size="small" color="#04120C" />
-                  ) : (
-                    <Text style={{ color: '#04120C', fontWeight: '800' }}>
-                      Looks right · +{pending.est.kcal} kcal
-                    </Text>
-                  )}
-                </Pressable>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Button variant="secondary" label="Discard" onPress={() => setPending(null)} disabled={adding} style={{ flex: 1 }} accessibilityLabel="Discard this estimate" />
+                <Button label="Log it" onPress={confirmPending} busy={adding} style={{ flex: 1 }} accessibilityLabel={`Log ${pending.est.kcal} kcal`} />
               </View>
             </View>
           </View>
         ) : null}
 
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 20 }}
-        >
-          <View style={[cardStyle, { gap: 10 }]}>
-            <Text style={sectionLabel}>Snap a meal</Text>
-            <Text style={{ color: C.muted, fontSize: 14, lineHeight: 20 }}>
-              Photograph your plate and the AI coach estimates the calories, then
-              adds them to today&apos;s ring.
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
+          <View style={[cardStyle, { gap: 14 }]}>
+            <View style={{ gap: 4 }}>
+              <Text style={T.h3} accessibilityRole="header">
+                Snap a meal
+              </Text>
+              <Text style={T.meta}>Photograph your plate. Your coach estimates the calories, and you confirm before it counts.</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
               {showCamera ? (
-                <Pressable
-                  onPress={() => pickImage(true)}
-                  disabled={analyzing}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    backgroundColor: C.mintDim,
-                    borderWidth: 1,
-                    borderColor: C.mint,
-                    opacity: pressed || analyzing ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ color: C.mint, fontWeight: '800' }}>📷 Camera</Text>
-                </Pressable>
+                <Button variant="secondary" icon="camera" label="Camera" onPress={() => pickImage(true)} disabled={analyzing} style={{ flex: 1 }} accessibilityLabel="Take a photo of your meal" />
               ) : null}
-              <Pressable
+              <Button
+                variant="secondary"
+                icon="image"
+                label={showCamera ? 'Photos' : 'Pick a photo'}
                 onPress={() => pickImage(false)}
-                disabled={!ImageMods || analyzing}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: C.line,
-                  opacity: pressed || analyzing ? 0.7 : 1,
-                })}
-              >
-                <Text style={{ color: C.text, fontWeight: '800' }}>
-                  {showCamera ? '🖼 Gallery' : '🖼 Pick a photo'}
-                </Text>
-              </Pressable>
+                disabled={analyzing}
+                style={{ flex: 1 }}
+                accessibilityLabel="Pick a photo of your meal"
+              />
             </View>
             {analyzing ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <ActivityIndicator size="small" color={C.mint} />
-                <Text style={{ color: C.muted, fontSize: 13 }}>Reading your plate…</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="small" color={C.green} />
+                <Text style={T.meta}>Reading your plate</Text>
+              </View>
+            ) : null}
+            {food.logs.length > 0 ? (
+              <View style={{ gap: 0, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 4 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 8 }}>
+                  <Text style={T.small}>Today&apos;s photo log</Text>
+                  <Text style={[T.small, { color: C.green }]}>+{food.kcal} kcal</Text>
+                </View>
+                {food.logs.map((log) => (
+                  <View key={log.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48 }}>
+                    <Text style={[T.body, { flex: 1 }]} numberOfLines={1}>
+                      {log.label}
+                    </Text>
+                    <Text style={T.small}>{log.kcal} kcal</Text>
+                    <IconButton icon="close" variant="bare" onPress={() => void food.remove(log.id)} accessibilityLabel={`Delete ${log.label}`} />
+                  </View>
+                ))}
               </View>
             ) : null}
           </View>
 
-          {food.logs.length > 0 ? (
-            <View style={[cardStyle, { gap: 6 }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={sectionLabel}>Today&apos;s photo log</Text>
-                <Text style={{ color: C.mint, fontWeight: '800', fontSize: 13 }}>
-                  +{food.kcal} kcal
+          {historyLoading && messages.length === 0 ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}>
+              <ActivityIndicator size="small" color={C.green} />
+              <Text style={T.meta}>Loading your conversation</Text>
+            </View>
+          ) : messages.length === 0 ? (
+            <View style={{ gap: 12 }}>
+              <CoachBubble>
+                <Text style={[T.body, { color: C.stone }]}>
+                  I&apos;m your BUILT coach. Ask about training, food or recovery and I&apos;ll give you the next step.
                 </Text>
-              </View>
-              {food.logs.map((log) => (
-                <View
-                  key={log.id}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
-                    paddingVertical: 6,
-                    borderBottomWidth: 1,
-                    borderBottomColor: C.line,
-                  }}
-                >
-                  <Text style={{ flex: 1, color: C.text, fontSize: 14 }} numberOfLines={1}>
-                    {log.label}
-                  </Text>
-                  <Text style={{ color: C.muted, fontSize: 13 }}>{log.kcal} kcal</Text>
-                  <Pressable onPress={() => food.remove(log.id)} hitSlop={8}>
-                    <Text style={{ color: C.muted, fontSize: 15, paddingHorizontal: 4 }}>✕</Text>
+              </CoachBubble>
+              <View style={{ gap: 8, paddingLeft: 46 }}>
+                {SUGGESTIONS.map((s) => (
+                  <Pressable
+                    key={s}
+                    onPress={() => void send(s)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ask: ${s}`}
+                    style={({ pressed }) => ({
+                      alignSelf: 'flex-start',
+                      minHeight: 44,
+                      justifyContent: 'center',
+                      paddingHorizontal: 16,
+                      borderRadius: R.pill,
+                      borderWidth: 1,
+                      borderColor: C.greenBorder,
+                      backgroundColor: pressed ? C.greenTint : 'transparent',
+                    })}
+                  >
+                    <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 15, color: C.text }}>{s}</Text>
                   </Pressable>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           ) : null}
 
-          {messages.length === 0 ? (
-            <View style={[cardStyle, { gap: 8 }]}>
-              <Text style={sectionLabel}>Start here</Text>
-              <Text style={{ color: C.muted, fontSize: 14, lineHeight: 21 }}>
-                Ask about your day: “What should I eat after training?”, “I’m too
-                tired today”, “How’s my water?”
-              </Text>
-            </View>
-          ) : null}
-          {messages.map((m, i) => (
-            <View
-              key={i}
-              style={[
-                m.role === 'user'
-                  ? {
-                      alignSelf: 'flex-end',
-                      backgroundColor: C.mintDim,
-                      borderWidth: 1,
-                      borderColor: C.mint,
-                      padding: 14,
-                    }
-                  : { padding: 14 },
-                { maxWidth: '88%', borderRadius: 18 },
-                m.role === 'coach' ? cardStyle : null,
-              ]}
-            >
-              <Text style={{ color: C.text, fontSize: 14.5, lineHeight: 21 }}>{m.body}</Text>
-            </View>
-          ))}
+          {messages.map((m, i) =>
+            m.role === 'user' ? (
+              <View
+                key={i}
+                style={{ alignSelf: 'flex-end', maxWidth: '84%', backgroundColor: C.raised, borderRadius: R.card, borderTopRightRadius: 6, paddingVertical: 12, paddingHorizontal: 16 }}
+              >
+                <Text style={T.body}>{m.body}</Text>
+              </View>
+            ) : (
+              <CoachBubble key={i}>
+                {m.note ? <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 14, lineHeight: 20, color: C.warn }}>{m.note}</Text> : null}
+                <Text style={[T.body, { color: C.stone }]}>{m.body}</Text>
+              </CoachBubble>
+            ),
+          )}
+
           {busy ? (
-            <View style={[cardStyle, { alignSelf: 'flex-start', paddingVertical: 10 }]}>
-              <Text style={{ color: C.muted, fontSize: 13 }}>Coach is thinking…</Text>
-            </View>
+            <CoachBubble>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="small" color={C.green} />
+                <Text style={T.meta}>Thinking</Text>
+              </View>
+            </CoachBubble>
           ) : null}
         </ScrollView>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: 10,
-            padding: 16,
-            borderTopWidth: 1,
-            borderTopColor: C.line,
-            backgroundColor: 'rgba(5,7,10,0.95)',
-          }}
-        >
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
           <View
             style={{
-              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingLeft: 18,
+              paddingRight: 4,
+              minHeight: 52,
+              borderRadius: 26,
+              backgroundColor: C.card,
               borderWidth: 1,
-              borderColor: C.line,
-              borderRadius: 14,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
+              borderColor: inputFocused ? C.green : C.inputBorder,
+              maxWidth: 680,
+              width: '100%',
+              alignSelf: 'center',
             }}
           >
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Ask your coach…"
-              placeholderTextColor={C.muted}
+              placeholder="Ask your coach anything"
+              placeholderTextColor={C.faint}
+              accessibilityLabel="Message your coach"
               multiline
-              style={{ color: C.text, fontSize: 15, maxHeight: 90 }}
+              numberOfLines={1}
+              onSubmitEditing={() => void send()}
+              onKeyPress={(e) => {
+                // Web: Enter sends, Shift+Enter adds a line.
+                const ev = e.nativeEvent as { key: string; shiftKey?: boolean };
+                if (Platform.OS === 'web' && ev.key === 'Enter' && !ev.shiftKey) {
+                  (e as unknown as { preventDefault: () => void }).preventDefault();
+                  void send();
+                }
+              }}
+              submitBehavior="submit"
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              style={[
+                { flex: 1, color: C.text, fontSize: 16, fontFamily: FONT.body, maxHeight: 110, paddingVertical: 12 },
+                // The pill's border shows focus; drop the browser's inner outline.
+                Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null,
+              ]}
             />
+            <IconButton icon="arrowRight" variant="green" size={44} onPress={() => void send()} disabled={!canSend} busy={busy} accessibilityLabel="Send message" />
           </View>
-          <Pressable
-            onPress={send}
-            disabled={busy || !input.trim()}
-            style={{
-              backgroundColor: C.mint,
-              borderRadius: 14,
-              paddingHorizontal: 18,
-              justifyContent: 'center',
-              opacity: busy || !input.trim() ? 0.5 : 1,
-            }}
-          >
-            <Text style={{ color: '#04120C', fontWeight: '800' }}>Send</Text>
-          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

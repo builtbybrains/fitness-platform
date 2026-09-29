@@ -1,141 +1,174 @@
-/* Progress tab — what the database says about your last weeks: weight trend,
-   weekly workouts, and streak history. */
+/* Progress: the last eight weeks from real history. Workouts per week and
+   the streak come from the plan store (same numbers as Today); the weight
+   trend reloads whenever the tab comes into view. */
 
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useFocusEffect } from 'expo-router';
 
-import { C, card as cardStyle, screen, sectionLabel, subtitle, title } from '../../src/design';
+import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
 import { LineChart } from '../../src/components/LineChart';
 import { BarChart } from '../../src/components/BarChart';
+import { Button, LinkButton } from '../../src/components/Button';
+import { Icon } from '../../src/components/Icon';
+import { ScreenHeader } from '../../src/components/Bits';
 import { usePlan } from '../../src/planStore';
 import { useAuth } from '../../src/auth';
-import { fetchWeights, fetchWeekDone, DoneRow, WeightEntry } from '../../src/data';
-import { weeklyHistory, streakHistory, WeekBucket } from '../../src/stats';
-import { isoDay } from '../../src/planData';
+import { fetchWeights, WeightEntry } from '../../src/data';
+import { weeklyHistory, streakHistory } from '../../src/stats';
+import { parseDay } from '../../src/lib/dates';
+
+function shortLabel(label: string): string {
+  if (label === 'This wk') return 'Now';
+  if (label === 'Last wk') return '1w';
+  return label.replace(' ago', '');
+}
+
+function shortDate(id: string): string {
+  return parseDay(id).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
 
 export default function ProgressTab() {
-  const { days } = usePlan();
+  const { history, schedule, historyLoaded, todayId, todayIdx, days } = usePlan();
   const { userId } = useAuth();
   const [weights, setWeights] = useState<WeightEntry[]>([]);
-  const [weeks, setWeeks] = useState<WeekBucket[]>([]);
-  const [streaks, setStreaks] = useState<number[]>([]);
+  const [weightsLoaded, setWeightsLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    fetchWeights(userId).then(({ entries }) => {
-      if (alive && entries) setWeights(entries);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [userId]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      let alive = true;
+      fetchWeights(userId).then(({ entries }) => {
+        if (!alive) return;
+        if (entries) setWeights(entries);
+        setWeightsLoaded(true);
+      });
+      return () => {
+        alive = false;
+      };
+    }, [userId]),
+  );
 
-  // Full 8-week done-map: DB history merged with the live plan store.
-  const doneById = useMemo(() => {
-    const map: Record<string, DoneRow> = {};
-    for (const d of days) map[d.id] = d.done;
-    return map;
-  }, [days]);
-
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7) - 7 * 7); // 8 Mondays back
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6 * 7 + 6);
-    fetchWeekDone(userId, isoDay(start), isoDay(end)).then(({ done }) => {
-      if (!alive) return;
-      const merged: Record<string, DoneRow> = { ...(done ?? {}), ...doneById };
-      setWeeks(weeklyHistory(merged, 8));
-      setStreaks(streakHistory(merged, 8));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [userId, doneById]);
+  const weeks = useMemo(() => weeklyHistory(history, 8, new Date(), schedule), [history, schedule, todayId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const streaks = useMemo(() => streakHistory(history, 8, new Date(), schedule), [history, schedule, todayId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const anyWorkout = weeks.some((w) => w.workoutsDone > 0);
 
   const weightValues = weights.map((w) => w.kg);
   const latest = weights.length ? weights[weights.length - 1] : null;
   const first = weights.length ? weights[0] : null;
   const delta = latest && first ? Math.round((latest.kg - first.kg) * 10) / 10 : 0;
 
-  const doneThisWeek = weeks.length ? weeks[weeks.length - 1].workoutsDone : 0;
-  const plannedThisWeek = weeks.length ? weeks[weeks.length - 1].workoutsPlanned : 0;
+  const thisWeek = weeks[weeks.length - 1];
   const currentStreak = streaks.length ? streaks[streaks.length - 1] : 0;
   const bestStreak = streaks.length ? Math.max(...streaks) : 0;
+  const today = days[todayIdx];
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}>
-        <View style={{ gap: 2 }}>
-          <Text style={sectionLabel}>VITAL</Text>
-          <Text style={title}>Progress</Text>
-          <Text style={subtitle}>Your last 8 weeks, from your account</Text>
-        </View>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+        <ScreenHeader title="Progress" subtitle="Your last 8 weeks" />
 
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={[cardStyle, { flex: 1, alignItems: 'center', gap: 4 }]}>
-            <Text style={{ color: C.mint, fontSize: 30, fontWeight: '800' }}>{currentStreak}</Text>
-            <Text style={{ color: C.muted, fontSize: 12 }}>week streak</Text>
+        {!historyLoaded ? (
+          <View style={[cardStyle, { alignItems: 'center', gap: 12, paddingVertical: 40 }]} accessibilityLiveRegion="polite">
+            <ActivityIndicator color={C.green} />
+            <Text style={T.meta}>Loading your history</Text>
           </View>
-          <View style={[cardStyle, { flex: 1, alignItems: 'center', gap: 4 }]}>
-            <Text style={{ color: C.text, fontSize: 30, fontWeight: '800' }}>{bestStreak}</Text>
-            <Text style={{ color: C.muted, fontSize: 12 }}>best recent</Text>
+        ) : !anyWorkout ? (
+          <View style={[cardStyle, { alignItems: 'center', gap: 16, paddingVertical: 36 }]}>
+            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.raised, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="bars" size={32} />
+            </View>
+            <View style={{ gap: 6, alignItems: 'center' }}>
+              <Text style={[T.h2, { textAlign: 'center' }]}>No workouts yet</Text>
+              <Text style={[T.meta, { textAlign: 'center', maxWidth: 280 }]}>Finish a workout and it shows up here.</Text>
+            </View>
+            <Button
+              label={today?.session.kind === 'workout' && !today.done.workout ? "Start today's workout" : 'Open your plan'}
+              onPress={() =>
+                today?.session.kind === 'workout' && !today.done.workout ? router.push(`/workout/${today.id}`) : router.push('/(tabs)/plan')
+              }
+            />
           </View>
-        </View>
+        ) : (
+          <>
+            <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 20 }]}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 56, lineHeight: 62, letterSpacing: -2, color: C.green }}>{currentStreak}</Text>
+                <Text style={T.bodyStrong}>workout streak</Text>
+              </View>
+              <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: C.lineStrong }} />
+              <View style={{ flex: 1, gap: 14 }}>
+                <View>
+                  <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>{bestStreak}</Text>
+                  <Text style={T.small}>best streak, 8 weeks</Text>
+                </View>
+                <View>
+                  <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>
+                    {thisWeek?.workoutsDone ?? 0}
+                    <Text style={{ fontSize: 16, color: C.muted }}>/{thisWeek?.workoutsPlanned ?? 0}</Text>
+                  </Text>
+                  <Text style={T.small}>workouts this week</Text>
+                </View>
+              </View>
+            </View>
 
-        <View style={[cardStyle, { gap: 12 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={sectionLabel}>Workouts per week</Text>
-            <Text style={{ color: C.muted, fontSize: 12 }}>
-              {doneThisWeek}/{plannedThisWeek} this week
+            <View style={[cardStyle, { gap: 16 }]}>
+              <Text style={T.h3} accessibilityRole="header">
+                Workouts per week
+              </Text>
+              <BarChart
+                values={weeks.map((w) => w.workoutsDone)}
+                labels={weeks.map((w) => shortLabel(w.label))}
+                height={150}
+                accessibilityLabel={`Workouts per week, oldest first: ${weeks.map((w) => w.workoutsDone).join(', ')}`}
+              />
+            </View>
+
+            <View style={[cardStyle, { gap: 16 }]}>
+              <View style={{ gap: 2 }}>
+                <Text style={T.h3} accessibilityRole="header">
+                  Streak history
+                </Text>
+                <Text style={T.small}>Workouts in a row at the end of each week</Text>
+              </View>
+              <BarChart
+                values={streaks}
+                labels={weeks.map((w) => shortLabel(w.label))}
+                height={150}
+                accessibilityLabel={`Streak at the end of each week, oldest first: ${streaks.join(', ')}`}
+              />
+            </View>
+          </>
+        )}
+
+        <View style={[cardStyle, { gap: 16 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <Text style={T.h3} accessibilityRole="header">
+              Weight
             </Text>
-          </View>
-          <BarChart
-            values={weeks.map((w) => w.workoutsDone)}
-            labels={weeks.map((w) => w.label)}
-            height={150}
-          />
-        </View>
-
-        <View style={[cardStyle, { gap: 12 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={sectionLabel}>Streak history</Text>
-            <Text style={{ color: C.muted, fontSize: 12 }}>consecutive workouts</Text>
-          </View>
-          <BarChart
-            values={streaks}
-            labels={weeks.map((w) => w.label)}
-            height={150}
-          />
-        </View>
-
-        <View style={[cardStyle, { gap: 12 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={sectionLabel}>Weight</Text>
             {delta !== 0 ? (
-              <Text style={{ color: delta < 0 ? C.mint : C.warn, fontSize: 13, fontWeight: '700' }}>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>
                 {delta > 0 ? '+' : ''}
                 {delta.toFixed(1)} kg
               </Text>
             ) : null}
           </View>
-          {weightValues.length >= 2 ? (
-            <LineChart values={weightValues} height={140} />
+          {!weightsLoaded ? (
+            <ActivityIndicator color={C.green} />
+          ) : weightValues.length >= 2 ? (
+            <LineChart values={weightValues} height={140} accessibilityLabel={`Weight trend from ${first?.kg} to ${latest?.kg} kilograms`} />
           ) : (
-            <Text style={{ color: C.muted, fontSize: 13, lineHeight: 20 }}>
-              Log your weight in Profile a couple of times and your trend shows up here.
-            </Text>
+            <Text style={T.meta}>Log your weight in Profile a couple of times and your trend shows up here.</Text>
           )}
           {latest ? (
-            <Text style={{ color: C.muted, fontSize: 12 }}>
-              Latest: {latest.kg.toFixed(1)} kg on {latest.date}
+            <Text style={T.small}>
+              Latest: {latest.kg.toFixed(1)} kg on {shortDate(latest.date)}
             </Text>
           ) : null}
+          <LinkButton align="flex-start" onPress={() => router.push('/(tabs)/profile')} accessibilityLabel="Log your weight in Profile">
+            <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.green }}>Log your weight</Text>
+          </LinkButton>
         </View>
       </ScrollView>
     </SafeAreaView>
