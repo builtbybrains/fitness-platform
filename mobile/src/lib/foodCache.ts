@@ -1,15 +1,24 @@
-/* Shared in-memory state for photo food logs, so a log added in the Coach
-   tab shows up in the Today tab at once. Keyed by user and day: a
+/* Shared in-memory state for food logs (photo, typed, generated), so a log
+   added on the Food screens shows up on Today at once. Keyed by user and day: a
    different user (or a new day) never sees the previous one's rows, and
    sign-out clears it. Pure module (no native imports). */
 
 export type Confidence = 'low' | 'medium' | 'high';
 
+export type FoodSource = 'photo' | 'text' | 'plan' | 'generated';
+export type MealSlot = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+
 export type Estimate = {
   label: string;
   kcal: number;
   protein: number;
+  carbs: number;
+  fat: number;
   confidence: Confidence;
+  source?: FoodSource;
+  slot?: MealSlot | '';
+  items?: { name: string; portion: string; kcal: number; protein: number; carbs: number; fat: number }[];
+  followUp?: { question: string; answer: string }[];
 };
 
 export type FoodLog = Estimate & {

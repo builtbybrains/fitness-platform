@@ -1,7 +1,9 @@
 /* Workout: set-by-set logging with a rest timer. The route param `day` is
-   the plan-day id (yyyy-mm-dd) in the current week; state lives in the
-   shared plan store. Ticking the last set completes the workout and
-   triggers the celebration. */
+   the calendar day id (yyyy-mm-dd) in the current week, so a workout moved
+   to another day opens on that day; state lives in the shared plan store.
+   Swapped exercises say what they replace, every exercise shows its coaching
+   note, and any exercise can be replaced from here. Ticking the last set
+   completes the workout and triggers the celebration. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,13 +11,15 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
-import { exerciseLabel, PlanWorkout, restFor } from '../../src/planData';
+import { exerciseLabel, restFor } from '../../src/planData';
 import { usePlan } from '../../src/planStore';
 import { useRestTimer } from '../../src/useRestTimer';
 import { useCelebration } from '../../src/celebration';
 import { Button, IconButton } from '../../src/components/Button';
 import { ProgressBar } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
+import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
+import type { PlanWorkoutV2 } from '../../src/types';
 
 function mmss(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -60,7 +64,9 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 export default function WorkoutScreen() {
   const params = useLocalSearchParams<{ day: string }>();
   const dayId = String(params.day ?? '');
-  const { days, toggleSet, setWorkoutDone } = usePlan();
+  const { days, toggleSet, setWorkoutDone, optionsFor, replaceExercise } = usePlan();
+  const [replaceIdx, setReplaceIdx] = useState<number | null>(null);
+  const [swapNote, setSwapNote] = useState<string | null>(null);
   const day = days.find((d) => d.id === dayId);
   const inset = useSafeAreaInsets();
   const celebration = useCelebration();
@@ -98,7 +104,7 @@ export default function WorkoutScreen() {
       celebratedRef.current = true;
       timer.stop();
       void setWorkoutDone(dayId, true);
-      celebration.show({ done: progress.done, total: progress.total, focus: (day.session as PlanWorkout).focus, onDone: leave });
+      celebration.show({ done: progress.done, total: progress.total, focus: (day.session as PlanWorkoutV2).focus, onDone: leave });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress.done, progress.total, day?.id]);
@@ -110,7 +116,8 @@ export default function WorkoutScreen() {
     return <EmptyState title="Rest day" body={day.session.note} />;
   }
 
-  const w = day.session as PlanWorkout;
+  const w = day.session as PlanWorkoutV2;
+  const replacing = replaceIdx != null ? w.exercises[replaceIdx] ?? null : null;
   const allSetsDone = progress.total > 0 && progress.done === progress.total;
 
   function completeWorkout() {
@@ -208,7 +215,8 @@ export default function WorkoutScreen() {
                 </View>
               </Pressable>
 
-              {ex.kg == null && ex.note ? <Text style={T.small}>{ex.note}</Text> : null}
+              {ex.replaced_from ? <Text style={[T.small, { color: C.stone }]}>Replaces {ex.replaced_from}</Text> : null}
+              {ex.note ? <Text style={T.small}>{ex.note}</Text> : null}
 
               {open ? (
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
@@ -251,9 +259,14 @@ export default function WorkoutScreen() {
                   })}
                 </View>
               ) : null}
+              {open && setDone.length === 0 ? (
+                <Button compact variant="secondary" icon="swap" label="Replace this exercise" onPress={() => setReplaceIdx(i)} accessibilityLabel={`Replace ${ex.name}`} />
+              ) : null}
             </View>
           );
         })}
+
+        {swapNote ? <Text style={[T.small, { color: C.stone }]} accessibilityLiveRegion="polite">{swapNote}</Text> : null}
       </ScrollView>
 
       <View
@@ -281,6 +294,19 @@ export default function WorkoutScreen() {
           )}
         </View>
       </View>
+
+      <ReplaceExerciseSheet
+        visible={replaceIdx != null}
+        onClose={() => setReplaceIdx(null)}
+        exercise={replacing}
+        options={replaceIdx != null ? optionsFor(dayId, replaceIdx) : []}
+        onReplace={async (rep, scope) => {
+          const name = replacing?.name;
+          const r = await replaceExercise(dayId, replaceIdx ?? 0, rep, scope);
+          if (r.ok) setSwapNote(`${name} replaced with ${rep.name}${scope === 'always' ? ' for good' : ' this week'}.`);
+          return r;
+        }}
+      />
     </View>
   );
 }

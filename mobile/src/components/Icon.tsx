@@ -27,7 +27,14 @@ export type IconName =
   | 'play'
   | 'scale'
   | 'bell'
-  | 'refresh';
+  | 'refresh'
+  | 'swap'
+  | 'calendar'
+  | 'pulse'
+  | 'edit'
+  | 'trash'
+  | 'clock'
+  | 'steps';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -160,6 +167,59 @@ export function Icon({ name, size = 24, color = C.green, strokeWidth = 2 }: Prop
           <Path d="M20 12a8 8 0 0 1-14.3 4.9" {...s} />
           <Path d="M4 12a8 8 0 0 1 14.3-4.9" {...s} />
           <Path d="M18.5 3v4.5H14M5.5 21v-4.5H10" {...s} />
+        </>
+      );
+      break;
+    case 'swap':
+      body = (
+        <>
+          <Path d="M4 8h14l-3.5-3.5" {...s} />
+          <Path d="M20 16H6l3.5 3.5" {...s} />
+        </>
+      );
+      break;
+    case 'calendar':
+      body = (
+        <>
+          <Rect x={3.5} y={5} width={17} height={15.5} rx={2.5} {...s} />
+          <Path d="M3.5 10h17M8 3v4M16 3v4" {...s} />
+        </>
+      );
+      break;
+    case 'pulse':
+      body = <Path d="M3 12h4l2.5-6 5 12 2.5-6h4" {...s} />;
+      break;
+    case 'edit':
+      body = (
+        <>
+          <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z" {...s} />
+          <Path d="m13.5 6.5 4 4" {...s} />
+        </>
+      );
+      break;
+    case 'trash':
+      body = (
+        <>
+          <Path d="M4.5 7h15M10 3.5h4M6.5 7l1 13h9l1-13" {...s} />
+          <Path d="M10 11v5.5M14 11v5.5" {...s} />
+        </>
+      );
+      break;
+    case 'clock':
+      body = (
+        <>
+          <Circle cx={12} cy={12} r={8.5} {...s} />
+          <Path d="M12 7.5V12l3 2" {...s} />
+        </>
+      );
+      break;
+    case 'steps':
+      body = (
+        <>
+          <Path d="M7 3.5c1.7 0 2.5 1.8 2.5 4S8.7 12 7 12s-2.5-2.3-2.5-4.5S5.3 3.5 7 3.5Z" {...s} />
+          <Path d="M5 15h4v1.5a2 2 0 0 1-4 0Z" {...s} />
+          <Path d="M17 7.5c1.7 0 2.5 1.8 2.5 4s-.8 4.5-2.5 4.5-2.5-2.3-2.5-4.5.8-4 2.5-4Z" {...s} />
+          <Path d="M15 19h4v.5a2 2 0 0 1-4 0Z" {...s} />
         </>
       );
       break;

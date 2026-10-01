@@ -188,6 +188,8 @@ describe('food log merge', () => {
     day: '2026-09-29',
     label: id,
     kcal: 100,
+    carbs: 0,
+    fat: 0,
     protein: 5,
     confidence: 'medium',
     created_at: t,
