@@ -206,6 +206,7 @@ export default function ProfileTab() {
         ) : null}
 
         <RowGroup title="Coach and progress">
+          <Row icon="bars" title="Progress" detail="Workouts, activities, food and weight" onPress={() => router.push('/(tabs)/progress')} />
           <Row icon="brain" title="What your coach remembers" detail="See it all, delete anything" onPress={() => router.push('/memory')} />
           <Row icon="clock" title="Check-ins" detail="Weigh-ins, monthly reviews and plan changes" onPress={() => router.push('/checkin')} />
         </RowGroup>

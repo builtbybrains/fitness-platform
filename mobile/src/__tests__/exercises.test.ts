@@ -167,3 +167,17 @@ describe('alternativesFor', () => {
     expect(v.muscle).toBe('chest');
   });
 });
+
+describe('alternativesFor keeps the kind of load', () => {
+  it('offers loaded presses, not push-ups, to someone with gym kit', () => {
+    const alts = alternativesFor('incline_db_press', ALL_EQUIPMENT);
+    expect(alts.length).toBe(3);
+    expect(alts.every((e) => !e.equipment.every((k) => k === 'none'))).toBe(true);
+  });
+
+  it('still offers bodyweight moves when that is all there is', () => {
+    const alts = alternativesFor('incline_db_press', ['none']);
+    expect(alts.length).toBeGreaterThan(0);
+    expect(alts.every((e) => e.equipment.every((k) => k === 'none'))).toBe(true);
+  });
+});

@@ -350,6 +350,11 @@ export function alternativesFor(
     if (e.secondary.some((m) => ex.secondary.includes(m))) s += 1;
     if (e.level === ex.level) s += 1;
     if (e.unit === ex.unit) s += 1;
+    // Keep the kind of load: swapping a loaded lift for a bodyweight move
+    // (or the reverse) is a weaker match when the person has the kit.
+    const loaded = (x: Exercise) => !x.equipment.every((k) => k === 'none');
+    if (loaded(e) === loaded(ex)) s += 2;
+    if (e.equipment.some((k) => k !== 'none' && ex.equipment.includes(k))) s += 1;
     return s;
   };
   const ranked = pool
