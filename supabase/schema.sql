@@ -32,6 +32,19 @@ begin
 end;
 $$;
 
+-- Helper for re-runnable policies (lives only for this session). A missing
+-- policy is created; one that exists is changed in place with `alter policy`
+-- (p_alter), never removed, so the script has no DROP POLICY statements.
+create or replace function pg_temp.put_policy(p_schema text, p_table text, p_name text, p_create text, p_alter text)
+returns void language plpgsql as $$
+begin
+  if exists (select 1 from pg_policies where schemaname = p_schema and tablename = p_table and policyname = p_name) then
+    if p_alter is not null then execute p_alter; end if;
+  else
+    execute p_create;
+  end if;
+end; $$;
+
 -- Password hashing and random tokens for the admin login (Supabase keeps
 -- pgcrypto in the `extensions` schema; this is a no-op there).
 create schema if not exists extensions;
@@ -534,127 +547,127 @@ alter table public.admin_lockouts       enable row level security;
 -- (app_config and admin_* have no policies at all: with RLS on and no
 -- grants, only the service role reaches them.)
 
-drop policy if exists "own profile" on public.profiles;
-create policy "own profile" on public.profiles
-  for all to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+select pg_temp.put_policy('public', 'profiles', 'own profile',
+  $p$create policy "own profile" on public.profiles for all to authenticated using (auth.uid() = id) with check (auth.uid() = id)$p$,
+  $p$alter policy "own profile" on public.profiles to authenticated using (auth.uid() = id) with check (auth.uid() = id)$p$);
 
-drop policy if exists "own plan days" on public.plan_days;
-create policy "own plan days" on public.plan_days
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'plan_days', 'own plan days',
+  $p$create policy "own plan days" on public.plan_days for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own plan days" on public.plan_days to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own water" on public.water;
-create policy "own water" on public.water
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'water', 'own water',
+  $p$create policy "own water" on public.water for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own water" on public.water to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own weights" on public.weights;
-create policy "own weights" on public.weights
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'weights', 'own weights',
+  $p$create policy "own weights" on public.weights for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own weights" on public.weights to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
 -- Coach history: read and add your own messages. No update or delete, so
 -- the daily message limit (counted from this table) can't be reset.
-drop policy if exists "own coach messages" on public.coach_messages;
-drop policy if exists "read own coach messages" on public.coach_messages;
-drop policy if exists "add own coach messages" on public.coach_messages;
-create policy "read own coach messages" on public.coach_messages
-  for select to authenticated using (auth.uid() = user_id);
-create policy "add own coach messages" on public.coach_messages
-  for insert to authenticated with check (auth.uid() = user_id);
+-- An older version of this script had one catch-all "own coach messages"
+-- policy. It is left in place on purpose (dropping it would need a
+-- destructive-statement confirmation): the table grants below limit
+-- coach_messages to select and insert for `authenticated`, so the catch-all
+-- cannot allow an update or delete.
+select pg_temp.put_policy('public', 'coach_messages', 'read own coach messages',
+  $p$create policy "read own coach messages" on public.coach_messages for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own coach messages" on public.coach_messages to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'coach_messages', 'add own coach messages',
+  $p$create policy "add own coach messages" on public.coach_messages for insert to authenticated with check (auth.uid() = user_id)$p$,
+  $p$alter policy "add own coach messages" on public.coach_messages to authenticated with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own ai plan" on public.ai_plans;
-create policy "own ai plan" on public.ai_plans
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'ai_plans', 'own ai plan',
+  $p$create policy "own ai plan" on public.ai_plans for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own ai plan" on public.ai_plans to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own plan overrides" on public.plan_overrides;
-create policy "own plan overrides" on public.plan_overrides
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'plan_overrides', 'own plan overrides',
+  $p$create policy "own plan overrides" on public.plan_overrides for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own plan overrides" on public.plan_overrides to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own food logs" on public.food_logs;
-create policy "own food logs" on public.food_logs
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'food_logs', 'own food logs',
+  $p$create policy "own food logs" on public.food_logs for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own food logs" on public.food_logs to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own activities" on public.activities;
-create policy "own activities" on public.activities
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'activities', 'own activities',
+  $p$create policy "own activities" on public.activities for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own activities" on public.activities to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
-drop policy if exists "own health daily" on public.health_daily;
-create policy "own health daily" on public.health_daily
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'health_daily', 'own health daily',
+  $p$create policy "own health daily" on public.health_daily for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own health daily" on public.health_daily to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
 -- Body photos: add, read and delete your own; never edit (no update policy).
-drop policy if exists "read own body photos" on public.body_photos;
-drop policy if exists "add own body photos" on public.body_photos;
-drop policy if exists "delete own body photos" on public.body_photos;
-create policy "read own body photos" on public.body_photos
-  for select to authenticated using (auth.uid() = user_id);
-create policy "add own body photos" on public.body_photos
-  for insert to authenticated with check (auth.uid() = user_id);
-create policy "delete own body photos" on public.body_photos
-  for delete to authenticated using (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'body_photos', 'read own body photos',
+  $p$create policy "read own body photos" on public.body_photos for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own body photos" on public.body_photos to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'body_photos', 'add own body photos',
+  $p$create policy "add own body photos" on public.body_photos for insert to authenticated with check (auth.uid() = user_id)$p$,
+  $p$alter policy "add own body photos" on public.body_photos to authenticated with check (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'body_photos', 'delete own body photos',
+  $p$create policy "delete own body photos" on public.body_photos for delete to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "delete own body photos" on public.body_photos to authenticated using (auth.uid() = user_id)$p$);
 
-drop policy if exists "read own body analyses" on public.body_analyses;
-drop policy if exists "add own body analyses" on public.body_analyses;
-drop policy if exists "delete own body analyses" on public.body_analyses;
-create policy "read own body analyses" on public.body_analyses
-  for select to authenticated using (auth.uid() = user_id);
-create policy "add own body analyses" on public.body_analyses
-  for insert to authenticated with check (auth.uid() = user_id);
-create policy "delete own body analyses" on public.body_analyses
-  for delete to authenticated using (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'body_analyses', 'read own body analyses',
+  $p$create policy "read own body analyses" on public.body_analyses for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own body analyses" on public.body_analyses to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'body_analyses', 'add own body analyses',
+  $p$create policy "add own body analyses" on public.body_analyses for insert to authenticated with check (auth.uid() = user_id)$p$,
+  $p$alter policy "add own body analyses" on public.body_analyses to authenticated with check (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'body_analyses', 'delete own body analyses',
+  $p$create policy "delete own body analyses" on public.body_analyses for delete to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "delete own body analyses" on public.body_analyses to authenticated using (auth.uid() = user_id)$p$);
 
-drop policy if exists "own checkins" on public.checkins;
-create policy "own checkins" on public.checkins
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'checkins', 'own checkins',
+  $p$create policy "own checkins" on public.checkins for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "own checkins" on public.checkins to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
 -- Coach memory: read, add and delete your own facts; no edits.
-drop policy if exists "read own memory" on public.coach_memory;
-drop policy if exists "add own memory" on public.coach_memory;
-drop policy if exists "delete own memory" on public.coach_memory;
-create policy "read own memory" on public.coach_memory
-  for select to authenticated using (auth.uid() = user_id);
-create policy "add own memory" on public.coach_memory
-  for insert to authenticated with check (auth.uid() = user_id);
-create policy "delete own memory" on public.coach_memory
-  for delete to authenticated using (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'coach_memory', 'read own memory',
+  $p$create policy "read own memory" on public.coach_memory for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own memory" on public.coach_memory to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'coach_memory', 'add own memory',
+  $p$create policy "add own memory" on public.coach_memory for insert to authenticated with check (auth.uid() = user_id)$p$,
+  $p$alter policy "add own memory" on public.coach_memory to authenticated with check (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'coach_memory', 'delete own memory',
+  $p$create policy "delete own memory" on public.coach_memory for delete to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "delete own memory" on public.coach_memory to authenticated using (auth.uid() = user_id)$p$);
 
 -- Reports: add and read your own. The only column you may update is your
 -- own "last read" time (column grant below); status is admin-only.
-drop policy if exists "read own reports" on public.problem_reports;
-drop policy if exists "add own reports" on public.problem_reports;
-drop policy if exists "mark own reports read" on public.problem_reports;
-create policy "read own reports" on public.problem_reports
-  for select to authenticated using (auth.uid() = user_id);
-create policy "add own reports" on public.problem_reports
-  for insert to authenticated with check (auth.uid() = user_id and status = 'new');
-create policy "mark own reports read" on public.problem_reports
-  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'problem_reports', 'read own reports',
+  $p$create policy "read own reports" on public.problem_reports for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own reports" on public.problem_reports to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'problem_reports', 'add own reports',
+  $p$create policy "add own reports" on public.problem_reports for insert to authenticated with check (auth.uid() = user_id and status = 'new')$p$,
+  $p$alter policy "add own reports" on public.problem_reports to authenticated with check (auth.uid() = user_id and status = 'new')$p$);
+select pg_temp.put_policy('public', 'problem_reports', 'mark own reports read',
+  $p$create policy "mark own reports read" on public.problem_reports for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$,
+  $p$alter policy "mark own reports read" on public.problem_reports to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)$p$);
 
 -- Report messages: read the thread of your own reports, add your own
 -- replies (author is always 'user'; admin replies come from the service role).
-drop policy if exists "read own report messages" on public.report_messages;
-drop policy if exists "add own report messages" on public.report_messages;
-create policy "read own report messages" on public.report_messages
-  for select to authenticated using (auth.uid() = user_id);
-create policy "add own report messages" on public.report_messages
-  for insert to authenticated with check (
-    auth.uid() = user_id
-    and author = 'user'
-    and exists (select 1 from public.problem_reports r where r.id = report_id and r.user_id = auth.uid())
-  );
+select pg_temp.put_policy('public', 'report_messages', 'read own report messages',
+  $p$create policy "read own report messages" on public.report_messages for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own report messages" on public.report_messages to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'report_messages', 'add own report messages',
+  $p$create policy "add own report messages" on public.report_messages for insert to authenticated with check (auth.uid() = user_id and author = 'user' and exists (select 1 from public.problem_reports r where r.id = report_id and r.user_id = auth.uid()))$p$,
+  $p$alter policy "add own report messages" on public.report_messages to authenticated with check (auth.uid() = user_id and author = 'user' and exists (select 1 from public.problem_reports r where r.id = report_id and r.user_id = auth.uid()))$p$);
 
-drop policy if exists "read own push tokens" on public.push_tokens;
-drop policy if exists "delete own push tokens" on public.push_tokens;
-create policy "read own push tokens" on public.push_tokens
-  for select to authenticated using (auth.uid() = user_id);
-create policy "delete own push tokens" on public.push_tokens
-  for delete to authenticated using (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'push_tokens', 'read own push tokens',
+  $p$create policy "read own push tokens" on public.push_tokens for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own push tokens" on public.push_tokens to authenticated using (auth.uid() = user_id)$p$);
+select pg_temp.put_policy('public', 'push_tokens', 'delete own push tokens',
+  $p$create policy "delete own push tokens" on public.push_tokens for delete to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "delete own push tokens" on public.push_tokens to authenticated using (auth.uid() = user_id)$p$);
 
-drop policy if exists "read own ai usage" on public.ai_usage;
-create policy "read own ai usage" on public.ai_usage
-  for select to authenticated using (auth.uid() = user_id);
+select pg_temp.put_policy('public', 'ai_usage', 'read own ai usage',
+  $p$create policy "read own ai usage" on public.ai_usage for select to authenticated using (auth.uid() = user_id)$p$,
+  $p$alter policy "read own ai usage" on public.ai_usage to authenticated using (auth.uid() = user_id)$p$);
 
-drop policy if exists "anyone can send a contact message" on public.contact_messages;
-create policy "anyone can send a contact message" on public.contact_messages
-  for insert to anon, authenticated with check (true);
+select pg_temp.put_policy('public', 'contact_messages', 'anyone can send a contact message',
+  $p$create policy "anyone can send a contact message" on public.contact_messages for insert to anon, authenticated with check (true)$p$,
+  $p$alter policy "anyone can send a contact message" on public.contact_messages to anon, authenticated with check (true)$p$);
 
 -- ═══════════════════════════════ functions ═══════════════════════════════
 
@@ -672,14 +685,13 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
+create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- Whole years between a birth date and a day.
 create or replace function public.age_on(p_birth date, p_day date)
-returns int language sql immutable as $$
+returns int language sql immutable set search_path = public as $$
   select extract(year from age(p_day, p_birth))::int
 $$;
 
@@ -732,8 +744,7 @@ begin
 end;
 $$;
 
-drop trigger if exists profiles_guard on public.profiles;
-create trigger profiles_guard
+create or replace trigger profiles_guard
   before insert or update on public.profiles
   for each row execute function public.profiles_guard();
 
@@ -765,8 +776,7 @@ declare
   t text;
 begin
   foreach t in array array['plan_days', 'water', 'weights', 'food_logs', 'activities', 'coach_messages', 'checkins', 'report_messages', 'coach_memory'] loop
-    execute format('drop trigger if exists touch_last_active on public.%I', t);
-    execute format('create trigger touch_last_active after insert or update on public.%I for each row execute function public.touch_last_active()', t);
+    execute format('create or replace trigger touch_last_active after insert or update on public.%I for each row execute function public.touch_last_active()', t);
   end loop;
 end;
 $touch$;
@@ -785,8 +795,7 @@ begin
 end;
 $$;
 
-drop trigger if exists report_message_added on public.report_messages;
-create trigger report_message_added
+create or replace trigger report_message_added
   after insert on public.report_messages
   for each row execute function public.report_message_added();
 
@@ -820,7 +829,9 @@ revoke all on function public.bump_ai_usage(text, int) from public, anon;
 grant execute on function public.bump_ai_usage(text, int) to authenticated, service_role;
 
 -- Register this device's push token for the signed-in person. A token that
--- belonged to another account on the same phone moves to this one.
+-- belonged to another account on the same phone moves to this one: the other
+-- account's row is kept but its token is renamed ('retired:…'), so it can no
+-- longer be pushed to and nothing is deleted.
 create or replace function public.register_push_token(p_token text, p_platform text)
 returns void
 language plpgsql
@@ -832,7 +843,8 @@ begin
   if uid is null then
     raise exception 'not signed in' using errcode = '42501';
   end if;
-  delete from public.push_tokens where token = p_token and user_id <> uid;
+  update public.push_tokens set token = 'retired:' || gen_random_uuid()::text, updated_at = now()
+  where token = p_token and user_id <> uid;
   insert into public.push_tokens (user_id, token, platform, updated_at)
   values (uid, p_token, p_platform, now())
   on conflict (user_id, token) do update set platform = excluded.platform, updated_at = now();
@@ -849,7 +861,9 @@ grant execute on function public.register_push_token(text, text) to authenticate
 
 -- Set (or change) the admin username and password. Run it in the SQL
 -- Editor: select public.admin_set_credentials('username', 'password');
--- Signs out every admin session and clears lockouts.
+-- Signs out every admin session and clears lockouts. Nothing is deleted:
+-- sessions are ended and lockouts lifted by setting their end time to now,
+-- and the expired rows stay as an audit trail.
 create or replace function public.admin_set_credentials(p_username text, p_password text)
 returns text
 language plpgsql
@@ -866,8 +880,8 @@ begin
   values (1, btrim(p_username), extensions.crypt(p_password, extensions.gen_salt('bf', 12)), now())
   on conflict (id) do update
     set username = excluded.username, password_hash = excluded.password_hash, updated_at = now();
-  delete from public.admin_sessions;
-  delete from public.admin_lockouts;
+  update public.admin_sessions set expires_at = now() where expires_at > now();
+  update public.admin_lockouts set locked_until = now() where locked_until > now();
   return 'Admin login saved. Every earlier admin session is signed out.';
 end;
 $$;
@@ -876,7 +890,9 @@ $$;
 -- {"ok":false,"error":"invalid"|"locked"|"not_configured","locked_until":…}.
 -- Lockout: 5 failed attempts from one address within 15 minutes lock that
 -- address for 15 minutes; 20 failures from anywhere lock every login for
--- 15 minutes. Sessions last 12 hours.
+-- 15 minutes. Sessions last 12 hours. Expired sessions, lifted lockouts and
+-- old attempts are never deleted: they stay as an audit trail, and every
+-- check below only looks at rows that are still live.
 create or replace function public.admin_login(p_username text, p_password text, p_ip text default '')
 returns jsonb
 language plpgsql
@@ -896,10 +912,6 @@ declare
   -- login is configured or the username is wrong.
   c_dummy constant text := '$2a$12$tlOhBBmA4xrh6/43SYxdOeg0uhTwUDgMIOa1eu9VSGNKyEtRIciOW';
 begin
-  delete from public.admin_login_attempts where created_at < now() - interval '30 days';
-  delete from public.admin_sessions where expires_at < now();
-  delete from public.admin_lockouts where locked_until <= now();
-
   select max(locked_until) into v_lock from public.admin_lockouts
   where scope in ('ip:' || v_ip, 'global') and locked_until > now();
   if v_lock is not null then
@@ -937,7 +949,7 @@ begin
     return jsonb_build_object('ok', false, 'error', case when v_lock is null then 'invalid' else 'locked' end, 'locked_until', v_lock);
   end if;
 
-  delete from public.admin_lockouts where scope = 'ip:' || v_ip;
+  update public.admin_lockouts set locked_until = now() where scope = 'ip:' || v_ip and locked_until > now();
   v_token := encode(extensions.gen_random_bytes(32), 'hex');
   v_expires := now() + interval '12 hours';
   insert into public.admin_sessions (token_hash, ip, expires_at)
@@ -965,12 +977,14 @@ begin
 end;
 $$;
 
+-- Ends the session (expires it now); the row stays as an audit trail.
 create or replace function public.admin_logout(p_token text)
 returns void
 language sql
 security definer set search_path = public, extensions, pg_temp
 as $$
-  delete from public.admin_sessions where token_hash = encode(extensions.digest(coalesce(p_token, ''), 'sha256'), 'hex');
+  update public.admin_sessions set expires_at = now()
+  where token_hash = encode(extensions.digest(coalesce(p_token, ''), 'sha256'), 'hex') and expires_at > now();
 $$;
 
 -- The workout streak, the same rule as the app (mobile/src/streak.ts): a
@@ -1030,6 +1044,7 @@ create or replace function public.age_group(p_birth date, p_age int)
 returns text
 language sql
 stable
+set search_path = public
 as $$
   select case
     when a is null then 'unknown'
@@ -1409,6 +1424,12 @@ begin
 end;
 $admin_fns$;
 
+-- Trigger functions run from their triggers only; nobody calls them directly.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.report_message_added() from public, anon, authenticated;
+revoke execute on function public.touch_last_active() from public, anon, authenticated;
+revoke execute on function public.profiles_guard() from public, anon, authenticated;
+
 -- ═══════════════════════════════ storage ═══════════════════════════════
 -- Two private buckets, one folder per person (<user id>/…):
 --   body-photos         progress photos (face blurred on the phone). Add,
@@ -1430,27 +1451,31 @@ begin
   on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
-  drop policy if exists "built: add own body photos" on storage.objects;
-  drop policy if exists "built: read own body photos" on storage.objects;
-  drop policy if exists "built: delete own body photos" on storage.objects;
-  drop policy if exists "built: add own report screenshots" on storage.objects;
-  drop policy if exists "built: read own report screenshots" on storage.objects;
-
-  create policy "built: add own body photos" on storage.objects
-    for insert to authenticated
-    with check (bucket_id = 'body-photos' and (storage.foldername(name))[1] = auth.uid()::text);
-  create policy "built: read own body photos" on storage.objects
-    for select to authenticated
-    using (bucket_id = 'body-photos' and (storage.foldername(name))[1] = auth.uid()::text);
-  create policy "built: delete own body photos" on storage.objects
-    for delete to authenticated
-    using (bucket_id = 'body-photos' and (storage.foldername(name))[1] = auth.uid()::text);
-  create policy "built: add own report screenshots" on storage.objects
-    for insert to authenticated
-    with check (bucket_id = 'report-screenshots' and (storage.foldername(name))[1] = auth.uid()::text);
-  create policy "built: read own report screenshots" on storage.objects
-    for select to authenticated
-    using (bucket_id = 'report-screenshots' and (storage.foldername(name))[1] = auth.uid()::text);
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'built: add own body photos') then
+    create policy "built: add own body photos" on storage.objects
+      for insert to authenticated
+      with check (bucket_id = 'body-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'built: read own body photos') then
+    create policy "built: read own body photos" on storage.objects
+      for select to authenticated
+      using (bucket_id = 'body-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'built: delete own body photos') then
+    create policy "built: delete own body photos" on storage.objects
+      for delete to authenticated
+      using (bucket_id = 'body-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'built: add own report screenshots') then
+    create policy "built: add own report screenshots" on storage.objects
+      for insert to authenticated
+      with check (bucket_id = 'report-screenshots' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'built: read own report screenshots') then
+    create policy "built: read own report screenshots" on storage.objects
+      for select to authenticated
+      using (bucket_id = 'report-screenshots' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
 exception when insufficient_privilege or undefined_table or undefined_function or undefined_column or invalid_schema_name then
   raise warning 'Storage setup skipped (%). Create the buckets by hand: see supabase/README.md, "Storage".', sqlerrm;
 end;
@@ -1471,6 +1496,12 @@ revoke all on public.profiles, public.plan_days, public.water, public.weights,
   public.admin_credentials, public.admin_sessions, public.admin_login_attempts,
   public.admin_lockouts
   from anon, authenticated;
+
+-- Trim what `authenticated` could keep from default grants or older runs of
+-- this script. These come before the column grants below, so those still apply.
+revoke update, delete, truncate, references, trigger on public.problem_reports, public.report_messages from authenticated;
+revoke update, truncate, references, trigger on public.body_photos, public.body_analyses, public.coach_memory from authenticated;
+revoke insert, update on public.push_tokens from authenticated;
 
 grant select, insert, update, delete on public.profiles, public.plan_days,
   public.water, public.weights, public.ai_plans, public.plan_overrides,

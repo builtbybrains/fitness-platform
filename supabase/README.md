@@ -20,8 +20,10 @@ returned".
 `schema.sql` is the whole schema and it is safe to run again at any time, on a
 new or an existing project: tables, columns, indexes, constraints, policies,
 functions, triggers and storage buckets are created only when missing or
-replaced in place, and it never deletes data. Run it again after every
-change to this file. (New check constraints are added `NOT VALID`: they
+replaced in place, and it never deletes data. The script contains no DELETE
+statements and no DROP of policies, triggers or tables (its one remaining
+`drop constraint if exists` removes an old check constraint), so tools that
+ask before running destructive SQL run it without prompts. Run it again after every change to this file. (New check constraints are added `NOT VALID`: they
 apply to every new or edited row without failing on an old row that
 predates them.)
 
@@ -45,8 +47,21 @@ Dashboard → **SQL Editor** → **New query** → run (with your own values):
 select public.admin_set_credentials('choose-a-username', 'a long password, 12 characters or more');
 ```
 
-Run it again to change either; that also signs out every admin session and
-clears lockouts. Five wrong passwords from one address lock that address
+The password must be at least 12 characters. For a quick test login only,
+you can skip that check by writing the row directly (with your own values):
+
+```sql
+insert into public.admin_credentials (id, username, password_hash)
+values (1, '<name>', extensions.crypt('<password>', extensions.gen_salt('bf', 12)))
+on conflict (id) do update set username = excluded.username, password_hash = excluded.password_hash, updated_at = now();
+```
+
+A short password set this way should be replaced with
+`admin_set_credentials` before the dashboard is shared with anyone.
+
+Run `admin_set_credentials` again to change either; that also signs out
+every admin session and clears lockouts (sessions and lockouts are expired,
+not deleted, so they stay as an audit trail). Five wrong passwords from one address lock that address
 for 15 minutes (twenty from anywhere lock every login). Nobody can call this
 function from the app or the website; only the SQL Editor (and the service
 role) can.
