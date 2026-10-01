@@ -1,5 +1,5 @@
 /* Supabase client: sessions persist via AsyncStorage so login survives app
-   restarts. The anon key is public by design — row-level security protects
+   restarts. The anon key is public by design: row-level security protects
    every row; the AI coach key stays server-side in the Edge Function. */
 
 import 'react-native-url-polyfill/auto';

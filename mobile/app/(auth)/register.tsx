@@ -2,13 +2,17 @@
    turns it into the profile row. */
 
 import { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { C, screen } from '../../src/design';
+import { screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
-import { VitalLogo } from '../../src/components/VitalLogo';
+import { BuiltLogo } from '../../src/components/BuiltLogo';
+import { Button } from '../../src/components/Button';
+import { Field } from '../../src/components/Field';
+import { Notice } from '../../src/components/Bits';
+import { readableAuthError } from '../../src/components/copy';
 
 export default function RegisterScreen() {
   const { signUp, session } = useAuth();
@@ -21,15 +25,23 @@ export default function RegisterScreen() {
   const [busy, setBusy] = useState(false);
 
   // If signup returns a session (email confirmation off), go straight in.
-  // With confirmation on there is no session yet — the info message below
-  // stays on screen and the user signs in from the login screen afterwards.
+  // With confirmation on there is no session yet: the message below stays
+  // on screen and the person signs in from the login screen afterwards.
   useEffect(() => {
     if (session) router.replace('/');
   }, [session]);
 
   async function submit() {
+    if (!email.trim()) {
+      setErr('Enter your email.');
+      return;
+    }
+    if (password.length < 8) {
+      setErr('Use at least 8 characters for your password.');
+      return;
+    }
     if (password !== confirm) {
-      setErr('Passwords do not match');
+      setErr("The passwords don't match.");
       return;
     }
     setBusy(true);
@@ -41,60 +53,71 @@ export default function RegisterScreen() {
       setInfo(error.slice('CONFIRM_EMAIL:'.length));
       return;
     }
-    if (error) setErr(error);
+    if (error) setErr(readableAuthError(error));
   }
 
-  const field = {
-    color: C.text,
-    borderWidth: 1,
-    borderColor: C.line,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-  } as const;
+  function back() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(auth)/login');
+  }
 
   return (
     <SafeAreaView style={screen} edges={['top', 'bottom']}>
-      <View style={{ flex: 1, padding: 24, justifyContent: 'center', gap: 18 }}>
-        <View style={{ gap: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <VitalLogo size={44} />
-            <Text style={{ color: C.mint, fontSize: 32, fontWeight: '900', letterSpacing: 8 }}>VITAL</Text>
-          </View>
-          <Text style={{ color: C.muted, fontSize: 14 }}>Start your streak today.</Text>
-        </View>
-
-        <View style={{ gap: 10 }}>
-          <TextInput value={name} onChangeText={setName} placeholder="First name" placeholderTextColor={C.muted} style={field} />
-          <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={C.muted} style={field} />
-          <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (min 8 characters)" placeholderTextColor={C.muted} style={field} />
-          <TextInput value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="Confirm password" placeholderTextColor={C.muted} style={field} />
-          {err ? <Text style={{ color: C.danger, fontSize: 13 }}>{err}</Text> : null}
-          {info ? <Text style={{ color: C.mint, fontSize: 13 }}>{info}</Text> : null}
-        </View>
-
-        <Pressable
-          onPress={submit}
-          disabled={busy}
-          style={({ pressed }) => ({
-            backgroundColor: busy || pressed ? 'rgba(92,224,184,0.8)' : C.mint,
-            borderRadius: 14,
-            paddingVertical: 15,
-            alignItems: 'center',
-          })}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: 'center', gap: 32, maxWidth: 480, width: '100%', alignSelf: 'center' }}
         >
-          <Text style={{ color: '#04120C', fontWeight: '800', fontSize: 16 }}>
-            {busy ? 'Creating account…' : 'Create account'}
-          </Text>
-        </Pressable>
+          <View style={{ alignItems: 'center', paddingTop: 16 }}>
+            <BuiltLogo height={62} tagline />
+          </View>
 
-        <Pressable onPress={() => router.back()}>
-          <Text style={{ color: C.muted, textAlign: 'center', fontSize: 14 }}>
-            Already have an account? <Text style={{ color: C.mint, fontWeight: '700' }}>Sign in</Text>
-          </Text>
-        </Pressable>
-      </View>
+          <View style={{ gap: 16 }}>
+            <View style={{ gap: 4 }}>
+              <Text style={T.h2} accessibilityRole="header">
+                Create your account
+              </Text>
+              <Text style={T.meta}>Your plan, progress and coach, synced to every device.</Text>
+            </View>
+            <Field label="First name" value={name} onChangeText={setName} autoComplete="given-name" textContentType="givenName" />
+            <Field
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              placeholder="you@example.com"
+              textContentType="emailAddress"
+            />
+            <Field
+              label="Password"
+              hint="At least 8 characters."
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+            <Field
+              label="Confirm password"
+              value={confirm}
+              onChangeText={setConfirm}
+              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+              onSubmitEditing={submit}
+            />
+            {err ? <Notice tone="error">{err}</Notice> : null}
+            {info ? <Notice tone="success">{info}</Notice> : null}
+          </View>
+
+          <View style={{ gap: 12 }}>
+            <Button label={busy ? 'Creating your account' : 'Create account'} onPress={submit} busy={busy} />
+            <Button label="I have an account" variant="secondary" onPress={back} accessibilityLabel="I have an account. Sign in." />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

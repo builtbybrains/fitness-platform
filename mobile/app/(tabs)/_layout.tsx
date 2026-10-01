@@ -1,14 +1,17 @@
-/* VITAL tab shell. Step 2 scope: navigation + Today only. */
+/* BUILT tab bar: Carbon, green active icon and label, grey inactive.
+   Icons are the app's own 2px outline set. */
 
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
 
 import { C, FONT } from '../../src/design';
+import { Icon, IconName } from '../../src/components/Icon';
 
-function TabGlyph({ glyph, focused }: { glyph: string; focused: boolean }) {
-  return (
-    <Text style={{ fontSize: 20, color: focused ? C.mint : C.muted }}>{glyph}</Text>
-  );
+function tab(title: string, icon: IconName) {
+  return {
+    title,
+    tabBarAccessibilityLabel: title,
+    tabBarIcon: ({ focused }: { focused: boolean }) => <Icon name={icon} size={24} color={focused ? C.green : C.faint} />,
+  };
 }
 
 export default function TabsLayout() {
@@ -16,53 +19,25 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: C.bg },
         tabBarStyle: {
-          backgroundColor: 'rgba(6,9,13,0.92)',
+          backgroundColor: C.card,
           borderTopColor: C.line,
           borderTopWidth: 1,
-          height: 84,
-          paddingTop: 10,
+          minHeight: 64,
+          paddingTop: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', fontFamily: FONT.regular },
-        tabBarActiveTintColor: C.mint,
-        tabBarInactiveTintColor: C.muted,
+        tabBarItemStyle: { minHeight: 48 },
+        tabBarLabelStyle: { fontSize: 12, fontFamily: FONT.bodyMedium, marginTop: 2 },
+        tabBarActiveTintColor: C.green,
+        tabBarInactiveTintColor: C.faint,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Today',
-          tabBarIcon: ({ focused }) => <TabGlyph glyph="◎" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="plan"
-        options={{
-          title: 'Plan',
-          tabBarIcon: ({ focused }) => <TabGlyph glyph="▤" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="progress"
-        options={{
-          title: 'Progress',
-          tabBarIcon: ({ focused }) => <TabGlyph glyph="↗" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="coach"
-        options={{
-          title: 'Coach',
-          tabBarIcon: ({ focused }) => <TabGlyph glyph="✦" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ focused }) => <TabGlyph glyph="◍" focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={tab('Today', 'home')} />
+      <Tabs.Screen name="plan" options={tab('Plan', 'dumbbell')} />
+      <Tabs.Screen name="progress" options={tab('Progress', 'bars')} />
+      <Tabs.Screen name="coach" options={tab('Coach', 'brain')} />
+      <Tabs.Screen name="profile" options={tab('Profile', 'person')} />
     </Tabs>
   );
 }

@@ -1,5 +1,5 @@
 /* Reminders: local scheduled notifications (no server push needed). Two
-   toggles — a daily water nudge and a workout nudge — plus persisted
+   toggles, a daily water nudge and a workout nudge, plus persisted
    preferences. Everything survives app restarts via AsyncStorage.
 
    Expo Go on Android removed expo-notifications (SDK 53+), so every call
@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { getNotifications, ensureCategories, WATER_CATEGORY, probeNotifications, notificationsAvailable } from './lib/notify';
 
-const KEY = 'vital.reminders.v1';
+const KEY = 'vital.reminders.v1'; // storage key predates the BUILT name; kept so saved prefs survive
 
 export type ReminderPrefs = {
   water: boolean;
@@ -27,7 +27,9 @@ const DEFAULTS: ReminderPrefs = {
   workoutHour: 18,
 };
 
-const WATER_BODY = 'Time for a glass of water — your streak likes hydration.';
+const WATER_TITLE = 'Water check';
+const WATER_BODY = 'Time for a glass of water.';
+const WORKOUT_TITLE = 'Training time';
 const WORKOUT_BODY = 'Workout time. One set is enough to start.';
 
 export function useReminders() {
@@ -88,8 +90,8 @@ export function useReminders() {
           trigger: { type: N.SchedulableTriggerInputTypes.DAILY, hour, minute: 0 },
           identifier: id,
         }).catch(() => {});
-      if (next.water) await daily(next.waterHour, '💧 Hydration check', WATER_BODY, 'vital-water', WATER_CATEGORY);
-      if (next.workout) await daily(next.workoutHour, '🔥 Training time', WORKOUT_BODY, 'vital-workout');
+      if (next.water) await daily(next.waterHour, WATER_TITLE, WATER_BODY, 'built-water', WATER_CATEGORY);
+      if (next.workout) await daily(next.workoutHour, WORKOUT_TITLE, WORKOUT_BODY, 'built-workout');
     },
     [prefs, granted],
   );

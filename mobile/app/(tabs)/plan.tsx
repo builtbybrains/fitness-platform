@@ -1,79 +1,52 @@
-/* Plan tab — the week at a glance, in the site's dark glass + mint language.
-   Tapping a workout day's card opens the set-by-set workout screen. All
-   check-offs persist to the user's Supabase account (local fallback offline). */
+/* Plan: the week at a glance. A seven-day strip, the chosen day's workout
+   (tap to open the set-by-set screen) and its meals. Check-offs save to the
+   account, or to this device without one. */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { C, card as cardStyle, screen, sectionLabel, subtitle, title } from '../../src/design';
-import { PlanDay, PlanMeal, PlanWorkout } from '../../src/planData';
+import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
+import { exerciseLabel, PlanDay, PlanMeal, PlanWorkout } from '../../src/planData';
 import { usePlan } from '../../src/planStore';
 import { useCelebration } from '../../src/celebration';
+import { Button, IconButton } from '../../src/components/Button';
+import { CheckBox, ProgressBar, ScreenHeader } from '../../src/components/Bits';
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-function Checkbox({ on }: { on: boolean }) {
-  return (
-    <View
-      style={{
-        width: 24,
-        height: 24,
-        borderRadius: 8,
-        borderWidth: 1.5,
-        borderColor: on ? C.mint : C.line,
-        backgroundColor: on ? C.mintDim : 'transparent',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {on ? <Text style={{ color: C.mint, fontSize: 13, fontWeight: '800' }}>✓</Text> : null}
-    </View>
-  );
-}
-
-function DayChip({
-  day,
-  today,
-  selected,
-  onPress,
-}: {
-  day: PlanDay;
-  today: boolean;
-  selected: boolean;
-  onPress: () => void;
-}) {
+function DayChip({ day, today, selected, onPress }: { day: PlanDay; today: boolean; selected: boolean; onPress: () => void }) {
   const workoutDone = day.session.kind === 'workout' && day.done.workout;
-  const bg = selected ? C.mint : C.card;
-  const fg = selected ? '#04120C' : workoutDone ? C.mint : C.text;
+  const fg = selected ? C.onGreen : C.text;
   return (
     <Pressable
       onPress={onPress}
-      style={{
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${DAY_FULL[day.index]}${today ? ', today' : ''}. ${day.session.kind === 'rest' ? 'Rest day' : day.session.focus}${workoutDone ? ', done' : ''}`}
+      style={({ pressed }) => ({
+        flex: 1,
+        minWidth: 44,
+        minHeight: 72,
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 13,
-        paddingVertical: 10,
-        borderRadius: 14,
-        backgroundColor: bg,
-        borderWidth: 1,
-        borderColor: selected ? C.mint : today ? C.mintDim : C.line,
-      }}
+        justifyContent: 'center',
+        gap: 4,
+        borderRadius: R.tile,
+        backgroundColor: selected ? C.green : pressed ? C.raised : C.card,
+        borderWidth: 1.5,
+        borderColor: selected ? C.green : today ? C.greenBorder : 'transparent',
+      })}
     >
-      <Text style={{ color: fg, fontSize: 13, fontWeight: '700' }}>{DAY_NAMES[day.index]}</Text>
+      <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: selected ? C.onGreen : C.muted }}>{DAY_NAMES[day.index]}</Text>
+      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 17, color: fg }}>{Number(day.id.slice(8))}</Text>
       <View
         style={{
-          width: 7,
-          height: 7,
-          borderRadius: 4,
-          backgroundColor: workoutDone
-            ? selected
-              ? '#04120C'
-              : C.mint
-            : selected
-              ? 'rgba(4,18,12,0.35)'
-              : C.line,
+          width: 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: workoutDone ? (selected ? C.onGreen : C.green) : 'transparent',
         }}
       />
     </Pressable>
@@ -81,245 +54,174 @@ function DayChip({
 }
 
 export default function PlanTab() {
-  const { days, todayIdx, toggleWorkout, toggleExercise, toggleMeal } = usePlan();
+  const { days, todayIdx, todayId, aiPlan, syncState, setWorkoutDone, toggleExercise, toggleMeal } = usePlan();
   const celebration = useCelebration();
   const [selected, setSelected] = useState(todayIdx);
-  const day = days[selected];
+  // Midnight rollover (or a new week): jump back to the new today.
+  useEffect(() => {
+    setSelected(todayIdx);
+  }, [todayId, todayIdx]);
+  const day = days[selected] ?? days[todayIdx];
+  if (!day) return <SafeAreaView style={screen} edges={['top']} />;
 
   const kcal = day.meals.reduce((a, m) => a + (day.done.meals.includes(m.slot) ? m.kcal : 0), 0);
   const kcalTarget = day.meals.reduce((a, m) => a + m.kcal, 0);
-  const allMeals = day.meals.every((m) => day.done.meals.includes(m.slot));
+  const protein = day.meals.reduce((a, m) => a + m.protein, 0);
+  const openWorkout = () => router.push(`/workout/${day.id}`);
 
-  const openWorkout = useMemo(
-    () => () => router.push(`/workout/${day.id}`),
-    [day.id],
-  );
-
-  // Mark-complete from outside: fill the set log, celebrate, and undoable.
+  // Mark complete from here: fills every set and celebrates. Tapping again undoes it.
   function markComplete() {
     if (day.session.kind !== 'workout') return;
     const w = day.session as PlanWorkout;
     if (!day.done.workout) {
-      toggleWorkout(day.id);
+      void setWorkoutDone(day.id, true);
       const total = w.exercises.reduce((a, e) => a + e.sets, 0);
-      celebration.show({
-        done: total,
-        total,
-        focus: w.focus,
-        caption: 'Marked complete from your plan',
-      });
+      celebration.show({ done: total, total, focus: w.focus, caption: 'Marked complete from your plan' });
     } else {
-      toggleWorkout(day.id);
+      void setWorkoutDone(day.id, false);
     }
   }
 
+  const footer = aiPlan
+    ? 'Built by your coach from your stats.'
+    : syncState === 'local'
+      ? 'Starter plan. Create an account and your coach builds one around you.'
+      : 'Starter plan. Save your stats in Profile and your coach builds one around you.';
+
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}>
-        <View style={{ gap: 2 }}>
-          <Text style={sectionLabel}>VITAL</Text>
-          <Text style={title}>Your plan</Text>
-          <Text style={subtitle}>This week's training and meals</Text>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+        <ScreenHeader title="Your plan" subtitle={selected === todayIdx ? 'Today' : DAY_FULL[day.index]} />
+
+        <View style={{ flexDirection: 'row', gap: 4, marginHorizontal: -6 }} accessibilityRole="tablist">
+          {days.map((d, i) => (
+            <DayChip key={d.id} day={d} today={i === todayIdx} selected={d.id === day.id} onPress={() => setSelected(i)} />
+          ))}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-          {days.map((d, i) => (
-            <DayChip
-              key={d.id}
-              day={d}
-              today={i === todayIdx}
-              selected={i === selected}
-              onPress={() => setSelected(i)}
-            />
-          ))}
-        </ScrollView>
-
         {day.session.kind === 'workout' ? (
-          <Pressable onPress={openWorkout}>
-            <View style={[cardStyle, { gap: 14 }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ gap: 3 }}>
-                  <Text style={sectionLabel}>Workout</Text>
-                  <Text style={{ color: C.text, fontSize: 17, fontWeight: '800' }}>
-                    {(day.session as PlanWorkout).focus}
-                  </Text>
-                  <Text style={{ color: C.muted, fontSize: 13 }}>
-                    {(day.session as PlanWorkout).minutes} min ·{' '}
-                    {(day.session as PlanWorkout).exercises.length} exercises
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 10,
-                    backgroundColor: day.done.workout ? C.mintDim : C.cardStrong,
-                    borderWidth: 1,
-                    borderColor: day.done.workout ? C.mint : C.line,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: day.done.workout ? C.mint : C.muted,
-                      fontWeight: '800',
-                      fontSize: 12,
-                    }}
-                  >
-                    {day.done.exercises.filter((r) => (r ?? []).length > 0).length}/{(day.session as PlanWorkout).exercises.length}
-                  </Text>
-                </View>
-              </View>
-
-              {(day.session as PlanWorkout).exercises.map((ex, i) => {
-                const on = (day.done.exercises[i] ?? []).length >= ex.sets;
-                return (
-                  <Pressable
-                    key={`${ex.name}-${i}`}
-                    onPress={() => toggleExercise(day.id, i)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      paddingVertical: 10,
-                      borderBottomWidth: 1,
-                      borderBottomColor: C.line,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 9,
-                        backgroundColor: on ? C.mint : C.cardStrong,
-                        borderWidth: 1,
-                        borderColor: on ? C.mint : C.line,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={{ color: on ? '#04120C' : C.muted, fontSize: 12, fontWeight: '800' }}>
-                        {on ? '✓' : i + 1}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: on ? C.muted : C.text,
-                          fontSize: 15,
-                          fontWeight: '600',
-                          textDecorationLine: on ? 'line-through' : 'none',
-                        }}
-                      >
-                        {ex.name}
-                      </Text>
-                      <Text style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
-                        {ex.sets} × {ex.reps}
-                        {ex.unit === 's' ? 's' : ex.unit === 'm' ? 'm' : ''}
-                        {ex.kg != null ? ` · ${ex.kg} kg` : ''}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Pressable
-                  onPress={markComplete}
-                  style={[
-                    { flex: 1, paddingVertical: 13, borderRadius: 14, alignItems: 'center' },
-                    day.done.workout
-                      ? { backgroundColor: C.mintDim, borderWidth: 1, borderColor: C.mint }
-                      : { backgroundColor: C.mint },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: day.done.workout ? C.mint : '#04120C',
-                      fontWeight: '800',
-                      fontSize: 15,
-                    }}
-                  >
-                    {day.done.workout ? 'Completed — tap to undo' : 'Mark workout complete'}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={openWorkout}
-                  style={{
-                    paddingHorizontal: 18,
-                    paddingVertical: 13,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: C.mint,
-                    backgroundColor: C.mintDim,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: C.mint, fontWeight: '800', fontSize: 15 }}>Log →</Text>
-                </Pressable>
-              </View>
-            </View>
-          </Pressable>
+          <WorkoutCard day={day} onOpen={openWorkout} onToggleExercise={(i) => toggleExercise(day.id, i)} onMarkComplete={markComplete} />
         ) : (
           <View style={[cardStyle, { gap: 8 }]}>
-            <Text style={sectionLabel}>Recovery</Text>
-            <Text style={{ color: C.text, fontSize: 17, fontWeight: '800' }}>Rest day</Text>
-            <Text style={{ color: C.muted, fontSize: 14, lineHeight: 21 }}>{day.session.note}</Text>
+            <Text style={T.small}>Recovery</Text>
+            <Text style={T.h2}>Rest day</Text>
+            <Text style={T.meta}>{day.session.note}</Text>
           </View>
         )}
 
-        <View style={[cardStyle, { gap: 10 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={sectionLabel}>Meals</Text>
-            <Text style={{ color: C.muted, fontSize: 12 }}>
-              {kcal} / {kcalTarget} kcal
+        <View style={[cardStyle, { gap: 12 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+            <Text style={T.h3} accessibilityRole="header">
+              Meals
+            </Text>
+            <Text style={T.small}>
+              <Text style={{ color: C.text, fontFamily: FONT.displaySemi }}>{kcal.toLocaleString()}</Text> / {kcalTarget.toLocaleString()} kcal · {protein} g protein
             </Text>
           </View>
-          {day.meals.map((m: PlanMeal) => {
-            const on = day.done.meals.includes(m.slot);
-            return (
-              <Pressable
-                key={m.slot}
-                onPress={() => toggleMeal(day.id, m.slot)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingVertical: 10,
-                  borderBottomWidth: 1,
-                  borderBottomColor: C.line,
-                }}
-              >
-                <Checkbox on={on} />
-                <View style={{ flex: 1, gap: 3 }}>
-                  <Text
-                    style={{
-                      color: on ? C.muted : C.text,
-                      fontSize: 14,
-                      fontWeight: '600',
-                      textDecorationLine: on ? 'line-through' : 'none',
-                    }}
-                  >
-                    {m.label}
-                  </Text>
-                  <Text style={{ color: C.muted, fontSize: 12 }}>
-                    {m.slot} · {m.kcal} kcal · {m.protein}g protein
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-          {allMeals && day.session.kind === 'workout' ? (
-            <Text style={{ color: C.mint, fontSize: 12, marginTop: 2 }}>
-              All meals logged for {DAY_NAMES[day.index]} 💪
-            </Text>
-          ) : null}
+          <View>
+            {day.meals.map((m: PlanMeal, i) => {
+              const on = day.done.meals.includes(m.slot);
+              return (
+                <Pressable
+                  key={m.slot}
+                  onPress={() => toggleMeal(day.id, m.slot)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={`${m.slot}: ${m.label}, ${m.kcal} kcal, ${m.protein} grams protein`}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 14,
+                    minHeight: 60,
+                    paddingVertical: 10,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: C.line,
+                    opacity: pressed ? 0.75 : 1,
+                  })}
+                >
+                  <CheckBox checked={on} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[T.bodyStrong, { color: on ? C.muted : C.text }]}>{m.label}</Text>
+                    <Text style={T.small}>
+                      {m.slot} · {m.kcal} kcal · {m.protein} g protein
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <Text style={{ color: C.muted, fontSize: 11, textAlign: 'center', marginTop: 4 }}>
-          Sample plan — generated on-device, backend connects in Step 3
-        </Text>
+        <Text style={[T.small, { textAlign: 'center', color: C.faint }]}>{footer}</Text>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function WorkoutCard({
+  day,
+  onOpen,
+  onToggleExercise,
+  onMarkComplete,
+}: {
+  day: PlanDay;
+  onOpen: () => void;
+  onToggleExercise: (i: number) => void;
+  onMarkComplete: () => void;
+}) {
+  const w = day.session as PlanWorkout;
+  const exDone = w.exercises.filter((ex, i) => (day.done.exercises[i] ?? []).length >= ex.sets).length;
+  return (
+    <View style={[cardStyle, { gap: 16 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={T.small}>Workout</Text>
+          <Text style={T.h2}>{w.focus}</Text>
+          <Text style={T.meta}>
+            {w.minutes} min · {exDone}/{w.exercises.length} exercises done
+          </Text>
+        </View>
+        <IconButton icon="play" variant="green" size={52} onPress={onOpen} accessibilityLabel={`Open ${w.focus}`} />
+      </View>
+      <ProgressBar value={w.exercises.length ? exDone / w.exercises.length : 0} />
+
+      <View>
+        {w.exercises.map((ex, i) => {
+          const on = (day.done.exercises[i] ?? []).length >= ex.sets;
+          return (
+            <Pressable
+              key={`${ex.name}-${i}`}
+              onPress={() => onToggleExercise(i)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={`${ex.name}, ${exerciseLabel(ex)}`}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                minHeight: 60,
+                paddingVertical: 10,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: C.line,
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <CheckBox checked={on} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[T.bodyStrong, { color: on ? C.muted : C.text }]}>{ex.name}</Text>
+                <Text style={T.small}>{exerciseLabel(ex)}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Button
+        variant="secondary"
+        label={day.done.workout ? 'Mark as not done' : 'Mark workout complete'}
+        icon={day.done.workout ? undefined : 'check'}
+        onPress={onMarkComplete}
+      />
+    </View>
   );
 }

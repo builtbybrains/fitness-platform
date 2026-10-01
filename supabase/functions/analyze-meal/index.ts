@@ -1,23 +1,23 @@
-// VITAL food-photo analyzer — turns a meal photo into a calorie estimate.
+// BUILT food-photo analyzer: turns a meal photo into a calorie estimate.
 // Deploy: supabase functions deploy analyze-meal --project-ref <ref>
+// AI provider and model: see ../_shared/ai.ts (OPENROUTER_API_KEY or
+// OPENAI_API_KEY; VISION_MODEL overrides the default free vision chain and
+// must accept images). Without a key it answers 503 "not set up yet".
 //
 // The client sends { imageBase64 } (bare base64 or a data URI of a JPEG).
-// We ask a free vision model on OpenRouter for ONLY a JSON object
-// {label, kcal, protein, confidence}, then return it. The app stores the row
-// itself (food_logs, RLS-scoped) once the user confirms the estimate — so a
-// "retake" never leaves an orphan row behind.
+// We ask a vision model for ONLY a JSON object {label, kcal, protein,
+// confidence}, then return it. The app stores the row itself (food_logs,
+// RLS-scoped) once the user confirms the estimate, so a "retake" never
+// leaves an orphan row behind. Runs entirely on the user's own client; no
+// service-role key.
 //
-// Free-tier vision models intermittently return upstream capacity errors, so
-// we walk a fallback chain. Override the first pick with the VISION_MODEL
-// secret if needed.
+// Limit: 30 photo estimates per person per UTC day (public.ai_usage).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { CORS, json, serverError } from '../_shared/http.ts';
+import { aiConfig, chat } from '../_shared/ai.ts';
+import { LIMITS, limitReached, takeQuota } from '../_shared/usage.ts';
 
 const SYSTEM = [
   'You are a nutrition estimator. You look at a photo of food and estimate its nutrition.',
@@ -26,29 +26,20 @@ const SYSTEM = [
   'kcal: realistic total energy for everything visible in the photo (drinks and sauces count).',
   'protein: estimated grams of protein for the same items.',
   'confidence: how certain the food identification is ("low" for ambiguous or distant shots).',
+  'Never comment on the person\'s body, weight or health; describe only the food.',
   'If the photo contains no identifiable food, reply exactly {"label":"No food detected","kcal":0,"protein":0,"confidence":"low"}.',
 ].join(' ');
-
-const MODEL_CHAIN = [
-  ...(Deno.env.get('VISION_MODEL') ? [Deno.env.get('VISION_MODEL')!] : []),
-  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
-  'dots-studio/dots-3-note-preview:free',
-];
-
-const OPENROUTER_HEADERS = {
-  'content-type': 'application/json',
-  authorization: `Bearer ${Deno.env.get('OPENROUTER_API_KEY') ?? ''}`,
-  'HTTP-Referer': 'https://vital.app',
-  'X-Title': 'VITAL',
-};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
-    if (!Deno.env.get('OPENROUTER_API_KEY')) {
-      return json({ error: 'Vision is not configured yet' }, 503);
-    }
+    const ai = aiConfig({
+      modelEnv: 'VISION_MODEL',
+      openRouterDefaults: ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', 'dots-studio/dots-3-note-preview:free'],
+      openAiDefault: 'gpt-4o-mini',
+    });
+    if (!ai) return json({ error: "Photo estimates aren't set up yet." }, 503);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -56,61 +47,41 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } },
     );
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: 'Not signed in' }, 401);
+    if (!user) return json({ error: 'Sign in to log meals from a photo.' }, 401);
 
     const { imageBase64 } = await req.json().catch(() => ({ imageBase64: '' }));
     const image = String(imageBase64 ?? '').replace(/^data:image\/\w+;base64,/, '');
-    if (!image) return json({ error: 'imageBase64 is required' }, 400);
-    if (image.length > 2_500_000) return json({ error: 'Image too large' }, 413);
+    if (!image) return json({ error: 'Choose a photo first.' }, 400);
+    if (image.length > 2_500_000) return json({ error: 'That photo is too large. Try a smaller one.' }, 413);
 
-    const messages = [
-      { role: 'system', content: SYSTEM },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: 'Estimate the nutrition of this meal.' },
-          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
-        ],
-      },
-    ];
-
-    let lastError = 'Vision model unavailable';
-    for (const model of MODEL_CHAIN) {
-      try {
-        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: OPENROUTER_HEADERS,
-          signal: AbortSignal.timeout(60_000),
-          body: JSON.stringify({
-            model,
-            messages,
-            max_tokens: 800,
-            temperature: 0.2,
-            // Reasoning models otherwise spend the token budget (and leak)
-            // chain-of-thought; this makes them answer directly.
-            reasoning: { enabled: false },
-          }),
-        });
-        if (!r.ok) {
-          lastError = `${model} -> HTTP ${r.status}`;
-          continue;
-        }
-        const j = await r.json();
-        const text = String(j.choices?.[0]?.message?.content ?? '');
-        const estimate = parseEstimate(text);
-        if (!estimate) {
-          lastError = `${model} -> unparseable reply`;
-          continue;
-        }
-        return json({ estimate, model });
-      } catch (e) {
-        lastError = `${model} -> ${String(e?.message ?? e)}`;
-      }
+    if (!(await takeQuota(supabase, 'meal_photo'))) {
+      return limitReached(`You've checked ${LIMITS.meal_photo} photos today, the daily limit. Try again tomorrow.`);
     }
 
-    return json({ error: 'The vision model is busy right now — try again in a moment.', detail: lastError }, 502);
+    const answer = await chat(
+      ai,
+      {
+        messages: [
+          { role: 'system', content: SYSTEM },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Estimate the nutrition of this meal.' },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
+            ],
+          },
+        ],
+        max_tokens: 800,
+        temperature: 0.2,
+        timeoutMs: 60_000,
+      },
+      parseEstimate,
+      'analyze-meal',
+    );
+    if (!answer) return json({ error: 'Photo check is busy right now. Try again in a moment.' }, 502);
+    return json({ estimate: answer.value, model: answer.model });
   } catch (e) {
-    return json({ error: String(e?.message ?? e) }, 500);
+    return serverError('analyze-meal', e);
   }
 });
 
@@ -129,11 +100,4 @@ function parseEstimate(text: string): { label: string; kcal: number; protein: nu
   } catch {
     return null;
   }
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'content-type': 'application/json' },
-  });
 }
