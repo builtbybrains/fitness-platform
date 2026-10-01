@@ -1,10 +1,11 @@
-# Allowlist: ignore everything, then let only the public website through.
+# Allowlist: ignore everything, then let only the public website and the admin dashboard through.
 # The Expo app (mobile/), the backend (supabase/) and internal files
 # (brain/, scripts/, .claude/, CLAUDE.md, DESIGN.md, README.md, package.json)
 # must never be served.
 /*
 /.*
 !/index.html
+!/admin
 !/assets
 !/robots.txt
 !/sitemap.xml
