@@ -1,5 +1,6 @@
-/* Frame for screens opened from Profile: back, a title, scrolling content
-   and an optional sticky action bar. Plus the shared loading, empty and
+/* Frame for screens opened from Profile: the shared BackHeader (chevron
+   row, then the title), scrolling content and an optional sticky action
+   bar. Plus the shared loading, empty and
    error states and the list row used across these screens. */
 
 import React from 'react';
@@ -8,7 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { C, FONT, R, screen, T } from '../../design';
-import { Button, IconButton } from '../Button';
+import { Button } from '../Button';
+import { BackHeader } from '../training/BackHeader';
 import { Icon } from '../Icon';
 import { AnyIcon, type AnyIconName } from './icons';
 
@@ -36,7 +38,7 @@ export function SubScreen({
 }) {
   const body = (
     <View style={{ gap: 24 }}>
-      {subtitle ? <Text style={[T.body, { color: C.muted }]}>{subtitle}</Text> : null}
+      <BackHeader title={title} subtitle={subtitle} onBack={onBack ?? (() => goBack())} right={right} />
       {children}
     </View>
   );
@@ -44,19 +46,12 @@ export function SubScreen({
     <SafeAreaView style={screen} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ flex: 1, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingTop: 4, minHeight: 56 }}>
-            <IconButton icon="chevronLeft" variant="bare" onPress={onBack ?? (() => goBack())} accessibilityLabel="Back" />
-            <Text style={[T.h2, { flex: 1 }]} accessibilityRole="header" numberOfLines={2}>
-              {title}
-            </Text>
-            {right}
-          </View>
           {scroll ? (
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
               {body}
             </ScrollView>
           ) : (
-            <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 12 }}>{body}</View>
+            <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>{body}</View>
           )}
           {footer ? (
             <View style={{ paddingHorizontal: 20, paddingVertical: 12, gap: 8, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>{footer}</View>
@@ -142,20 +137,16 @@ export function Row({
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 16, lineHeight: 22, color: C.text }}>{title}</Text>
         {detail ? (
-          <Text style={T.meta} numberOfLines={2}>
-            {detail}
-          </Text>
+          <Text style={T.meta}>{detail}</Text>
         ) : null}
       </View>
       {badge ? (
-        <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.pill, backgroundColor: C.green }}>
-          <Text style={{ fontFamily: FONT.bodySemi, fontSize: 12, color: C.onGreen }}>{badge}</Text>
+        <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: R.pill, backgroundColor: C.greenTint, borderWidth: 1, borderColor: C.greenBorder }}>
+          <Text style={{ fontFamily: FONT.bodySemi, fontSize: 13, color: C.green }}>{badge}</Text>
         </View>
       ) : null}
       {value ? (
-        <Text style={[T.meta, { maxWidth: '45%', textAlign: 'right' }]} numberOfLines={1}>
-          {value}
-        </Text>
+        <Text style={[T.meta, { maxWidth: '45%', textAlign: 'right' }]}>{value}</Text>
       ) : null}
       {onPress ? <Icon name="chevronRight" size={18} color={C.faint} /> : null}
     </Pressable>

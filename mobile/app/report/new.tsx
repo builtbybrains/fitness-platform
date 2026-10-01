@@ -16,6 +16,7 @@ import { Field } from '../../src/components/Field';
 import { Notice } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
 import { GroupLabel } from '../../src/components/onboarding/Controls';
+import { Chip } from '../../src/components/training/Controls';
 import { SubScreen } from '../../src/components/profile/SubScreen';
 import { REPORT_CATEGORIES } from '../../src/components/profile/reportBits';
 import type { ReportCategory } from '../../src/types';
@@ -96,30 +97,17 @@ export default function NewReport() {
       <View style={{ gap: 12 }}>
         <GroupLabel>What is it about?</GroupLabel>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel="Category">
-          {REPORT_CATEGORIES.map((c) => {
-            const on = category === c.id;
-            return (
-              <Pressable
-                key={c.id}
-                onPress={() => setCategory(c.id)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on, selected: on }}
-                aria-checked={on}
-                accessibilityLabel={c.label}
-                style={({ pressed }) => ({
-                  minHeight: 44,
-                  paddingHorizontal: 16,
-                  borderRadius: R.pill,
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: on ? C.green : C.lineStrong,
-                  backgroundColor: on ? C.green : pressed ? C.raised : C.card,
-                })}
-              >
-                <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 15, color: on ? C.onGreen : C.stone }}>{c.label}</Text>
-              </Pressable>
-            );
-          })}
+          {REPORT_CATEGORIES.map((c) => (
+            <Chip
+              key={c.id}
+              label={c.label}
+              selected={category === c.id}
+              onPress={() => {
+                setCategory(c.id);
+                setErr(null);
+              }}
+            />
+          ))}
         </View>
       </View>
 

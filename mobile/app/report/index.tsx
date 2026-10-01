@@ -15,6 +15,14 @@ import { EmptyState, ErrorState, Loading, SubScreen } from '../../src/components
 import { categoryLabel, shortDate, StatusPill } from '../../src/components/profile/reportBits';
 import type { ProblemReportWithThread } from '../../src/types';
 
+/** A list preview: long text ends on a whole word, never mid-word. */
+function preview(text: string, max: number): string {
+  const t = text.trim().replace(/\s+/g, ' ');
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), max * 0.6)).replace(/[\s,.;:]+$/, '')}…`;
+}
+
 export default function Reports() {
   const { userId } = useAuth();
   const [items, setItems] = useState<ProblemReportWithThread[] | null>(null);
@@ -66,26 +74,27 @@ export default function Reports() {
                 accessibilityLabel={`${categoryLabel(r.category)}. ${r.message}. ${r.status === 'fixed' ? 'Fixed' : r.status === 'in_progress' ? 'In progress' : 'Sent'}.${r.unread ? ' New reply.' : ''}`}
                 style={({ pressed }) => ({ backgroundColor: pressed ? C.raised : C.card, borderRadius: R.tile, padding: 16, gap: 10 })}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <StatusPill status={r.status} />
-                  <Text style={[T.small, { flex: 1 }]}>
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <StatusPill status={r.status} />
+                    {r.unread ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.green }} />
+                        <Text style={{ fontFamily: FONT.bodySemi, fontSize: 13, color: C.green }}>New reply</Text>
+                      </View>
+                    ) : null}
+                    <View style={{ flex: 1 }} />
+                    <Icon name="chevronRight" size={18} color={C.faint} />
+                  </View>
+                  <Text style={T.small}>
                     {categoryLabel(r.category)} · {shortDate(r.created_at)}
                   </Text>
-                  {r.unread ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.green }} />
-                      <Text style={{ fontFamily: FONT.bodySemi, fontSize: 13, color: C.green }}>New reply</Text>
-                    </View>
-                  ) : null}
-                  <Icon name="chevronRight" size={18} color={C.faint} />
                 </View>
-                <Text style={T.body} numberOfLines={2}>
-                  {r.message}
-                </Text>
+                <Text style={T.body}>{preview(r.message, 160)}</Text>
                 {last ? (
-                  <Text style={T.meta} numberOfLines={1}>
+                  <Text style={T.meta}>
                     {last.author === 'admin' ? 'BUILT support: ' : 'You: '}
-                    {last.body}
+                    {preview(last.body, 120)}
                   </Text>
                 ) : null}
               </Pressable>

@@ -21,6 +21,8 @@ import { MacroLine, Segmented, StateBlock } from '../../src/components/training/
 import { MoveDaySheet } from '../../src/components/training/MoveDaySheet';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
 import { ChangePlanCard } from '../../src/components/training/PlanChange';
+import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
+import { useAuth } from '../../src/auth';
 import { DAY_FULL, DAY_SHORT, dayTitle, plural, timeLabel } from '../../src/components/training/labels';
 import type { PlanWorkoutV2 } from '../../src/types';
 
@@ -83,6 +85,7 @@ export default function PlanTab() {
     replaceExercise,
     regenerate,
   } = usePlan();
+  const { session, profileLoaded, profile, profileError } = useAuth();
   const celebration = useCelebration();
   const [selected, setSelected] = useState(todayIdx);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -103,10 +106,21 @@ export default function PlanTab() {
   const movable = useMemo(() => movableDays(days, todayId), [days, todayId]);
   const options = useMemo(() => (day && replaceIdx != null ? optionsFor(day.id, replaceIdx) : []), [day, replaceIdx, optionsFor]);
 
-  if (!day) {
+  const waiting = !planLoaded || (!!session && !profileLoaded);
+  const unreachable = !!session && profileLoaded && !profile && !!profileError;
+  if (!day || waiting || unreachable) {
     return (
       <SafeAreaView style={screen} edges={['top']}>
-        <StateBlock kind="loading" title="Loading your plan" />
+        <View style={{ padding: 20, gap: 24, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+          <ScreenHeader title="Your plan" subtitle={day ? `Today, ${dayTitle(day.index, day.id)}` : undefined} />
+          {unreachable ? (
+            <OfflineBlock body="Your plan shows here as soon as BUILT answers again. Nothing you saved is lost." />
+          ) : (
+            <View style={cardStyle}>
+              <StateBlock kind="loading" title="Loading your plan" />
+            </View>
+          )}
+        </View>
       </SafeAreaView>
     );
   }
@@ -153,6 +167,8 @@ export default function PlanTab() {
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <ScreenHeader title="Your plan" subtitle={selected === todayIdx ? `Today, ${dayTitle(day.index, day.id)}` : dayTitle(day.index, day.id)} />
 
+        <OfflineNotice />
+
         {locations.length > 1 ? (
           <View style={{ gap: 8 }}>
             <Text style={T.small}>Training this week at</Text>
@@ -168,11 +184,7 @@ export default function PlanTab() {
 
         {note ? <Notice tone={note.tone}>{note.text}</Notice> : null}
 
-        {!planLoaded ? (
-          <View style={cardStyle}>
-            <StateBlock kind="loading" title="Loading your plan" />
-          </View>
-        ) : isWorkout ? (
+        {isWorkout ? (
           <WorkoutCard
             day={day}
             onOpen={() => router.push(`/workout/${day.id}`)}
@@ -257,7 +269,7 @@ function WorkoutCard({
         </View>
         <IconButton icon="play" variant="green" size={56} onPress={onOpen} accessibilityLabel={sets.done > 0 ? `Continue ${w.focus}` : `Start ${w.focus}`} />
       </View>
-      <ProgressBar value={sets.total ? sets.done / sets.total : 0} />
+      <ProgressBar value={sets.total ? sets.done / sets.total : 0} color={C.stone} />
 
       <View>
         {w.exercises.map((ex, i) => {
@@ -323,9 +335,7 @@ function MealsCard({ day, isToday }: { day: WeekDay; isToday: boolean }) {
       <View>
         {day.meals.map((m, i) => (
           <View key={m.slot} style={{ minHeight: 52, paddingVertical: 8, gap: 2, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line, justifyContent: 'center' }}>
-            <Text style={T.body} numberOfLines={2}>
-              {m.label}
-            </Text>
+            <Text style={T.body}>{m.label}</Text>
             <Text style={T.small}>
               {m.slot}
               {m.swapped ? ' · swapped' : ''} · {m.kcal} kcal · {m.protein}g protein

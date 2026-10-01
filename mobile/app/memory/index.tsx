@@ -1,7 +1,9 @@
 /* "What your coach remembers": every fact the coach saved, newest first.
-   People can delete any item (never edit one). */
+   People can delete any item (never edit one). A deleted item disappears
+   at once with Undo for 5 seconds; only then is it deleted on the server
+   (straight away when another item is deleted or the screen is left). */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -46,8 +48,9 @@ export default function MemoryScreen() {
   const [items, setItems] = useState<MemoryFact[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [removing, setRemoving] = useState<string | null>(null);
-  const [flash, setFlash] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  const [flash, setFlash] = useState<{ tone: 'error' | 'success'; text: string; undo?: boolean } | null>(null);
+  // The item waiting out its undo window, and the timer that deletes it.
+  const pending = useRef<{ item: MemoryFact; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -66,29 +69,79 @@ export default function MemoryScreen() {
     void load();
   }, [load]);
 
-  async function remove(item: MemoryFact) {
+  /** Delete the pending item on the server now. On failure it comes back. */
+  const commit = useCallback(
+    async (quiet = false) => {
+      const p = pending.current;
+      if (!p || !userId) return;
+      clearTimeout(p.timer);
+      pending.current = null;
+      try {
+        await deleteMemory(userId, p.item.id);
+        // The undo window closed; leave the flash if a newer delete owns it.
+        if (!quiet && !pending.current) setFlash((f) => (f?.undo ? null : f));
+      } catch (e) {
+        if (quiet) return;
+        setItems((list) => {
+          if (!list || list.some((m) => m.id === p.item.id)) return list;
+          const next = [...list];
+          next.splice(Math.min(p.index, next.length), 0, p.item);
+          return next;
+        });
+        setFlash({ tone: 'error', text: `${asApiError(e).message} It's back in the list.` });
+      }
+    },
+    [userId],
+  );
+
+  // Leaving the screen ends the undo window.
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  useEffect(() => () => void commitRef.current(true), []);
+
+  function remove(item: MemoryFact) {
     if (!userId || !items) return;
-    setRemoving(item.id);
-    setFlash(null);
-    const before = items;
+    void commit();
+    const index = items.findIndex((m) => m.id === item.id);
     setItems(items.filter((m) => m.id !== item.id));
-    try {
-      await deleteMemory(userId, item.id);
-      setFlash({ tone: 'success', text: 'Deleted. Your coach no longer remembers that.' });
-    } catch (e) {
-      setItems(before);
-      setFlash({ tone: 'error', text: asApiError(e).message });
-    } finally {
-      setRemoving(null);
-    }
+    pending.current = { item, index, timer: setTimeout(() => void commit(), 5000) };
+    setFlash({ tone: 'success', text: 'Deleted. Your coach no longer remembers that.', undo: true });
   }
+
+  function undo() {
+    const p = pending.current;
+    if (!p) return;
+    clearTimeout(p.timer);
+    pending.current = null;
+    setItems((list) => {
+      const next = [...(list ?? [])];
+      next.splice(Math.min(p.index, next.length), 0, p.item);
+      return next;
+    });
+    setFlash({ tone: 'success', text: 'Restored. Your coach still remembers it.' });
+  }
+
+  useEffect(() => {
+    if (!flash || flash.undo) return;
+    const t = setTimeout(() => setFlash(null), 4000);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   return (
     <SubScreen
       title="What your coach remembers"
       subtitle="Things you told your coach, and what it learned from how you use your plan. Delete anything you don't want it to use."
+      footer={
+        flash ? (
+          <Notice
+            tone={flash.tone}
+            action={flash.undo ? <Button compact variant="secondary" icon="refresh" label="Undo" onPress={undo} accessibilityLabel="Undo delete" style={{ alignSelf: 'flex-start' }} /> : undefined}
+          >
+            {flash.text}
+          </Notice>
+        ) : undefined
+      }
     >
-      {flash ? <Notice tone={flash.tone}>{flash.text}</Notice> : null}
       {loading && !items ? (
         <Loading label="Loading what your coach remembers" />
       ) : error && !items ? (
@@ -112,8 +165,7 @@ export default function MemoryScreen() {
                 </Text>
               </View>
               <Pressable
-                onPress={() => void remove(m)}
-                disabled={removing === m.id}
+                onPress={() => remove(m)}
                 accessibilityRole="button"
                 accessibilityLabel={`Delete: ${m.fact}`}
                 style={({ pressed }) => ({
@@ -123,14 +175,13 @@ export default function MemoryScreen() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: pressed ? C.pressed : 'transparent',
-                  opacity: removing === m.id ? 0.4 : 1,
                 })}
               >
                 <ExtraIcon name="trash" size={20} color={C.muted} />
               </Pressable>
             </View>
           ))}
-          <Text style={[T.small, { fontFamily: FONT.body, marginTop: 4 }]}>Your coach keeps learning as you chat. Deleted items are gone for good.</Text>
+          <Text style={[T.small, { fontFamily: FONT.body, marginTop: 4 }]}>Your coach keeps learning as you chat. You have 5 seconds to undo a delete, then it's gone for good.</Text>
         </View>
       )}
     </SubScreen>

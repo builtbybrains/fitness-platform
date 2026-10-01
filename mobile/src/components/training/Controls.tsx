@@ -10,15 +10,17 @@ import { Icon, IconName } from '../Icon';
 import { Button } from '../Button';
 import { useReduceMotion } from '../motion';
 
-/** One choice out of a few, side by side (radio group). */
-export function Segmented<V extends string>({
+/** One choice out of a few, side by side (radio group). The one segmented
+    control in the app: the selected segment is raised Carbon with a white
+    label, never a green fill. */
+export function Segmented<V extends string | number>({
   options,
   value,
   onChange,
   label,
 }: {
-  options: { value: V; label: string }[];
-  value: V;
+  options: readonly { value: V; label: string }[];
+  value: V | null | undefined;
   onChange: (v: V) => void;
   label: string;
 }) {
@@ -28,10 +30,11 @@ export function Segmented<V extends string>({
         const on = o.value === value;
         return (
           <Pressable
-            key={o.value}
+            key={String(o.value)}
             onPress={() => onChange(o.value)}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
+            aria-checked={on}
             accessibilityLabel={o.label}
             style={({ pressed }) => ({
               flex: 1,
@@ -39,15 +42,13 @@ export function Segmented<V extends string>({
               borderRadius: R.pill,
               alignItems: 'center',
               justifyContent: 'center',
-              paddingHorizontal: 8,
+              paddingHorizontal: 4,
               backgroundColor: on ? C.raised : pressed ? C.card : 'transparent',
               borderWidth: 1,
               borderColor: on ? C.lineStrong : 'transparent',
             })}
           >
-            <Text numberOfLines={1} style={{ fontFamily: on ? FONT.bodySemi : FONT.bodyMedium, fontSize: 14, color: on ? C.text : C.muted }}>
-              {o.label}
-            </Text>
+            <Text style={{ fontFamily: on ? FONT.bodySemi : FONT.bodyMedium, fontSize: 14, lineHeight: 18, textAlign: 'center', color: on ? C.text : C.muted }}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -55,18 +56,37 @@ export function Segmented<V extends string>({
   );
 }
 
-/** A tap answer or quick choice. Selected chips get the green tint. */
-export function Chip({ label, selected, onPress, accessibilityLabel }: { label: string; selected?: boolean; onPress: () => void; accessibilityLabel?: string }) {
+/** A tap answer or quick choice, the one chip style in the app: selected
+    chips get the green tint, a green border and green text. `multi` chips
+    (pick several) are checkboxes and show a check when on; the rest are
+    radios, or plain buttons when `selected` is left out. */
+export function Chip({
+  label,
+  selected,
+  onPress,
+  accessibilityLabel,
+  multi,
+}: {
+  label: string;
+  selected?: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+  multi?: boolean;
+}) {
   const reduce = useReduceMotion();
+  const role = selected === undefined ? 'button' : multi ? 'checkbox' : 'radio';
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole={selected === undefined ? 'button' : 'radio'}
+      accessibilityRole={role}
       accessibilityState={selected === undefined ? undefined : { checked: selected }}
+      aria-checked={selected === undefined ? undefined : selected}
       accessibilityLabel={accessibilityLabel ?? label}
       style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         minHeight: 44,
-        justifyContent: 'center',
         paddingHorizontal: 16,
         borderRadius: R.pill,
         borderWidth: 1,
@@ -75,6 +95,7 @@ export function Chip({ label, selected, onPress, accessibilityLabel }: { label: 
         transform: [{ scale: pressed && !reduce ? 0.97 : 1 }],
       })}
     >
+      {multi && selected ? <Icon name="check" size={16} color={C.green} strokeWidth={2.6} /> : null}
       <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 15, color: selected ? C.green : C.text }}>{label}</Text>
     </Pressable>
   );
@@ -183,10 +204,8 @@ export function Meter({ label, value, target, unit }: { label: string; value: nu
   const frac = target > 0 ? Math.min(1, value / target) : 0;
   return (
     <View style={{ flex: 1, gap: 6 }} accessible accessibilityLabel={`${label}: ${Math.round(value)} of ${Math.round(target)} ${unit === 'g' ? 'grams' : unit}`}>
-      <Text style={T.small} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 16, color: C.text }} numberOfLines={1}>
+      <Text style={T.small}>{label}</Text>
+      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 16, color: C.text }}>
         {Math.round(value)}
         <Text style={{ fontFamily: FONT.body, fontSize: 13, color: C.muted }}>
           /{Math.round(target)}

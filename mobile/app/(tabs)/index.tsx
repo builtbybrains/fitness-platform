@@ -1,5 +1,6 @@
-/* Today: the greeting, one ring for the whole day, the four pillars, then
-   the day's workout, activities, food, water and a coach tip. The ring and
+/* Today: the greeting, one ring for the whole day, the day's workout right
+   under it, any check-in due, the four pillars, then activities, food,
+   water and a coach tip. The ring and
    the numbers count every macro, food off the plan and logged activities.
    Every control saves at once (to the account, or to this device). */
 
@@ -88,12 +89,8 @@ function PillarTile({ icon, title, detail, onPress }: { icon: IconName; title: s
     >
       <Icon name={icon} size={30} />
       <View style={{ gap: 2 }}>
-        <Text style={T.h3} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text style={T.meta} numberOfLines={1}>
-          {detail}
-        </Text>
+        <Text style={T.h3}>{title}</Text>
+        <Text style={T.meta}>{detail}</Text>
       </View>
     </Pressable>
   );
@@ -139,7 +136,7 @@ function WorkoutCard({ day }: { day: WeekDay }) {
           accessibilityLabel={done ? `${w.focus}, done. Review it.` : s.done > 0 ? `Continue ${w.focus}` : `Start ${w.focus}`}
         />
       </View>
-      <ProgressBar value={s.total ? s.done / s.total : 0} />
+      <ProgressBar value={s.total ? s.done / s.total : 0} color={C.stone} />
       <Text style={T.small}>{done ? 'Done today. Nice work.' : s.done > 0 ? `${s.done} of ${s.total} sets logged` : `${s.total} sets to go`}</Text>
     </View>
   );
@@ -175,9 +172,7 @@ function ActivityCard({ list, health, onRemove }: { list: Activity[]; health: He
           {list.map((a, i) => (
             <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 52, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line }}>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={T.bodyStrong} numberOfLines={1}>
-                  {a.label || activityDef(a.kind).label}
-                </Text>
+                <Text style={T.bodyStrong}>{a.label || activityDef(a.kind).label}</Text>
                 <Text style={T.small}>
                   {a.minutes} min · {a.effort} · {a.kcal} kcal{a.source === 'health' ? ' · from your health app' : ''}
                 </Text>
@@ -277,6 +272,11 @@ function syncLine(state: 'local' | 'offline' | 'synced'): string {
 
 export default function TodayTab() {
   const router = useRouter();
+  const { height } = useWindowDimensions();
+  // Short phones (360x640): a smaller ring and tighter rhythm, so today's
+  // workout and its play button are on the first screen.
+  const compact = height < 700;
+  const ring = compact ? { size: 140, stroke: 12, label: 14, pct: 34 } : { size: 208, stroke: 16, label: 16, pct: 48 };
   const { days, todayIdx, todayId, syncState, streak, targets, activities, removeActivity, profile } = usePlan();
   const { userId } = useAuth();
   const water = useWater();
@@ -338,7 +338,7 @@ export default function TodayTab() {
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: compact ? 8 : 20, gap: compact ? 16 : 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <BuiltMark size={24} />
           <StreakChip count={streak} onPress={() => router.push('/(tabs)/progress')} />
@@ -346,10 +346,10 @@ export default function TodayTab() {
 
         <Greeting />
 
-        <View style={[cardStyle, { alignItems: 'center', paddingVertical: 28, gap: 20 }]}>
-          <Ring size={208} stroke={16} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done`}>
-            <Text style={{ fontFamily: FONT.body, fontSize: 16, color: C.stone }}>Today</Text>
-            <Text style={{ fontFamily: FONT.displaySemi, fontSize: 48, lineHeight: 56, letterSpacing: -1.5, color: C.text }}>{pct}%</Text>
+        <View style={[cardStyle, { alignItems: 'center', paddingVertical: compact ? 20 : 28, gap: compact ? 12 : 20 }]}>
+          <Ring size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done`}>
+            <Text style={{ fontFamily: FONT.body, fontSize: ring.label, color: C.stone }}>Today</Text>
+            <Text style={{ fontFamily: FONT.displaySemi, fontSize: ring.pct, lineHeight: Math.round(ring.pct * 1.17), letterSpacing: -1.5, color: C.text }}>{pct}%</Text>
           </Ring>
           <Text style={[T.meta, { textAlign: 'center' }]}>{ringLine}</Text>
           <View style={{ flexDirection: 'row', gap: 16, alignSelf: 'stretch' }}>
@@ -364,6 +364,8 @@ export default function TodayTab() {
           ) : null}
         </View>
 
+        <WorkoutCard day={day} />
+
         <CheckinDueCard />
 
         <View style={{ gap: 12 }}>
@@ -373,11 +375,9 @@ export default function TodayTab() {
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <PillarTile icon="brain" title="AI Coach" detail="Ask anything" onPress={() => router.push('/(tabs)/coach')} />
-            <PillarTile icon="bars" title="Progress" detail={streak > 0 ? `${plural(streak, 'workout')} in a row` : 'Your weeks'} onPress={() => router.push('/(tabs)/progress')} />
+            <PillarTile icon="bars" title="Progress" detail={streak > 0 ? `${streak} in a row` : 'Your weeks'} onPress={() => router.push('/(tabs)/progress')} />
           </View>
         </View>
-
-        <WorkoutCard day={day} />
 
         <ActivityCard list={todaysActivities} health={health} onRemove={(id) => void removeActivity(id)} />
 

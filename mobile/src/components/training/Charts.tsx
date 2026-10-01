@@ -1,5 +1,7 @@
 /* Progress charts that each read differently:
    - TrainingCalendar: the last 8 weeks as a day grid (done, missed, rest).
+     Only this week's done days are solid green; earlier weeks use the tint,
+     so the green stays rationed to what's happening now.
    - HBars: horizontal bars with a label and value (activities by kind).
    - TargetColumns: one column per day against a target line (calories). */
 
@@ -12,7 +14,7 @@ import type { DayCell } from '../../stats';
 import { DAY_SHORT } from './labels';
 
 const CELL_FILL: Record<DayCell['state'], string> = {
-  done: C.green,
+  done: C.greenTint,
   missed: 'transparent',
   rest: C.surface,
   open: 'transparent',
@@ -32,25 +34,32 @@ export function TrainingCalendar({ rows }: { rows: DayCell[][] }) {
           </Text>
         ))}
       </View>
-      {rows.map((row, r) => (
-        <View key={r} style={{ flexDirection: 'row', gap: 6 }}>
-          {row.map((c) => (
-            <View
-              key={c.id}
-              style={{
-                flex: 1,
-                height: 24,
-                borderRadius: 6,
-                backgroundColor: CELL_FILL[c.state],
-                borderWidth: c.state === 'missed' || c.state === 'open' ? 1.5 : c.state === 'future' || c.state === 'none' ? 1 : 0,
-                borderColor: c.state === 'open' ? C.greenBorder : c.state === 'missed' ? C.inputBorder : C.line,
-              }}
-            />
-          ))}
-        </View>
-      ))}
-      <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap', paddingTop: 2 }}>
-        <Legend swatch={{ backgroundColor: C.green }} label="Workout done" />
+      {rows.map((row, r) => {
+        const current = r === rows.length - 1;
+        return (
+          <View key={r} style={{ flexDirection: 'row', gap: 6 }}>
+            {row.map((c) => {
+              const done = c.state === 'done';
+              return (
+                <View
+                  key={c.id}
+                  style={{
+                    flex: 1,
+                    height: 24,
+                    borderRadius: 6,
+                    backgroundColor: done && current ? C.green : CELL_FILL[c.state],
+                    borderWidth: c.state === 'missed' || c.state === 'open' || (done && !current) ? 1.5 : c.state === 'future' || c.state === 'none' ? 1 : 0,
+                    borderColor: c.state === 'open' || done ? C.greenBorder : c.state === 'missed' ? C.inputBorder : C.line,
+                  }}
+                />
+              );
+            })}
+          </View>
+        );
+      })}
+      <View style={{ flexDirection: 'row', columnGap: 16, rowGap: 8, flexWrap: 'wrap', paddingTop: 2 }}>
+        <Legend swatch={{ backgroundColor: C.green }} label="Done this week" />
+        <Legend swatch={{ backgroundColor: C.greenTint, borderWidth: 1.5, borderColor: C.greenBorder }} label="Done before" />
         <Legend swatch={{ borderWidth: 1.5, borderColor: C.inputBorder }} label="Missed" />
         <Legend swatch={{ backgroundColor: C.surface }} label="Rest" />
       </View>
@@ -75,9 +84,7 @@ export function HBars({ rows, unit }: { rows: { label: string; value: number; de
       {rows.map((r) => (
         <View key={r.label} style={{ gap: 6 }} accessible accessibilityLabel={`${r.label}: ${r.value} ${unit}${r.detail ? `, ${r.detail}` : ''}`}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-            <Text style={T.bodyStrong} numberOfLines={1}>
-              {r.label}
-            </Text>
+            <Text style={[T.bodyStrong, { flexShrink: 1 }]}>{r.label}</Text>
             <Text style={T.small}>
               <Text style={{ fontFamily: FONT.displaySemi, color: C.text }}>{r.value}</Text> {unit}
               {r.detail ? ` · ${r.detail}` : ''}

@@ -20,12 +20,16 @@ import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
 import { dayTitle } from '../../src/components/training/labels';
+import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
+import { useAuth } from '../../src/auth';
 import type { DayMeal } from '../../src/planData';
 
 const SOURCE_LABEL: Record<string, string> = { photo: 'From a photo', text: 'Typed', generated: 'Made from what you had', plan: 'Plan meal' };
 
 export default function FoodTab() {
-  const { days, todayIdx, todayId, targets, activities, profile, plan, swapMeal, toggleMeal } = usePlan();
+  const { days, todayIdx, todayId, targets, activities, profile, plan, planLoaded, swapMeal, toggleMeal } = usePlan();
+  const { session, profileLoaded, profileError } = useAuth();
+  const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
   const [swapSlot, setSwapSlot] = useState<string | null>(null);
   const day = days[todayIdx];
@@ -46,10 +50,21 @@ export default function FoodTab() {
     [day, food.logs, activityToday, targets],
   );
 
-  if (!day || !summary) {
+  // Never flash the starter meals: wait for the stored plan and, with an
+  // account, the profile that sets the calorie target.
+  if (!day || !summary || !planLoaded || (session && !profileLoaded) || unreachable) {
     return (
       <SafeAreaView style={screen} edges={['top']}>
-        <StateBlock kind="loading" title="Loading today's food" />
+        <View style={{ padding: 20, gap: 24, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+          <ScreenHeader title="Food" subtitle={day ? `Today, ${dayTitle(day.index, day.id)}` : undefined} />
+          {unreachable ? (
+            <OfflineBlock body="Your meals and what you logged show here as soon as BUILT answers again." />
+          ) : (
+            <View style={cardStyle}>
+              <StateBlock kind="loading" title="Loading today's meals" />
+            </View>
+          )}
+        </View>
       </SafeAreaView>
     );
   }
@@ -62,6 +77,8 @@ export default function FoodTab() {
     <SafeAreaView style={screen} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <ScreenHeader title="Food" subtitle={`Today, ${dayTitle(day.index, day.id)}`} />
+
+        <OfflineNotice />
 
         <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} />
 
@@ -124,9 +141,7 @@ export default function FoodTab() {
             food.logs.map((log, i) => (
               <View key={log.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 64, paddingVertical: 8, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line }}>
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={T.bodyStrong} numberOfLines={2}>
-                    {log.label}
-                  </Text>
+                  <Text style={T.bodyStrong}>{log.label}</Text>
                   <MacroLine m={log} />
                   <Text style={T.small}>
                     {SOURCE_LABEL[log.source ?? 'photo'] ?? 'Logged'}

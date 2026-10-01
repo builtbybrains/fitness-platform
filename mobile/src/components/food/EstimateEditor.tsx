@@ -102,7 +102,7 @@ export function EstimateEditor({ value, onChange }: { value: EditableEstimate; o
               style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 52, paddingLeft: 14, borderRadius: R.input, backgroundColor: C.surface }}
             >
               <View style={{ flex: 1, gap: 1, paddingVertical: 6 }}>
-                <Text style={T.body} numberOfLines={2}>
+                <Text style={T.body}>
                   {it.name}
                   {it.portion ? <Text style={{ color: C.muted }}> · {it.portion}</Text> : null}
                 </Text>

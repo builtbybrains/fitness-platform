@@ -27,6 +27,9 @@ export type ShellProps = {
   onSecondary?: () => void;
   /** Anything above the title (an icon, a mark). */
   lead?: React.ReactNode;
+  /** Shown in the sticky action bar above the primary button (e.g. the
+      waiver's consent box, so it's on screen with the button). */
+  footerLead?: React.ReactNode;
   children?: React.ReactNode;
   /** Hide the action bar (a screen with its own actions). */
   noActions?: boolean;
@@ -47,6 +50,7 @@ export function QuestionShell({
   secondaryLabel,
   onSecondary,
   lead,
+  footerLead,
   children,
   noActions,
 }: ShellProps) {
@@ -87,6 +91,7 @@ export function QuestionShell({
 
           {noActions ? null : (
             <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, gap: 8, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
+              {footerLead}
               {error ? <Notice tone="error">{error}</Notice> : null}
               <Button label={primaryLabel} onPress={onPrimary} disabled={primaryDisabled} busy={busy} />
               {secondaryLabel && onSecondary ? (

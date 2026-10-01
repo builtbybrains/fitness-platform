@@ -24,6 +24,7 @@ import { BlurEditor, newRegion, RegionCount } from '../../src/components/profile
 import { PoseGuide } from '../../src/components/profile/PoseGuide';
 import { markUploaded } from '../../src/components/profile/photoSetStore';
 import { CheckRow } from '../../src/components/onboarding/Controls';
+import { BackHeader } from '../../src/components/training/BackHeader';
 import type { BlurRegion, BlurredPhoto, BodyPhotoKind, BodyPhotoSource } from '../../src/types';
 
 type Stage = 'choose' | 'camera' | 'detect' | 'edit' | 'preview';
@@ -190,11 +191,8 @@ export default function TakePhoto() {
   }
 
   const header = (title: string, onBack: () => void) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, minHeight: 52 }}>
-      <IconButton icon="chevronLeft" variant="bare" onPress={onBack} accessibilityLabel="Back" />
-      <Text style={[T.h2, { flex: 1 }]} accessibilityRole="header" numberOfLines={1}>
-        {title}
-      </Text>
+    <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 }}>
+      <BackHeader title={title} onBack={onBack} />
     </View>
   );
 

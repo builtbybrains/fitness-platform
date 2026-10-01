@@ -1,7 +1,8 @@
 /* Questionnaire controls, built on the BUILT tokens: a list of options with
-   plain descriptions, multi-select chips, a segmented control, a number
-   stepper, a weekday picker and a check row. Every target is 44px or more,
-   every control says what it is to screen readers. */
+   plain descriptions, chips (the shared training Chip), a number stepper,
+   a weekday picker and a check row. Single choices in a row use the shared
+   training Segmented. Every target is 44px or more, every control says
+   what it is to screen readers. */
 
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -10,6 +11,7 @@ import { C, FONT, R, T } from '../../design';
 import { CheckBox } from '../Bits';
 import { Icon } from '../Icon';
 import { useReduceMotion } from '../motion';
+import { Chip } from '../training/Controls';
 import { DAY_LONG, DAY_SHORT, WEEK_ORDER, type Option } from './options';
 
 /** A small label above a group of controls. */
@@ -90,93 +92,33 @@ export function OptionList<T extends string | number>({
   );
 }
 
-/** Multi-select chips that wrap. */
+/** Chips that wrap: pick several, or one with `single`. Uses the app's one
+    chip style (training/Controls Chip). */
 export function ChipGroup<T extends string | number>({
   options,
   values,
   onChange,
   label,
+  single,
 }: {
   options: readonly Option<T>[];
   values: readonly T[];
   onChange: (v: T[]) => void;
   label: string;
+  single?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }} accessibilityLabel={label}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }} accessibilityRole={single ? 'radiogroup' : undefined} accessibilityLabel={label}>
       {options.map((o) => {
         const on = values.includes(o.id);
         return (
-          <Pressable
+          <Chip
             key={String(o.id)}
-            onPress={() => onChange(on ? values.filter((v) => v !== o.id) : [...values, o.id])}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
-            aria-checked={on}
-            accessibilityLabel={o.label}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              minHeight: 44,
-              paddingHorizontal: 16,
-              borderRadius: R.pill,
-              borderWidth: 1,
-              borderColor: on ? C.greenBorder : C.lineStrong,
-              backgroundColor: on ? C.greenTint : pressed ? C.raised : C.card,
-            })}
-          >
-            {on ? <Icon name="check" size={16} color={C.green} strokeWidth={2.6} /> : null}
-            <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 15, color: on ? C.text : C.stone }}>{o.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-/** Two to four mutually exclusive choices in one row. */
-export function Segmented<T extends string | number>({
-  options,
-  value,
-  onChange,
-  label,
-}: {
-  options: readonly Option<T>[];
-  value: T | null | undefined;
-  onChange: (v: T) => void;
-  label: string;
-}) {
-  return (
-    <View
-      style={{ flexDirection: 'row', gap: 4, padding: 4, backgroundColor: C.surface, borderRadius: R.pill, borderWidth: 1, borderColor: C.line }}
-      accessibilityRole="radiogroup"
-      accessibilityLabel={label}
-    >
-      {options.map((o) => {
-        const on = value === o.id;
-        return (
-          <Pressable
-            key={String(o.id)}
-            onPress={() => onChange(o.id)}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: on, selected: on }}
-            aria-checked={on}
-            accessibilityLabel={o.label}
-            style={({ pressed }) => ({
-              flex: 1,
-              minHeight: 44,
-              borderRadius: R.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 4,
-              backgroundColor: on ? C.green : pressed ? C.raised : 'transparent',
-            })}
-          >
-            <Text numberOfLines={1} style={{ fontFamily: FONT.displaySemi, fontSize: 14, color: on ? C.onGreen : C.text }}>
-              {o.label}
-            </Text>
-          </Pressable>
+            label={o.label}
+            selected={on}
+            multi={!single}
+            onPress={() => onChange(single ? [o.id] : on ? values.filter((v) => v !== o.id) : [...values, o.id])}
+          />
         );
       })}
     </View>
@@ -241,10 +183,11 @@ export function Stepper({
   );
 }
 
-/** Seven day toggles, Monday first. Values use 0 = Sunday. */
+/** Seven day toggles, Monday first. Values use 0 = Sunday. Training days
+    get the green tint (never a solid fill), like the selected chips. */
 export function DayPicker({ value, onChange }: { value: readonly number[]; onChange: (v: number[]) => void }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 6 }} accessibilityLabel="Training days">
+    <View style={{ flexDirection: 'row', gap: 4, marginHorizontal: -6 }} accessibilityLabel="Training days">
       {WEEK_ORDER.map((d) => {
         const on = value.includes(d);
         return (
@@ -257,18 +200,19 @@ export function DayPicker({ value, onChange }: { value: readonly number[]; onCha
             accessibilityLabel={`${DAY_LONG[d]}, ${on ? 'training' : 'rest'}`}
             style={({ pressed }) => ({
               flex: 1,
+              minWidth: 44,
               minHeight: 64,
               borderRadius: R.tile,
               alignItems: 'center',
               justifyContent: 'center',
               gap: 4,
               borderWidth: 1,
-              borderColor: on ? C.green : C.lineStrong,
-              backgroundColor: on ? C.green : pressed ? C.raised : C.card,
+              borderColor: on ? C.greenBorder : C.lineStrong,
+              backgroundColor: pressed ? C.raised : on ? C.greenTint : C.card,
             })}
           >
-            <Text style={{ fontFamily: FONT.displaySemi, fontSize: 13, color: on ? C.onGreen : C.stone }}>{DAY_SHORT[d]}</Text>
-            <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.onGreen : C.muted }}>{on ? 'Train' : 'Rest'}</Text>
+            <Text style={{ fontFamily: FONT.displaySemi, fontSize: 13, color: on ? C.text : C.stone }}>{DAY_SHORT[d]}</Text>
+            <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.green : C.muted }}>{on ? 'Train' : 'Rest'}</Text>
           </Pressable>
         );
       })}

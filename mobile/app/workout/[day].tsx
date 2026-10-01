@@ -15,10 +15,11 @@ import { exerciseLabel, restFor } from '../../src/planData';
 import { usePlan } from '../../src/planStore';
 import { useRestTimer } from '../../src/useRestTimer';
 import { useCelebration } from '../../src/celebration';
-import { Button, IconButton } from '../../src/components/Button';
+import { Button } from '../../src/components/Button';
 import { ProgressBar } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
+import { BackHeader } from '../../src/components/training/BackHeader';
 import type { PlanWorkoutV2 } from '../../src/types';
 
 function mmss(sec: number): string {
@@ -27,35 +28,12 @@ function mmss(sec: number): string {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-function goBack() {
-  if (router.canGoBack()) router.back();
-  else router.replace('/(tabs)/plan');
-}
-
-function TopBar({ label }: { label: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: -4 }}>
-      <IconButton icon="chevronLeft" onPress={goBack} accessibilityLabel="Back" />
-      <Text style={T.small}>{label}</Text>
-    </View>
-  );
-}
-
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <SafeAreaView style={screen} edges={['top', 'bottom']}>
-      <View style={{ padding: 20, gap: 24, flex: 1 }}>
-        <TopBar label="Plan" />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, paddingBottom: 80 }}>
-          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="dumbbell" size={34} />
-          </View>
-          <Text style={[T.h2, { textAlign: 'center' }]} accessibilityRole="header">
-            {title}
-          </Text>
-          <Text style={[T.meta, { textAlign: 'center', maxWidth: 300 }]}>{body}</Text>
-          <Button label="Back to your plan" variant="secondary" onPress={() => router.replace('/(tabs)/plan')} />
-        </View>
+      <View style={{ padding: 20, paddingTop: 8, gap: 24, flex: 1, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+        <BackHeader title={title} subtitle={body} fallback="/(tabs)/plan" />
+        <Button label="Back to your plan" variant="secondary" icon="dumbbell" onPress={() => router.replace('/(tabs)/plan')} style={{ alignSelf: 'flex-start' }} />
       </View>
     </SafeAreaView>
   );
@@ -138,16 +116,7 @@ export default function WorkoutScreen() {
   return (
     <View style={[screen, { paddingTop: inset.top }]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 20, paddingBottom: 132, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
-        <TopBar label="Plan" />
-
-        <View style={{ gap: 6 }}>
-          <Text style={T.h1} accessibilityRole="header">
-            {w.focus}
-          </Text>
-          <Text style={T.meta}>
-            {w.minutes} min · {w.exercises.length} exercises · {progress.total} sets
-          </Text>
-        </View>
+        <BackHeader title={w.focus} subtitle={`${w.minutes} min · ${w.exercises.length} exercises · ${progress.total} sets`} fallback="/(tabs)/plan" />
 
         <View style={{ gap: 8 }}>
           <ProgressBar value={progress.total ? progress.done / progress.total : 0} height={8} />
@@ -190,13 +159,15 @@ export default function WorkoutScreen() {
                     width: 36,
                     height: 36,
                     borderRadius: 18,
-                    backgroundColor: all ? C.green : C.raised,
+                    backgroundColor: all ? C.greenTint : C.raised,
+                    borderWidth: all ? 2 : 0,
+                    borderColor: C.green,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
                   {all ? (
-                    <Icon name="check" size={20} color={C.onGreen} strokeWidth={2.6} />
+                    <Icon name="check" size={20} color={C.green} strokeWidth={2.6} />
                   ) : (
                     <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>{i + 1}</Text>
                   )}
@@ -243,17 +214,17 @@ export default function WorkoutScreen() {
                           maxWidth: 110,
                           paddingVertical: 8,
                           borderRadius: R.tile,
-                          backgroundColor: on ? C.green : pressed ? C.raised : C.surface,
+                          backgroundColor: pressed ? C.raised : on ? C.greenTint : C.surface,
                           borderWidth: 1,
-                          borderColor: on ? C.green : C.lineStrong,
+                          borderColor: on ? C.greenBorder : C.lineStrong,
                           alignItems: 'center',
                           justifyContent: 'center',
                         })}
                       >
-                        <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: on ? C.onGreen : C.text }}>
+                        <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: on ? C.green : C.text }}>
                           {on ? 'Done' : `Set ${s + 1}`}
                         </Text>
-                        <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.onGreen : C.muted, marginTop: 2 }}>{load}</Text>
+                        <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.stone : C.muted, marginTop: 2 }}>{load}</Text>
                       </Pressable>
                     );
                   })}

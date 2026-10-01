@@ -3,9 +3,9 @@
    workouts swapped). Past days and finished workouts can't move. */
 
 import React, { useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { T } from '../../design';
+import { C, FONT, R, T } from '../../design';
 import type { WeekDay } from '../../planData';
 import { Notice } from '../Bits';
 import { Sheet } from './Sheet';
@@ -50,16 +50,32 @@ export function MoveDaySheet({ visible, onClose, days, from, movable, today, onM
         const here = d.id === from.id;
         const can = movable.has(d.id);
         const shows = d.session.kind === 'rest' ? 'Rest day' : d.session.focus;
-        const why = here ? 'Where it is now' : !can ? (d.session.kind === 'workout' && d.done.workout ? 'Done, stays put' : 'Already passed') : shows;
+        if (here) {
+          // Where it is now: information, not a choice. Plain surface, no check.
+          return (
+            <View
+              key={d.id}
+              accessible
+              accessibilityLabel={`${dayTitle(d.index, d.id)}, where it is now`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingVertical: 12, paddingHorizontal: 16, borderRadius: R.tile, borderWidth: 1, borderColor: C.line }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[T.bodyStrong, { color: C.stone }]}>{dayTitle(d.index, d.id)}</Text>
+                <Text style={T.meta}>Where it is now</Text>
+              </View>
+              <Text style={{ fontFamily: FONT.bodySemi, fontSize: 13, color: C.muted }}>Now</Text>
+            </View>
+          );
+        }
+        const why = !can ? (d.session.kind === 'workout' && d.done.workout ? 'Done, stays put' : 'Already passed') : shows;
         return (
           <ChoiceRow
             key={d.id}
             title={dayTitle(d.index, d.id)}
             detail={busy === d.index ? 'Moving' : why}
-            selected={here}
-            disabled={here || !can || (busy != null && busy !== d.index)}
+            disabled={!can || (busy != null && busy !== d.index)}
             onPress={() => void pick(d.index)}
-            accessibilityLabel={here ? `${dayTitle(d.index, d.id)}, where it is now` : `Move to ${dayTitle(d.index, d.id)}. Currently ${shows}`}
+            accessibilityLabel={`Move to ${dayTitle(d.index, d.id)}. Currently ${shows}`}
           />
         );
       })}

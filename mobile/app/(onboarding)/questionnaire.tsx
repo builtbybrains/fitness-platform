@@ -6,7 +6,7 @@
    the finish: completeOnboarding, then the first plan. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -424,17 +424,24 @@ function WaiverStep({ progress, progressLabel, back, onDone }: StepProps) {
       primaryDisabled={!agree}
       busy={busy}
       error={err}
+      footerLead={
+        <CheckRow
+          checked={agree}
+          onChange={(v) => {
+            setAgree(v);
+            setErr(null);
+          }}
+          label={WAIVER_ACCEPT_LABEL}
+        />
+      }
     >
-      <View style={{ backgroundColor: C.card, borderRadius: R.card, maxHeight: 340 }}>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }} nestedScrollEnabled accessibilityLabel="Waiver text">
-          {WAIVER_PARAGRAPHS.map((p) => (
-            <Text key={p} style={[T.body, { color: C.stone }]}>
-              {p}
-            </Text>
-          ))}
-        </ScrollView>
+      <View style={{ backgroundColor: C.card, borderRadius: R.card, padding: 20, gap: 14 }} accessibilityLabel="Waiver text">
+        {WAIVER_PARAGRAPHS.map((p) => (
+          <Text key={p} style={[T.body, { color: C.stone }]}>
+            {p}
+          </Text>
+        ))}
       </View>
-      <CheckRow checked={agree} onChange={setAgree} label={WAIVER_ACCEPT_LABEL} />
     </QuestionShell>
   );
 }

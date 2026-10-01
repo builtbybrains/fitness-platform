@@ -18,6 +18,7 @@ import { Meter, StateBlock } from '../../src/components/training/Controls';
 import { HBars, TargetColumns, TrainingCalendar } from '../../src/components/training/Charts';
 import { DAY_SHORT, plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
+import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
 import { fetchWeights, WeightEntry } from '../../src/data';
 import { fetchFoodRange, FoodLog } from '../../src/foodLogs';
@@ -47,8 +48,9 @@ function SectionTitle({ title, detail }: { title: string; detail?: string }) {
 }
 
 export default function ProgressTab() {
-  const { history, schedule, historyLoaded, todayId, todayIdx, days, weekStart, activities, activitiesLoaded, targets } = usePlan();
-  const { userId, profile } = useAuth();
+  const { history, schedule, historyLoaded, historyOffline, reload, todayId, todayIdx, days, weekStart, activities, activitiesLoaded, targets } = usePlan();
+  const { userId, profile, session, profileLoaded, profileError } = useAuth();
+  const [reloadKey, setReloadKey] = useState(0);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [weightsLoaded, setWeightsLoaded] = useState(false);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
@@ -69,8 +71,12 @@ export default function ProgressTab() {
       return () => {
         alive = false;
       };
-    }, [userId, weekStart, todayId]),
+    }, [userId, weekStart, todayId, reloadKey]),
   );
+  const retry = useCallback(async () => {
+    setReloadKey((k) => k + 1);
+    await reload();
+  }, [reload]);
   useEffect(() => setFoodLoaded(false), [weekStart]);
 
   const now = useMemo(() => parseDay(todayId), [todayId]);
@@ -106,50 +112,67 @@ export default function ProgressTab() {
   const first = weights.length ? weights[0] : null;
   const delta = latest && first ? Math.round((latest.kg - first.kg) * 10) / 10 : 0;
 
+  // Never show zeros for history we couldn't read: wait for it, or say the
+  // server can't be reached when this device has no saved copy either.
+  const waiting = !historyLoaded || (!!session && !profileLoaded);
+  const unreachable = (!!session && profileLoaded && !profile && !!profileError) || (historyLoaded && historyOffline && Object.keys(history).length === 0);
+  if (waiting || unreachable) {
+    return (
+      <SafeAreaView style={screen} edges={['top']}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+          <BackHeader title="Progress" subtitle="Your last 8 weeks" fallback="/(tabs)" />
+          {unreachable ? (
+            <OfflineBlock body="Your streak, workouts and weight trend show here as soon as BUILT answers again. Nothing you logged is lost." onRetry={retry} />
+          ) : (
+            <View style={cardStyle}>
+              <StateBlock kind="loading" title="Loading your training history" />
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={screen} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <BackHeader title="Progress" subtitle="Your last 8 weeks" fallback="/(tabs)" />
 
+        <OfflineNotice text="Can't reach BUILT. Showing your last saved progress." onRetry={retry} />
+
         <View style={[cardStyle, { gap: 20 }]}>
-          {!historyLoaded ? (
-            <StateBlock kind="loading" title="Loading your training history" />
-          ) : (
-            <>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ fontFamily: FONT.displaySemi, fontSize: 56, lineHeight: 62, letterSpacing: -2, color: C.text }} accessibilityLabel={`Workout streak ${currentStreak}`}>
-                    {currentStreak}
-                  </Text>
-                  <Text style={T.bodyStrong}>workout streak</Text>
-                </View>
-                <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: C.lineStrong }} />
-                <View style={{ flex: 1, gap: 14 }}>
-                  <View>
-                    <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>{bestStreak}</Text>
-                    <Text style={T.small}>best streak, 8 weeks</Text>
-                  </View>
-                  <View>
-                    <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>
-                      {thisWeek?.workoutsDone ?? 0}
-                      <Text style={{ fontSize: 16, color: C.muted }}>/{thisWeek?.workoutsPlanned ?? 0}</Text>
-                    </Text>
-                    <Text style={T.small}>workouts this week</Text>
-                  </View>
-                </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 56, lineHeight: 62, letterSpacing: -2, color: C.text }} accessibilityLabel={`Workout streak ${currentStreak}`}>
+                {currentStreak}
+              </Text>
+              <Text style={T.bodyStrong}>workout streak</Text>
+            </View>
+            <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: C.lineStrong }} />
+            <View style={{ flex: 1, gap: 14 }}>
+              <View>
+                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>{bestStreak}</Text>
+                <Text style={T.small}>best streak, 8 weeks</Text>
               </View>
-              <TrainingCalendar rows={calendar} />
-              {!anyWorkout ? (
-                <View style={{ gap: 12 }}>
-                  <Text style={T.meta}>No workouts yet. Finish one and the calendar starts to fill.</Text>
-                  <Button
-                    label={today?.session.kind === 'workout' && !today.done.workout ? "Start today's workout" : 'Open your plan'}
-                    onPress={() => (today?.session.kind === 'workout' && !today.done.workout ? router.push(`/workout/${today.id}`) : router.push('/(tabs)/plan'))}
-                  />
-                </View>
-              ) : null}
-            </>
-          )}
+              <View>
+                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>
+                  {thisWeek?.workoutsDone ?? 0}
+                  <Text style={{ fontSize: 16, color: C.muted }}>/{thisWeek?.workoutsPlanned ?? 0}</Text>
+                </Text>
+                <Text style={T.small}>workouts this week</Text>
+              </View>
+            </View>
+          </View>
+          <TrainingCalendar rows={calendar} />
+          {!anyWorkout ? (
+            <View style={{ gap: 12 }}>
+              <Text style={T.meta}>No workouts yet. Finish one and the calendar starts to fill.</Text>
+              <Button
+                label={today?.session.kind === 'workout' && !today.done.workout ? "Start today's workout" : 'Open your plan'}
+                onPress={() => (today?.session.kind === 'workout' && !today.done.workout ? router.push(`/workout/${today.id}`) : router.push('/(tabs)/plan'))}
+              />
+            </View>
+          ) : null}
         </View>
 
         {historyLoaded && anyWorkout ? (

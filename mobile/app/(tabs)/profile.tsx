@@ -34,6 +34,8 @@ import {
   timeText,
 } from '../../src/components/onboarding/options';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
+import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
+import { StateBlock } from '../../src/components/training/Controls';
 import { Row, RowGroup } from '../../src/components/profile/SubScreen';
 import { ExtraIcon } from '../../src/components/profile/icons';
 import type { ProfileV2 } from '../../src/types';
@@ -65,9 +67,7 @@ function AccountCard() {
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <Text style={T.h3}>{name || 'Your profile'}</Text>
-        <Text style={T.meta} numberOfLines={1}>
-          {localMode ? 'No account. Your data stays on this phone.' : email ?? ''}
-        </Text>
+        <Text style={T.meta}>{localMode ? 'No account. Your data stays on this phone.' : email ?? ''}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <ExtraIcon name="phone" size={14} color={C.muted} />
           <Text style={T.small} accessibilityLabel={profile?.phone ? `Phone on file ${profile.phone}` : 'No phone on file'}>
@@ -140,7 +140,8 @@ function HealthCard() {
 }
 
 export default function ProfileTab() {
-  const { signOut, session, profile, userId } = useAuth();
+  const { signOut, session, profile, userId, profileLoaded, profileError, offline, refreshProfile } = useAuth();
+  const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const [unread, setUnread] = useState(0);
   const cloud = isCloudUser(userId);
 
@@ -178,7 +179,16 @@ export default function ProfileTab() {
       <ScrollView contentContainerStyle={{ padding: 20, gap: 28, paddingBottom: 48, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <ScreenHeader title="Profile" />
         <AccountCard />
-        <CheckinDueCard />
+        <OfflineNotice text="Can't reach BUILT. Showing your last saved answers." show={!!session && !!profile && offline} onRetry={refreshProfile} />
+        {profile ? <CheckinDueCard /> : null}
+
+        {session && !profileLoaded ? (
+          <View style={cardStyle}>
+            <StateBlock kind="loading" title="Loading your answers" />
+          </View>
+        ) : unreachable ? (
+          <OfflineBlock body="Your answers and daily targets show here as soon as BUILT answers again." onRetry={refreshProfile} />
+        ) : null}
 
         {s ? (
           <RowGroup title="Your answers">

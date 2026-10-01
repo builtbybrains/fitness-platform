@@ -27,7 +27,8 @@ import type {
   TimelineMonths,
   TrainLocation,
 } from '../../types';
-import { Caution, ChipGroup, DayPicker, GroupLabel, OptionList, Segmented, Stepper } from './Controls';
+import { Caution, ChipGroup, DayPicker, GroupLabel, OptionList, Stepper } from './Controls';
+import { Segmented } from '../training/Controls';
 import {
   ACTIVITY_LEVELS,
   ALLERGIES,
@@ -41,7 +42,6 @@ import {
   JOB_ACTIVITIES,
   LOCATIONS,
   TIMELINES,
-  type Option,
 } from './options';
 
 // ─────────────────────────────── draft ───────────────────────────────
@@ -415,11 +415,11 @@ export const QUESTIONS: Question[] = [
           <Segmented
             label="Preferred time"
             options={[
-              { id: 'morning', label: 'Morning' },
-              { id: 'midday', label: 'Midday' },
-              { id: 'evening', label: 'Evening' },
-              { id: 'exact', label: 'Set time' },
-            ] as Option<TimeMode>[]}
+              { value: 'morning', label: 'Morning' },
+              { value: 'midday', label: 'Midday' },
+              { value: 'evening', label: 'Evening' },
+              { value: 'exact', label: 'Set time' },
+            ] as { value: TimeMode; label: string }[]}
             value={draft.time_mode}
             onChange={(time_mode) => set({ time_mode })}
           />
@@ -556,7 +556,13 @@ function TimelineQuestion({ draft, set, profile }: QuestionCtx) {
       : null;
   return (
     <View style={{ gap: 20 }}>
-      <Segmented label="Timeline" options={TIMELINES} value={draft.timeline_months} onChange={(timeline_months) => set({ timeline_months })} />
+      <ChipGroup
+        single
+        label="Timeline"
+        options={TIMELINES}
+        values={draft.timeline_months ? [draft.timeline_months] : []}
+        onChange={(v) => set({ timeline_months: v[v.length - 1] ?? draft.timeline_months })}
+      />
       <Field
         label="Target weight in kg (optional)"
         value={draft.target}

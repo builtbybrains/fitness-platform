@@ -88,6 +88,12 @@ type PlanStore = {
   schedule: WeekSchedule;
   history: DoneMap;
   historyLoaded: boolean;
+  /** True when the last history read couldn't reach the server: `history`
+      is this device's saved copy (possibly empty). */
+  historyOffline: boolean;
+  /** Read the plan, this week's changes, history, activities and the
+      profile again (the "Try again" behind every offline notice). */
+  reload: () => Promise<void>;
   streak: number;
   /** Build a new plan, or change it with a request in the person's words.
       Resolves "what changed and why". Needs an account. */
@@ -147,6 +153,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [activitiesLoaded, setActivitiesLoaded] = useState(false);
   const [done, setDoneState] = useState<DoneMap>({});
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyOffline, setHistoryOffline] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [reachedServer, setReachedServer] = useState(true);
 
@@ -166,6 +173,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     setRawPlan(null);
     setPlanLoaded(false);
     setHistoryLoaded(false);
+    setHistoryOffline(false);
     setActivities([]);
     setActivitiesLoaded(false);
     setMealSwaps({});
@@ -202,15 +210,15 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   }, [userId, weekStart, planEpoch]);
 
   // A year of completion history, plus this week.
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    touched.current = new Set();
-    const from = addDays(weekStart, -STREAK_HORIZON_DAYS);
-    const to = addDays(weekStart, 6);
-    fetchDoneRange(userId, from, to).then(({ done: saved, offline, local }) => {
-      if (!alive) return;
+  const loadHistory = useCallback(
+    async (alive: () => boolean) => {
+      if (!userId) return;
+      const from = addDays(weekStart, -STREAK_HORIZON_DAYS);
+      const to = addDays(weekStart, 6);
+      const { done: saved, offline, local } = await fetchDoneRange(userId, from, to);
+      if (!alive()) return;
       if (!local) setReachedServer(!offline);
+      setHistoryOffline(!local && offline);
       const next: DoneMap = { ...saved };
       for (const id of touched.current) {
         if (doneRef.current[id]) next[id] = doneRef.current[id];
@@ -218,11 +226,19 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       }
       commit(next);
       setHistoryLoaded(true);
-    });
+    },
+    [userId, weekStart, commit],
+  );
+
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    touched.current = new Set();
+    void loadHistory(() => alive);
     return () => {
       alive = false;
     };
-  }, [userId, weekStart, commit]);
+  }, [userId, loadHistory]);
 
   // Activities for the last 8 weeks.
   useEffect(() => {
@@ -528,6 +544,23 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     [userId],
   );
 
+  const reload = useCallback(async () => {
+    if (!userId) return;
+    await Promise.all([
+      getPlan(userId)
+        .then(setRawPlan)
+        .catch(() => undefined),
+      getWeekOverrides(userId, weekStart)
+        .then(setOverrides)
+        .catch(() => undefined),
+      listActivities(userId, addDays(weekStart, -7 * (ACTIVITY_WEEKS - 1)), addDays(weekStart, 6))
+        .then(({ activities: list }) => setActivities(list))
+        .catch(() => undefined),
+      loadHistory(() => true),
+      refreshProfile().catch(() => undefined),
+    ]);
+  }, [userId, weekStart, loadHistory, refreshProfile]);
+
   const syncState: SyncState = !isCloudUser(userId) ? 'local' : reachedServer ? 'synced' : 'offline';
   const todayIdx = mondayIndex(todayDate);
 
@@ -552,6 +585,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       schedule,
       history: done,
       historyLoaded,
+      historyOffline,
+      reload,
       streak,
       regenerate,
       moveDay,
@@ -569,7 +604,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       toggleSet,
       toggleMeal,
     }),
-    [days, todayIdx, today, weekStart, syncState, generating, rawPlan, planLoaded, basePlan, profile, targets, location, locations, setLocation, weekChanged, schedule, done, historyLoaded, streak, regenerate, moveDay, resetWeek, optionsFor, replaceExercise, swapMeal, activities, activitiesLoaded, logActivity, removeActivity, toggleWorkout, setWorkoutDone, toggleExercise, toggleSet, toggleMeal],
+    [days, todayIdx, today, weekStart, syncState, generating, rawPlan, planLoaded, basePlan, profile, targets, location, locations, setLocation, weekChanged, schedule, done, historyLoaded, historyOffline, reload, streak, regenerate, moveDay, resetWeek, optionsFor, replaceExercise, swapMeal, activities, activitiesLoaded, logActivity, removeActivity, toggleWorkout, setWorkoutDone, toggleExercise, toggleSet, toggleMeal],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
