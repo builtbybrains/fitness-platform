@@ -21,7 +21,8 @@
 //   POST /reports/<id>/status  {status}
 // Full request and response examples: docs/API.md, "admin".
 //
-// CORS: only https://builtbybrains.github.io and http://localhost:<any> /
+// CORS: only https://builtbybrains.github.io, the Vercel site
+// https://fitness-platform-blue.vercel.app and http://localhost:<any> /
 // http://127.0.0.1:<any> (for testing). Everything runs with the service
 // role inside this function; nothing about it reaches a browser except the
 // JSON answers below.
@@ -30,7 +31,7 @@ import { serviceClient } from '../_shared/env.ts';
 import { GENERIC_ERROR } from '../_shared/http.ts';
 import { sendPush } from '../_shared/push.ts';
 
-const ALLOWED_ORIGIN = /^(https:\/\/builtbybrains\.github\.io|http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$/;
+const ALLOWED_ORIGIN = /^(https:\/\/builtbybrains\.github\.io|https:\/\/fitness-platform-blue\.vercel\.app|http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = ['new', 'in_progress', 'fixed'];
 
