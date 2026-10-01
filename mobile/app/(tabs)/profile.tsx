@@ -1,284 +1,166 @@
-/* Profile: account, today's weigh-in, personal stats, coach targets,
-   reminders and sign out. */
+/* Profile: the account and phone on file, every questionnaire answer
+   (grouped, each group editable), what the coach remembers, check-ins,
+   health apps (phones only), reminders, reports, the privacy note and
+   sign out. */
 
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
-import { usePlan } from '../../src/planStore';
-import { useReminders } from '../../src/useReminders';
+import { isCloudUser } from '../../src/lib/cloud';
 import { showConfirm } from '../../src/lib/dialog';
+import { ageOf } from '../../src/api/profile';
+import { listMyReports, unreadCount } from '../../src/api/reports';
+import { disableHealthSync, enableHealthSync, syncHealth } from '../../src/api/health';
+import { healthPlatform } from '../../src/api/device/health';
 import { Button } from '../../src/components/Button';
-import { Field } from '../../src/components/Field';
 import { Notice, ScreenHeader } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
+import {
+  ACTIVITY_LEVELS,
+  ALLERGIES,
+  DIETS,
+  GOALS,
+  INJURY_AREAS,
+  JOB_ACTIVITIES,
+  LOCATIONS,
+  daysText,
+  labelOf,
+  labelsOf,
+  phoneText,
+  timeText,
+} from '../../src/components/onboarding/options';
+import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
+import { Row, RowGroup } from '../../src/components/profile/SubScreen';
+import { ExtraIcon } from '../../src/components/profile/icons';
+import type { ProfileV2 } from '../../src/types';
 
-type Feedback = { tone: 'error' | 'success'; text: string } | null;
+const join = (parts: (string | number | null | undefined | false)[]) => parts.filter(Boolean).join(' · ');
 
-function useFlash(): [Feedback, (f: Feedback, ms?: number) => void] {
-  const [fb, setFb] = useState<Feedback>(null);
-  const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
-  return [
-    fb,
-    (f, ms = 3500) => {
-      if (timer) clearTimeout(timer);
-      setFb(f);
-      if (f?.tone === 'success') setTimer(setTimeout(() => setFb(null), ms));
-    },
-  ];
+function summaries(p: ProfileV2) {
+  const age = ageOf(p);
+  const allergies = labelsOf(ALLERGIES, p.allergies.filter((a) => a !== 'other'));
+  if (p.allergies.includes('other') && p.allergies_other) allergies.push(p.allergies_other);
+  const injuries = labelsOf(INJURY_AREAS, p.injury_areas);
+  return {
+    about: join([p.name, age != null && `${age} years`, p.height_cm && `${p.height_cm} cm`, p.weight_kg && `${p.weight_kg} kg`]),
+    lifestyle: join([labelOf(ACTIVITY_LEVELS, p.activity_level), labelOf(JOB_ACTIVITIES, p.job_activity), p.sleep_hours != null && `${p.sleep_hours} h sleep`]),
+    goal: join([labelOf(GOALS, p.goal), p.timeline_months && `${p.timeline_months} month${p.timeline_months === 1 ? '' : 's'}`, p.target_weight_kg && `target ${p.target_weight_kg} kg`]),
+    training: join([labelOf(LOCATIONS, p.train_location), daysText(p.training_days), timeText(p.training_time)]),
+    food: join([labelOf(DIETS, p.diet_type), allergies.length ? `No ${allergies.join(', ').toLowerCase()}` : 'No allergies']),
+    health: join([injuries.length ? injuries.join(', ') : 'No injuries noted', p.conditions.length ? `${p.conditions.length} condition${p.conditions.length === 1 ? '' : 's'}` : null]),
+  };
 }
 
 function AccountCard() {
-  const { profile, email } = useAuth();
+  const { profile, email, localMode } = useAuth();
   const name = profile?.name?.trim();
   return (
     <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 16 }]}>
       <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.greenTint, alignItems: 'center', justifyContent: 'center' }}>
-        {name ? (
-          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.green }}>{name.charAt(0).toUpperCase()}</Text>
-        ) : (
-          <Icon name="person" size={26} />
-        )}
+        {name ? <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.green }}>{name.charAt(0).toUpperCase()}</Text> : <Icon name="person" size={26} />}
       </View>
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: 4 }}>
         <Text style={T.h3}>{name || 'Your profile'}</Text>
-        <Text style={T.meta}>{email ?? 'No account. Your data stays on this device.'}</Text>
+        <Text style={T.meta} numberOfLines={1}>
+          {localMode ? 'No account. Your data stays on this phone.' : email ?? ''}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <ExtraIcon name="phone" size={14} color={C.muted} />
+          <Text style={T.small} accessibilityLabel={profile?.phone ? `Phone on file ${profile.phone}` : 'No phone on file'}>
+            {profile?.phone ? phoneText(profile.phone) : 'No phone on file'}
+          </Text>
+        </View>
       </View>
     </View>
   );
 }
 
-function WeighInCard() {
-  const { profile, logWeight } = useAuth();
-  const [kg, setKg] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [fb, flash] = useFlash();
+function HealthCard() {
+  const { userId, profile, refreshProfile } = useAuth();
+  const platform = healthPlatform();
+  const [busy, setBusy] = useState<'toggle' | 'sync' | null>(null);
+  const [msg, setMsg] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  if (Platform.OS === 'web' || !platform || !profile || !userId) return null;
+  const name = platform === 'apple_health' ? 'Apple Health' : 'Health Connect';
+  const on = !!profile.health_sync?.enabled;
+  const last = profile.health_sync?.last_sync_at ? new Date(profile.health_sync.last_sync_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
 
-  async function save() {
-    const v = Number.parseFloat(kg.replace(',', '.'));
-    if (!Number.isFinite(v) || v < 30 || v > 300) {
-      flash({ tone: 'error', text: 'Enter a weight between 30 and 300 kg.' });
-      return;
+  async function toggle() {
+    if (!userId || !profile) return;
+    setBusy('toggle');
+    setMsg(null);
+    try {
+      if (on) {
+        await disableHealthSync(userId, profile);
+        setMsg({ tone: 'success', text: `${name} disconnected. Nothing more is read from it.` });
+      } else {
+        const ok = await enableHealthSync(userId, profile);
+        if (!ok) setMsg({ tone: 'error', text: `${name} didn't give access. Check BUILT in ${name}'s settings.` });
+        else {
+          await syncHealth(userId, { weightKg: profile.weight_kg }).catch(() => null);
+          setMsg({ tone: 'success', text: `${name} connected.` });
+        }
+      }
+      await refreshProfile();
+    } finally {
+      setBusy(null);
     }
-    setBusy(true);
-    const { error } = await logWeight(v);
-    setBusy(false);
-    if (error) {
-      flash({ tone: 'error', text: error });
-      return;
-    }
-    setKg('');
-    flash({ tone: 'success', text: `Saved ${Math.round(v * 10) / 10} kg for today.` });
+  }
+
+  async function syncNow() {
+    if (!userId) return;
+    setBusy('sync');
+    setMsg(null);
+    const r = await syncHealth(userId, { weightKg: profile?.weight_kg }).catch(() => null);
+    setBusy(null);
+    await refreshProfile();
+    setMsg(r?.ok ? { tone: 'success', text: `Synced ${r.days} days and ${r.workouts} workouts.` } : { tone: 'error', text: `${name} couldn't be read right now. Try again later.` });
   }
 
   return (
     <View style={[cardStyle, { gap: 14 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Icon name="scale" size={26} />
-        <View style={{ flex: 1 }}>
-          <Text style={T.h3} accessibilityRole="header">
-            Today&apos;s weight
-          </Text>
-          <Text style={T.small}>{profile?.weight_kg != null ? `Last saved: ${profile.weight_kg} kg` : 'Nothing logged yet'}</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
-        <View style={{ flex: 1 }}>
-          <Field
-            label="Weight (kg)"
-            value={kg}
-            onChangeText={setKg}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 74.5"
-            onSubmitEditing={save}
-            returnKeyType="done"
-          />
-        </View>
-        <Button label="Save" onPress={save} busy={busy} style={{ minHeight: 48, paddingHorizontal: 28 }} accessibilityLabel="Save today's weight" />
-      </View>
-      {fb ? <Notice tone={fb.tone}>{fb.text}</Notice> : null}
-    </View>
-  );
-}
-
-function StatsCard() {
-  const { profile, saveProfile } = useAuth();
-  const [name, setName] = useState(profile?.name ?? '');
-  const [height, setHeight] = useState(profile?.height_cm != null ? String(profile.height_cm) : '');
-  const [age, setAge] = useState(profile?.age != null ? String(profile.age) : '');
-  const [gender, setGender] = useState(profile?.gender ?? '');
-  const [busy, setBusy] = useState(false);
-  const [fb, flash] = useFlash();
-
-  async function save() {
-    const h = Number.parseFloat(height.replace(',', '.'));
-    const a = Number.parseInt(age, 10);
-    if (height && (!Number.isFinite(h) || h < 120 || h > 230)) {
-      flash({ tone: 'error', text: 'Enter a height between 120 and 230 cm.' });
-      return;
-    }
-    if (age && (!Number.isFinite(a) || a < 18 || a > 100)) {
-      flash({ tone: 'error', text: 'Enter an age between 18 and 100.' });
-      return;
-    }
-    setBusy(true);
-    const { error } = await saveProfile({
-      name: name.trim(),
-      height_cm: height ? Math.round(h) : null,
-      age: age ? a : null,
-      gender,
-    });
-    setBusy(false);
-    if (error) flash({ tone: 'error', text: error });
-    else flash({ tone: 'success', text: 'Saved.' });
-  }
-
-  return (
-    <View style={[cardStyle, { gap: 16 }]}>
-      <Text style={T.h3} accessibilityRole="header">
-        About you
-      </Text>
-      <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Sam" autoComplete="given-name" />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Height (cm)" value={height} onChangeText={setHeight} keyboardType="decimal-pad" placeholder="e.g. 178" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Field label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="e.g. 32" />
-        </View>
-      </View>
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 14, color: C.stone }}>Gender</Text>
-        <View style={{ flexDirection: 'row', gap: 8, padding: 4, backgroundColor: C.surface, borderRadius: R.pill }} accessibilityRole="radiogroup">
-          {[
-            { id: 'male', label: 'Male' },
-            { id: 'female', label: 'Female' },
-          ].map((g) => {
-            const on = gender === g.id;
-            return (
-              <Pressable
-                key={g.id}
-                onPress={() => setGender(g.id)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on, selected: on }}
-                accessibilityLabel={g.label}
-                style={{ flex: 1, minHeight: 44, borderRadius: R.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.green : 'transparent' }}
-              >
-                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: on ? C.onGreen : C.text }}>{g.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      <Text style={T.small}>Your coach sets calorie and water targets from these.</Text>
-      {fb ? <Notice tone={fb.tone}>{fb.text}</Notice> : null}
-      <Button label="Save changes" variant="secondary" onPress={save} busy={busy} />
-    </View>
-  );
-}
-
-function TargetsCard() {
-  const { profile } = useAuth();
-  const { generating, aiPlan, regenerate } = usePlan();
-  const [goal, setGoal] = useState('');
-  const [fb, flash] = useFlash();
-
-  async function run() {
-    const res = await regenerate(goal.trim() || undefined);
-    if (res.ok) flash({ tone: 'success', text: 'Your new plan is ready.' }, 5000);
-    else flash({ tone: 'error', text: res.error ?? 'Try again in a moment.' });
-  }
-
-  return (
-    <View style={[cardStyle, { gap: 16 }]}>
-      <Text style={T.h3} accessibilityRole="header">
-        Daily targets
-      </Text>
-      <View style={{ flexDirection: 'row' }}>
+        <ExtraIcon name="heart" size={24} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 28, color: C.text }}>
-            {profile?.kcal_target != null ? profile.kcal_target.toLocaleString() : 'Not set'}
-          </Text>
-          <Text style={T.small}>kcal a day</Text>
-        </View>
-        <View style={{ width: 1, backgroundColor: C.lineStrong, marginHorizontal: 16 }} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 28, color: C.text }}>{profile?.water_target ?? 'Not set'}</Text>
-          <Text style={T.small}>glasses of water</Text>
+          <Text style={T.h3}>{name}</Text>
+          <Text style={T.meta}>{on ? (last ? `Connected. Last synced ${last}.` : 'Connected.') : 'Steps, active calories, workouts, weight and sleep.'}</Text>
         </View>
       </View>
-      <Text style={T.meta}>
-        {aiPlan ? 'Set by your coach from your stats.' : 'Starter targets. Your coach tunes them when it builds your plan.'}
-      </Text>
-      <Field label="Goal for your next plan (optional)" value={goal} onChangeText={setGoal} placeholder="e.g. lose 4 kg by December" />
-      {fb ? <Notice tone={fb.tone}>{fb.text}</Notice> : null}
-      <Button label={generating ? 'Your coach is planning' : 'Build a new plan'} icon={generating ? undefined : 'refresh'} onPress={run} busy={generating} />
-    </View>
-  );
-}
-
-function RemindersCard() {
-  const { prefs, update, granted, supported } = useReminders();
-
-  if (!supported) {
-    return (
-      <View style={[cardStyle, { gap: 8 }]}>
-        <Text style={T.h3} accessibilityRole="header">
-          Reminders
-        </Text>
-        <Text style={T.meta}>
-          {Platform.OS === 'web'
-            ? 'Reminders work in the BUILT app on your phone. Your choices are saved either way.'
-            : "Reminders need the full BUILT app build; they aren't available in this preview. Your choices are saved either way."}
-        </Text>
+      {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
+      <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+        <Button compact variant={on ? 'secondary' : 'primary'} label={on ? 'Disconnect' : `Connect ${name}`} onPress={toggle} busy={busy === 'toggle'} />
+        {on ? <Button compact variant="secondary" icon="refresh" label="Sync now" onPress={syncNow} busy={busy === 'sync'} /> : null}
       </View>
-    );
-  }
-
-  const row = (label: string, value: boolean, onChange: (v: boolean) => void) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 52 }}>
-      <Text style={T.body}>{label}</Text>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        trackColor={{ true: C.green, false: '#4A4A4A' }}
-        thumbColor={value ? C.onGreen : C.stone}
-        {...(Platform.OS === 'web' ? { activeThumbColor: C.onGreen } : {})}
-      />
-    </View>
-  );
-
-  return (
-    <View style={[cardStyle, { gap: 4 }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <Icon name="bell" size={24} />
-        <Text style={T.h3} accessibilityRole="header">
-          Reminders
-        </Text>
-      </View>
-      {row('Water, daily', prefs.water, (v) => void update({ water: v }))}
-      {row('Workout, daily', prefs.workout, (v) => void update({ workout: v }))}
-      <Text style={[T.small, { marginTop: 4 }]}>
-        Water at {String(prefs.waterHour).padStart(2, '0')}:00, workout at {String(prefs.workoutHour).padStart(2, '0')}:00.
-        {granted === false ? " You'll be asked to allow notifications when you turn one on." : ''}
-      </Text>
     </View>
   );
 }
 
 export default function ProfileTab() {
-  const { signOut, session } = useAuth();
+  const { signOut, session, profile, userId } = useAuth();
+  const [unread, setUnread] = useState(0);
+  const cloud = isCloudUser(userId);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!cloud || !userId) return;
+      let alive = true;
+      listMyReports(userId)
+        .then((r) => alive && setUnread(unreadCount(r)))
+        .catch(() => {});
+      return () => {
+        alive = false;
+      };
+    }, [cloud, userId]),
+  );
 
   async function confirmSignOut() {
     const ok = await showConfirm({
       title: 'Sign out?',
-      message: session
-        ? "You'll return to the sign-in screen. Your data stays in your account."
-        : "You'll return to the sign-in screen. Your data stays on this device.",
+      message: session ? "You'll return to the sign-in screen. Your data stays in your account." : "You'll return to the sign-in screen. Your data stays on this device.",
       confirmLabel: 'Sign out',
       destructive: true,
     });
@@ -288,22 +170,64 @@ export default function ProfileTab() {
     router.replace('/(auth)/login');
   }
 
+  const s = profile ? summaries(profile) : null;
+  const edit = (group: string) => () => router.push({ pathname: '/settings/[group]', params: { group } });
+
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 48, maxWidth: 640, width: '100%', alignSelf: 'center' }}
-        >
-          <ScreenHeader title="Profile" />
-          <AccountCard />
-          <WeighInCard />
-          <StatsCard />
-          <TargetsCard />
-          <RemindersCard />
-          <Button label="Sign out" variant="danger" onPress={confirmSignOut} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 28, paddingBottom: 48, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+        <ScreenHeader title="Profile" />
+        <AccountCard />
+        <CheckinDueCard />
+
+        {s ? (
+          <RowGroup title="Your answers">
+            <Row title="About you" detail={s.about} onPress={edit('about')} />
+            <Row title="Activity and sleep" detail={s.lifestyle || 'Not answered yet'} onPress={edit('lifestyle')} />
+            <Row title="Goal and timeline" detail={s.goal || 'Not answered yet'} onPress={edit('goal')} />
+            <Row title="Training" detail={s.training} onPress={edit('training')} />
+            <Row title="Food" detail={s.food} onPress={edit('food')} />
+            <Row title="Health" detail={s.health} onPress={edit('health')} />
+          </RowGroup>
+        ) : null}
+
+        {profile ? (
+          <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center' }]} accessibilityLabel={`Daily targets: ${profile.kcal_target} kcal and ${profile.water_target} glasses of water`}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 26, color: C.text }}>{profile.kcal_target.toLocaleString()}</Text>
+              <Text style={T.small}>kcal a day</Text>
+            </View>
+            <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: C.lineStrong, marginHorizontal: 16 }} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 26, color: C.text }}>{profile.water_target}</Text>
+              <Text style={T.small}>glasses of water</Text>
+            </View>
+          </View>
+        ) : null}
+
+        <RowGroup title="Coach and progress">
+          <Row icon="brain" title="What your coach remembers" detail="See it all, delete anything" onPress={() => router.push('/memory')} />
+          <Row icon="clock" title="Check-ins" detail="Weigh-ins, monthly reviews and plan changes" onPress={() => router.push('/checkin')} />
+        </RowGroup>
+
+        <HealthCard />
+
+        <RowGroup title="Settings and help">
+          <Row icon="bell" title="Reminders" detail="Each reminder on or off, and quiet hours" onPress={() => router.push('/settings/reminders')} />
+          <Row icon="flag" title="Report a problem" onPress={() => router.push('/report/new')} />
+          <Row icon="list" title="My reports" badge={unread ? `${unread} new` : undefined} onPress={() => router.push('/report')} />
+        </RowGroup>
+
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 16, borderRadius: R.tile, backgroundColor: C.surface }}>
+          <ExtraIcon name="lock" size={20} color={C.muted} />
+          <Text style={[T.small, { flex: 1, lineHeight: 19 }]}>
+            Your body photos and your messages to the coach are processed by our AI provider to build your plan and reply to you. Faces are blurred on your phone before any photo is
+            uploaded, and photos are stored privately: only you can see them.
+          </Text>
+        </View>
+
+        <Button label="Sign out" variant="danger" onPress={confirmSignOut} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
