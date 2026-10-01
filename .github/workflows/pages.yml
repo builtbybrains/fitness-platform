@@ -3,13 +3,15 @@ name: Publish website to GitHub Pages
 on:
   push:
     branches: [claude/premium-ai-diet-training-site-uqlb73]
-    # Only the website files publish. Commits that touch only mobile/ or
-    # supabase/ (or anything else) do not republish the site.
+    # The website, the admin dashboard and the app's web build publish.
+    # Commits that touch only supabase/ (or anything else) do not republish.
     paths:
       - 'index.html'
+      - 'admin/**'
       - 'assets/**'
       - 'robots.txt'
       - 'sitemap.xml'
+      - 'mobile/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -26,15 +28,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Allowlist copy: only the public site goes out. Internal files
+      # Allowlist copy: only the public site, the admin dashboard (admin/:
+      # static HTML/CSS/JS, noindex, no secrets) and the app's web build go out. Internal files
       # (.claude/, brain/, scripts/, supabase/, mobile/, CLAUDE.md, DESIGN.md,
       # README.md, package.json) never reach the gh-pages branch.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      # The app's web version, served at /fitness-platform/app/ for testing in
+      # a phone or desktop browser. The base URL is set only for this build,
+      # so app.json stays deployable at a domain root (Vercel, native builds).
+      - name: Build the app for the web
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node -e "const f='app.json';const j=JSON.parse(require('fs').readFileSync(f,'utf8'));j.expo.experiments={...(j.expo.experiments||{}),baseUrl:'/fitness-platform/app'};require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+          npx expo export --platform web --clear --output-dir ../_app
+
       - name: Collect the static site
         run: |
           set -euo pipefail
           rm -rf _site && mkdir _site
           cp index.html robots.txt sitemap.xml _site/
           cp -R assets _site/assets
+          mkdir _site/admin
+          cp admin/index.html admin/admin.css admin/admin.js _site/admin/
+          cp -R _app _site/app
+          # Pages has no rewrites: a deep link or refresh inside the app (for
+          # example /fitness-platform/app/plan) lands on this page, which sends
+          # it back to the app's start, where it routes itself.
+          cat > _site/404.html <<'HTML'
+          <!doctype html><meta charset="utf-8"><title>BUILT</title>
+          <script>
+            var base = '/fitness-platform/app';
+            if (location.pathname.indexOf(base) === 0) location.replace(base + '/');
+            else location.replace('/fitness-platform/');
+          </script>
+          HTML
           touch _site/.nojekyll
           echo "Publishing:" && (cd _site && find . -type f | sort)
 

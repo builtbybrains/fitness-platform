@@ -1,5 +1,8 @@
 /* BUILT tab bar: Carbon, green active icon and label, grey inactive.
-   Icons are the app's own 2px outline set. */
+   Five tabs for what people do every day: Today, Plan (Train), Food
+   (Nutrition), Coach and Profile. Progress is a weekly look, so it opens
+   from Today's Progress tile and streak (and Profile) instead of taking a
+   tab; it keeps the tab bar, and Back returns to where it was opened from. */
 
 import { Tabs } from 'expo-router';
 
@@ -17,6 +20,7 @@ function tab(title: string, icon: IconName) {
 export default function TabsLayout() {
   return (
     <Tabs
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: C.bg },
@@ -35,9 +39,10 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={tab('Today', 'home')} />
       <Tabs.Screen name="plan" options={tab('Plan', 'dumbbell')} />
-      <Tabs.Screen name="progress" options={tab('Progress', 'bars')} />
+      <Tabs.Screen name="food" options={tab('Food', 'burger')} />
       <Tabs.Screen name="coach" options={tab('Coach', 'brain')} />
       <Tabs.Screen name="profile" options={tab('Profile', 'person')} />
+      <Tabs.Screen name="progress" options={{ ...tab('Progress', 'bars'), href: null }} />
     </Tabs>
   );
 }

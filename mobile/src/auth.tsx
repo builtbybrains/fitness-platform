@@ -1,6 +1,11 @@
 /* Auth: Supabase email+password accounts handled entirely in-app. Session
    persists via AsyncStorage; signUp passes `name` through metadata and a
-   server trigger creates the profile row.
+   server trigger creates the profile row. Email verification is off for
+   now (PRODUCT.md), so a sign-up returns a session straight away.
+
+   The profile is the full v2 questionnaire row (ProfileV2), loaded with
+   api/profile getProfile and saved with saveProfilePatch, which validate
+   the same rules as the database in every mode.
 
    Three modes:
    - cloud:        a signed-in account. The profile lives in `profiles`, with
@@ -9,67 +14,71 @@
                    launch for a device that already has a local identity. A
                    device-only identity (`local-…` id) keeps the app fully
                    usable. Its whole profile is stored on the device, and it
-                   NEVER talks to Supabase. Its data stays on this device;
-                   nothing is uploaded when someone later signs in.
+                   NEVER talks to Supabase.
    - unconfigured: Supabase env vars missing entirely; local mode only.
+
+   Anyone whose onboarding_done_at is null (every v1 account included) is
+   routed into the questionnaire by the entry gate (app/index.tsx).
 
    Sign-out returns to the login screen and keeps the device-only identity
    (and its data) for the next "Continue without an account". */
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session } from '@supabase/supabase-js';
 
 import { supabase } from './lib/supabase';
-import { loadLocal, saveLocal } from './lib/localFallback';
 import { clearFoodCache } from './lib/foodCache';
 import { todayId } from './lib/dates';
 import { saveWeight, WEIGHT_MAX_KG, WEIGHT_MIN_KG } from './data';
 import { supabaseConfigured } from '../supabase.config';
+import { asApiError } from './api/errors';
+import { emptyProfile, getProfile, saveProfilePatch } from './api/profile';
+import { registerPushToken, unregisterPushToken } from './api/push';
+import type { ApiErrorCode, ProfilePatchV2, ProfileV2 } from './types';
 
-export type Profile = {
-  id: string;
-  name: string;
-  kcal_target: number;
-  water_target: number;
-  height_cm: number | null;
-  age: number | null;
-  gender: string; // '' | 'male' | 'female'
-  weight_kg: number | null;
-};
+/** The signed-in person's profile: the whole v2 questionnaire row. */
+export type Profile = ProfileV2;
+export type ProfilePatch = ProfilePatchV2;
 
-export type ProfilePatch = {
-  name?: string;
-  kcal_target?: number;
-  water_target?: number;
-  height_cm?: number | null;
-  age?: number | null;
-  gender?: string;
-  weight_kg?: number | null;
-};
+export type SaveResult = { error?: string; code?: ApiErrorCode; profile?: ProfileV2 };
 
 type AuthCtx = {
   ready: boolean;
   /** True once the signed-in user's profile fetch has settled (or there is
-      no cloud user). The entry gate waits for this before routing so the
-      onboarding redirect can't lose a race with the profile fetch. */
+      no cloud user). The entry gate waits for this before routing. */
   profileLoaded: boolean;
+  /** Set when a signed-in profile couldn't be loaded at all (offline with
+      no device copy). The gate shows it with a retry. */
+  profileError: string | null;
   userId: string | null;
   email: string | null;
   session: Session | null;
   profile: Profile | null;
+  /** True once the questionnaire is finished (onboarding_done_at set). */
+  onboarded: boolean;
   /** Signed in, but the server couldn't be reached for the profile. */
   offline: boolean;
   /** Device-only identity: no account, nothing leaves the device. */
   localMode: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  /** Bumped whenever a new plan was stored outside the plan store (end of
+      the questionnaire, a monthly check-in, a profile change). Plan
+      readers can add it to their load effect to pick the new plan up. */
+  planEpoch: number;
+  notifyPlanChanged: () => void;
+  signUp: (email: string, password: string, name?: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   continueOffline: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  /** Save profile fields. A new weight_kg is also logged in the weight
-      history for today (Progress chart). Works with and without an account. */
-  saveProfile: (patch: ProfilePatch) => Promise<{ error?: string }>;
+  /** Save questionnaire answers or settings (validated first). A new
+      weight_kg is also logged in the weight history for today. Works with
+      and without an account. */
+  saveProfile: (patch: ProfilePatch) => Promise<SaveResult>;
+  /** Put a profile returned by an api/ call (acceptWaiver,
+      completeOnboarding, enableHealthSync…) on screen. */
+  applyProfile: (p: ProfileV2) => void;
   /** Log today's body weight: adds it to the weight history and updates the
       profile's current weight. Works with and without an account. */
   logWeight: (kg: number) => Promise<{ error?: string }>;
@@ -81,22 +90,7 @@ const Ctx = createContext<AuthCtx | null>(null);
 const LOCAL_USER_KEY = 'vital.localUser';
 const LOCAL_MODE_KEY = 'vital.localMode';
 
-type StoredLocalUser = { userId: string; name: string; profile?: Partial<Profile> };
-
-const fallbackProfile = (id: string, name: string): Profile => ({
-  id,
-  name,
-  kcal_target: 2200,
-  water_target: 8,
-  height_cm: null,
-  age: null,
-  gender: '',
-  weight_kg: null,
-});
-
-function localProfileOf(stored: StoredLocalUser): Profile {
-  return { ...fallbackProfile(stored.userId, stored.name), ...(stored.profile ?? {}), id: stored.userId, name: stored.profile?.name ?? stored.name };
-}
+type StoredLocalUser = { userId: string; name: string; profile?: Partial<ProfileV2> };
 
 async function readLocalUser(): Promise<StoredLocalUser | null> {
   try {
@@ -109,10 +103,6 @@ async function readLocalUser(): Promise<StoredLocalUser | null> {
   }
 }
 
-async function writeLocalUser(u: StoredLocalUser): Promise<void> {
-  await AsyncStorage.setItem(LOCAL_USER_KEY, JSON.stringify(u)).catch(() => {});
-}
-
 async function loadOrCreateLocalUser(): Promise<StoredLocalUser> {
   const existing = await readLocalUser();
   if (existing) return existing;
@@ -120,19 +110,28 @@ async function loadOrCreateLocalUser(): Promise<StoredLocalUser> {
     userId: `local-${Math.random().toString(36).slice(2, 10)}`,
     name: '',
   };
-  await writeLocalUser(created);
+  await AsyncStorage.setItem(LOCAL_USER_KEY, JSON.stringify(created)).catch(() => {});
   return created;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [offline, setOffline] = useState(false);
   const [localMode, setLocalModeState] = useState(!supabaseConfigured);
   const [localUserId, setLocalUserId] = useState<string | null>(null);
+  const [planEpoch, setPlanEpoch] = useState(0);
   const localModeRef = useRef(!supabaseConfigured);
+  const profileRef = useRef<Profile | null>(null);
+  const pushToken = useRef<string | null>(null);
+
+  const putProfile = useCallback((p: Profile | null) => {
+    profileRef.current = p;
+    setProfile(p);
+  }, []);
 
   const setLocalMode = useCallback((on: boolean) => {
     localModeRef.current = on;
@@ -140,13 +139,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const enterLocal = useCallback(
-    (u: StoredLocalUser) => {
+    async (u: StoredLocalUser) => {
       setLocalMode(true);
       setLocalUserId(u.userId);
-      setProfile(localProfileOf(u));
       setSession(null);
+      const p = await getProfile(u.userId).catch(() => emptyProfile(u.userId, u.name));
+      putProfile(p);
     },
-    [setLocalMode],
+    [setLocalMode, putProfile],
   );
 
   // Session bootstrap.
@@ -155,9 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!supabaseConfigured) {
       loadOrCreateLocalUser()
-        .then((u) => {
-          if (alive) enterLocal(u);
-        })
+        .then((u) => (alive ? enterLocal(u) : undefined))
         .catch(() => {})
         .finally(() => {
           if (alive) setReady(true);
@@ -173,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const flag = await AsyncStorage.getItem(LOCAL_MODE_KEY).catch(() => null);
       if (!alive) return;
       if (flag === '1') {
-        enterLocal(await loadOrCreateLocalUser());
+        await enterLocal(await loadOrCreateLocalUser());
         if (alive) setReady(true);
         return;
       }
@@ -188,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const u = await readLocalUser();
         if (alive && u) {
           setOffline(true);
-          enterLocal(u);
+          await enterLocal(u);
         }
       } finally {
         if (alive) setReady(true);
@@ -208,57 +206,92 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load the profile row whenever the signed-in user changes.
   const cloudUserId = localMode ? null : session?.user?.id ?? null;
   const metaName = (session?.user?.user_metadata?.name as string | undefined) ?? '';
+
+  const loadCloudProfile = useCallback(
+    async (id: string, alive: () => boolean = () => true) => {
+      try {
+        const p = await getProfile(id);
+        if (!alive()) return;
+        putProfile(p.name || !metaName ? p : { ...p, name: metaName });
+        setOffline(false);
+        setProfileError(null);
+      } catch (e) {
+        if (!alive()) return;
+        const err = asApiError(e);
+        if (err.code === 'unauthorized') {
+          // The session ended on the server: back to sign-in.
+          await supabase.auth.signOut().catch(() => {});
+          setSession(null);
+          putProfile(null);
+          return;
+        }
+        setOffline(err.code === 'offline');
+        setProfileError(err.message);
+      }
+    },
+    [metaName, putProfile],
+  );
+
   useEffect(() => {
     if (!cloudUserId) {
-      if (!localModeRef.current) setProfile(null);
+      if (!localModeRef.current) putProfile(null);
       setProfileLoaded(true);
       return;
     }
     let alive = true;
     setProfileLoaded(false);
     (async () => {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', cloudUserId).maybeSingle();
-      if (!alive) return;
-      if (!error && data) {
-        setOffline(false);
-        setProfile(data as Profile);
-        await saveLocal(cloudUserId, 'profile', data);
-      } else {
-        // Offline (or the row isn't there yet): use the device copy so a
-        // returning person isn't sent back to onboarding.
-        const cached = await loadLocal<Profile>(cloudUserId, 'profile');
-        if (!alive) return;
-        setOffline(!!error);
-        setProfile(cached ?? fallbackProfile(cloudUserId, metaName));
-      }
+      await loadCloudProfile(cloudUserId, () => alive);
       if (alive) setProfileLoaded(true);
     })();
     return () => {
       alive = false;
     };
-  }, [cloudUserId, metaName]);
+  }, [cloudUserId, loadCloudProfile, putProfile]);
 
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
-    if (!supabaseConfigured) {
-      return { error: "Accounts aren't available in this build. Continue without an account instead." };
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
-    if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  // Register for server pushes (report replies, plan updated) once signed
+  // in. Silent: without permission, on the web or before EAS is set up
+  // (no_project_id) it simply resolves { ok: false }.
+  useEffect(() => {
+    if (!cloudUserId || Platform.OS === 'web') return;
+    let alive = true;
+    registerPushToken(cloudUserId, { prompt: false })
+      .then((r) => {
+        if (alive && r.ok) pushToken.current = r.token;
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [cloudUserId]);
 
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-    if (error) return { error: error.message };
-    if (!data.session) {
-      return { error: 'CONFIRM_EMAIL:Account created. Check your inbox to confirm your email, then sign in.' };
-    }
-    return {};
-  }, []);
+  const signUp = useCallback(
+    async (email: string, password: string, name = '') => {
+      if (!supabaseConfigured) {
+        return { error: "Accounts aren't available in this build. Continue without an account instead." };
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
+      if (password.length < 8) return { error: 'Use at least 8 characters for your password.' };
+
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+      if (error) return { error: error.message };
+      if (!data.session) {
+        // Only when email confirmation is switched back on in Supabase.
+        return { error: 'CONFIRM_EMAIL:Account created. Check your inbox to confirm your email, then sign in.' };
+      }
+      await AsyncStorage.removeItem(LOCAL_MODE_KEY).catch(() => {});
+      setLocalMode(false);
+      return {};
+    },
+    [setLocalMode],
+  );
 
   const signIn = useCallback(
     async (email: string, password: string) => {
       if (!supabaseConfigured) {
         return { error: "Accounts aren't available in this build. Continue without an account instead." };
       }
-      if (!email || !password) return { error: 'Email and password are required.' };
+      if (!email || !password) return { error: 'Enter your email and password.' };
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
       await AsyncStorage.removeItem(LOCAL_MODE_KEY).catch(() => {});
@@ -270,6 +303,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (supabaseConfigured && session) {
+      const id = session.user?.id;
+      if (id && pushToken.current) await unregisterPushToken(id, pushToken.current).catch(() => {});
+      pushToken.current = null;
       try {
         await supabase.auth.signOut();
       } catch {
@@ -282,68 +318,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearFoodCache();
     setSession(null);
     setOffline(false);
+    setProfileError(null);
     if (supabaseConfigured) {
-      setProfile(null);
+      putProfile(null);
       setLocalUserId(null);
       setLocalMode(false);
     }
     // The device-only identity (vital.localUser) and its data are kept, so
     // "Continue without an account" opens the same plan again.
-  }, [session, setLocalMode]);
+  }, [session, setLocalMode, putProfile]);
 
   const continueOffline = useCallback(async () => {
     if (supabaseConfigured) await AsyncStorage.setItem(LOCAL_MODE_KEY, '1').catch(() => {});
-    enterLocal(await loadOrCreateLocalUser());
+    await enterLocal(await loadOrCreateLocalUser());
     setOffline(false);
+    setProfileError(null);
     setProfileLoaded(true);
     setReady(true);
   }, [enterLocal]);
 
-  const refreshProfile = useCallback(async () => {
-    if (!cloudUserId) return;
-    const { data } = await supabase.from('profiles').select('*').eq('id', cloudUserId).maybeSingle();
-    if (data) {
-      setProfile(data as Profile);
-      await saveLocal(cloudUserId, 'profile', data);
-    }
-  }, [cloudUserId]);
-
   const userId = cloudUserId ?? (localMode ? localUserId : null);
 
+  const refreshProfile = useCallback(async () => {
+    if (cloudUserId) {
+      await loadCloudProfile(cloudUserId);
+      setProfileLoaded(true);
+      return;
+    }
+    if (localMode && localUserId) {
+      const p = await getProfile(localUserId).catch(() => null);
+      if (p) putProfile(p);
+    }
+  }, [cloudUserId, localMode, localUserId, loadCloudProfile, putProfile]);
+
+  const applyProfile = useCallback((p: ProfileV2) => putProfile(p), [putProfile]);
+
   const saveProfile = useCallback(
-    async (patch: ProfilePatch): Promise<{ error?: string }> => {
-      const clean: ProfilePatch = { ...patch };
-      if (clean.weight_kg != null) {
-        if (!Number.isFinite(clean.weight_kg) || clean.weight_kg < WEIGHT_MIN_KG || clean.weight_kg > WEIGHT_MAX_KG) {
-          return { error: `Weight should be between ${WEIGHT_MIN_KG} and ${WEIGHT_MAX_KG} kg.` };
-        }
-        clean.weight_kg = Math.round(clean.weight_kg * 10) / 10;
+    async (patch: ProfilePatch): Promise<SaveResult> => {
+      if (!userId) return { error: 'Sign in or continue without an account first.', code: 'unauthorized' };
+      try {
+        const current = profileRef.current ?? undefined;
+        const next = await saveProfilePatch(userId, patch, current && current.id === userId ? current : undefined);
+        putProfile(next);
+        return { profile: next };
+      } catch (e) {
+        const err = asApiError(e);
+        return { error: err.message, code: err.code };
       }
-      const weightChanged = clean.weight_kg != null && clean.weight_kg !== profile?.weight_kg;
-      setProfile((prev) => (prev ? { ...prev, ...clean } : prev));
-
-      if (!cloudUserId && !localMode) return { error: 'Sign in or continue without an account first.' };
-      if (!cloudUserId) {
-        // Device-only identity: persist the whole profile, not just the name,
-        // so stats survive a reload and onboarding isn't shown again.
-        const u = await loadOrCreateLocalUser();
-        const nextProfile = { ...(u.profile ?? {}), ...clean };
-        await writeLocalUser({ ...u, name: clean.name ?? u.name, profile: nextProfile });
-        if (weightChanged && localUserId) await saveWeight(localUserId, todayId(), clean.weight_kg!).catch(() => {});
-        return {};
-      }
-
-      const { error } = await supabase.from('profiles').update(clean).eq('id', cloudUserId);
-      if (error) {
-        await refreshProfile();
-        return { error: "Couldn't save your profile. Check your connection and try again." };
-      }
-      const cached = await loadLocal<Profile>(cloudUserId, 'profile');
-      await saveLocal(cloudUserId, 'profile', { ...(cached ?? {}), ...clean, id: cloudUserId });
-      if (weightChanged) await saveWeight(cloudUserId, todayId(), clean.weight_kg!).catch(() => {});
-      return {};
     },
-    [cloudUserId, localMode, localUserId, profile?.weight_kg, refreshProfile],
+    [userId, putProfile],
   );
 
   const logWeight = useCallback(
@@ -353,37 +376,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: `Weight should be between ${WEIGHT_MIN_KG} and ${WEIGHT_MAX_KG} kg.` };
       }
       const value = Math.round(kg * 10) / 10;
-      const unchanged = profile?.weight_kg === value;
-      // saveProfile logs the entry whenever the weight changes; log it here
-      // too when it didn't, so every weigh-in lands in the history.
+      const unchanged = profileRef.current?.weight_kg === value;
+      // saveProfilePatch logs the entry whenever the weight changes; log it
+      // here too when it didn't, so every weigh-in lands in the history.
       const res = await saveProfile({ weight_kg: value });
       if (!res.error && unchanged) await saveWeight(userId, todayId(), value).catch(() => {});
-      return res;
+      return res.error ? { error: res.error } : {};
     },
-    [userId, profile?.weight_kg, saveProfile],
+    [userId, saveProfile],
   );
 
+  const notifyPlanChanged = useCallback(() => setPlanEpoch((n) => n + 1), []);
+
   const email = session?.user?.email ?? null;
+  const onboarded = !!profile?.onboarding_done_at;
 
   const value = useMemo<AuthCtx>(
     () => ({
       ready,
       profileLoaded,
+      profileError,
       userId,
       email,
       session: localMode ? null : session,
       profile,
+      onboarded,
       offline,
       localMode,
+      planEpoch,
+      notifyPlanChanged,
       signUp,
       signIn,
       signOut,
       continueOffline,
       refreshProfile,
       saveProfile,
+      applyProfile,
       logWeight,
     }),
-    [ready, profileLoaded, userId, email, session, profile, offline, localMode, signUp, signIn, signOut, continueOffline, refreshProfile, saveProfile, logWeight],
+    [ready, profileLoaded, profileError, userId, email, session, profile, onboarded, offline, localMode, planEpoch, notifyPlanChanged, signUp, signIn, signOut, continueOffline, refreshProfile, saveProfile, applyProfile, logWeight],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

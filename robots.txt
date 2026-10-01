@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+# The admin dashboard is not for search engines (it also sends noindex).
+# The site lives under /fitness-platform/ on GitHub Pages; /admin/ covers a future own domain.
+Disallow: /fitness-platform/admin/
+Disallow: /admin/
 
 Sitemap: https://builtbybrains.github.io/fitness-platform/sitemap.xml

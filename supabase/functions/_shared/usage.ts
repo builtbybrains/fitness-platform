@@ -6,21 +6,25 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-import { json } from './http.ts';
+import { fail } from './http.ts';
 
 export const LIMITS = {
   coach: 60, // user messages per day (counted from coach_messages)
-  plan: 5, // plan generations per day
+  plan: 8, // plan generations and change requests per day
   meal_photo: 30, // photo estimates per day
+  food_text: 60, // typed food estimates and follow-up answers per day
+  meal_swap: 30, // meal swap suggestions per day
+  meal_generate: 20, // "cook from what I have" ideas per day
+  body_analysis: 6, // photo-set estimates per day
+  checkin: 6, // monthly check-in reviews per day
 } as const;
+
+export type QuotaKind = Exclude<keyof typeof LIMITS, 'coach'>;
 
 /** Count one call of `kind` for the signed-in user of `supabase` (their own
     client, so auth.uid() is them). Resolves true when allowed. Throws when
     the counter itself fails (for example schema.sql hasn't been run). */
-export async function takeQuota(
-  supabase: SupabaseClient,
-  kind: 'plan' | 'meal_photo',
-): Promise<boolean> {
+export async function takeQuota(supabase: SupabaseClient, kind: QuotaKind): Promise<boolean> {
   const { data, error } = await supabase.rpc('bump_ai_usage', { p_kind: kind, p_limit: LIMITS[kind] });
   if (error) throw new Error(`bump_ai_usage failed: ${error.message}`);
   return data !== null && data !== undefined;
@@ -34,5 +38,5 @@ export function utcDayStart(now = new Date()): string {
 }
 
 export function limitReached(message: string): Response {
-  return json({ error: message }, 429);
+  return fail('limit_reached', message, 429);
 }

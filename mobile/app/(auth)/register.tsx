@@ -1,5 +1,6 @@
-/* Create account. The name travels as signup metadata; a server trigger
-   turns it into the profile row. */
+/* Create account: email and password (no email verification for now).
+   A server trigger creates the profile row; the entry gate then opens the
+   questionnaire, which asks for the name first. */
 
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
@@ -16,7 +17,6 @@ import { readableAuthError } from '../../src/components/copy';
 
 export default function RegisterScreen() {
   const { signUp, session } = useAuth();
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -24,16 +24,16 @@ export default function RegisterScreen() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // If signup returns a session (email confirmation off), go straight in.
-  // With confirmation on there is no session yet: the message below stays
+  // Email confirmation is off, so signup returns a session: straight on to
+  // the questionnaire. If it is ever switched on, the message below stays
   // on screen and the person signs in from the login screen afterwards.
   useEffect(() => {
     if (session) router.replace('/');
   }, [session]);
 
   async function submit() {
-    if (!email.trim()) {
-      setErr('Enter your email.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErr('Enter a valid email address.');
       return;
     }
     if (password.length < 8) {
@@ -47,7 +47,7 @@ export default function RegisterScreen() {
     setBusy(true);
     setErr(null);
     setInfo(null);
-    const { error } = await signUp(email.trim(), password, name.trim());
+    const { error } = await signUp(email.trim(), password);
     setBusy(false);
     if (error?.startsWith('CONFIRM_EMAIL:')) {
       setInfo(error.slice('CONFIRM_EMAIL:'.length));
@@ -77,9 +77,8 @@ export default function RegisterScreen() {
               <Text style={T.h2} accessibilityRole="header">
                 Create your account
               </Text>
-              <Text style={T.meta}>Your plan, progress and coach, synced to every device.</Text>
+              <Text style={T.meta}>Then a few quick questions, and your coach builds your first plan.</Text>
             </View>
-            <Field label="First name" value={name} onChangeText={setName} autoComplete="given-name" textContentType="givenName" />
             <Field
               label="Email"
               value={email}

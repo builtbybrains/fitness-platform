@@ -1,15 +1,17 @@
-/* Food-photo calorie logs: the analyze-meal Edge Function (vision model)
-   estimates {label, kcal, protein, confidence} from a photo; the confirmed
-   row lands in the food_logs table (RLS-scoped) and in the on-device
-   mirror.
+/* Food logs: everything eaten outside the plan (a photo, typed food, a meal
+   made from what's at home) with all macros. The person confirms or edits
+   the estimate first (api/food.ts makes it); the confirmed row lands in
+   the food_logs table (RLS-scoped, v2 columns: carbs, fat, source, slot,
+   items, follow_up) and in the on-device mirror. Off-plan food counts
+   toward the day's calories.
 
    Every row gets its id on the device, so an upload can be retried safely
    (the same id never becomes two rows). Rows logged while offline stay
    marked `pending` and upload on the next read; a server read MERGES with
    the mirror instead of replacing it, so nothing logged offline is lost.
 
-   State lives in lib/foodCache.ts, keyed by user and day, so a log added in
-   the Coach tab instantly shows up in the Today tab. */
+   State lives in lib/foodCache.ts, keyed by user and day, so a log added on
+   the Food screens instantly shows up on Today. */
 
 import { useCallback, useEffect, useState } from 'react';
 
@@ -18,15 +20,16 @@ import { loadLocal, updateLocal } from './lib/localFallback';
 import { isCloudUser, newId } from './lib/cloud';
 import { flushOutbox, pendingEntries, writeThrough } from './lib/outbox';
 import { runSerial } from './lib/serial';
-import { callFunction } from './lib/functions';
-import { todayId } from './lib/dates';
+import { addDays, todayId } from './lib/dates';
 import {
   cacheKey,
   Confidence,
   Estimate,
   FoodLog,
+  FoodSource,
   FoodState,
   getFoodCache,
+  MealSlot,
   mergeFoodLogs,
   publishFood,
   subscribeFood,
@@ -37,9 +40,16 @@ export type { Estimate, FoodLog } from './lib/foodCache';
 export { clearFoodCache } from './lib/foodCache';
 
 const CONFIDENCE: Confidence[] = ['low', 'medium', 'high'];
+const SOURCES: FoodSource[] = ['photo', 'text', 'plan', 'generated'];
+const SLOTS: MealSlot[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+const COLUMNS = 'id, day, label, kcal, protein, carbs, fat, confidence, source, slot, items, follow_up, created_at';
 
 function localKey(dayId: string) {
   return `foodLogs:${dayId}`;
+}
+
+function n(v: unknown, hi: number): number {
+  return Math.min(hi, Math.max(0, Math.round(Number(v) || 0)));
 }
 
 function toLog(row: Record<string, unknown>): FoodLog {
@@ -48,9 +58,15 @@ function toLog(row: Record<string, unknown>): FoodLog {
     id: String(row.id),
     day: String(row.day ?? '').slice(0, 10),
     label: String(row.label ?? ''),
-    kcal: Math.max(0, Math.round(Number(row.kcal) || 0)),
-    protein: Math.max(0, Math.round(Number(row.protein) || 0)),
+    kcal: n(row.kcal, 5000),
+    protein: n(row.protein, 300),
+    carbs: n(row.carbs, 1000),
+    fat: n(row.fat, 500),
     confidence,
+    source: SOURCES.includes(row.source as FoodSource) ? (row.source as FoodSource) : 'photo',
+    slot: SLOTS.includes(row.slot as MealSlot) ? (row.slot as MealSlot) : '',
+    items: Array.isArray(row.items) ? (row.items as FoodLog['items']) : [],
+    followUp: Array.isArray(row.follow_up) ? (row.follow_up as FoodLog['followUp']) : Array.isArray(row.followUp) ? (row.followUp as FoodLog['followUp']) : [],
     created_at: String(row.created_at ?? ''),
   };
 }
@@ -60,26 +76,17 @@ function toRow(userId: string, l: FoodLog) {
     id: l.id,
     user_id: userId,
     day: l.day,
-    label: l.label,
-    kcal: l.kcal,
-    protein: l.protein,
+    label: l.label.slice(0, 120),
+    kcal: n(l.kcal, 5000),
+    protein: n(l.protein, 300),
+    carbs: n(l.carbs, 1000),
+    fat: n(l.fat, 500),
     confidence: l.confidence,
+    source: l.source ?? 'photo',
+    slot: l.slot ?? '',
+    follow_up: (l.followUp ?? []).slice(0, 5),
+    items: (l.items ?? []).slice(0, 15),
     created_at: l.created_at || new Date().toISOString(),
-  };
-}
-
-// ─────────────────────── vision estimate (Edge Function) ───────────────────────
-
-export async function analyzeMealImage(imageBase64: string): Promise<Estimate> {
-  const data = await callFunction<{ estimate?: Partial<Estimate> }>('analyze-meal', { imageBase64 });
-  const est = data?.estimate;
-  if (!est?.label) throw new Error("Couldn't read that photo. Try again in a moment.");
-  const confidence = CONFIDENCE.includes(est.confidence as Confidence) ? (est.confidence as Confidence) : 'medium';
-  return {
-    label: String(est.label).slice(0, 120),
-    kcal: Math.min(5000, Math.max(0, Math.round(Number(est.kcal) || 0))),
-    protein: Math.min(300, Math.max(0, Math.round(Number(est.protein) || 0))),
-    confidence,
   };
 }
 
@@ -97,12 +104,13 @@ async function upload(userId: string, l: FoodLog): Promise<FoodLog | null> {
   return ok ? { ...toLog(row), pending: undefined } : null;
 }
 
-export async function fetchFoodLogs(
-  userId: string,
-  dayId: string,
-): Promise<{ logs: FoodLog[]; offline: boolean }> {
+function fromMirror(rows: FoodLog[] | null): FoodLog[] {
+  return (rows ?? []).map((r) => ({ ...toLog(r as unknown as Record<string, unknown>), pending: r.pending }));
+}
+
+export async function fetchFoodLogs(userId: string, dayId: string): Promise<{ logs: FoodLog[]; offline: boolean }> {
   if (!isCloudUser(userId)) {
-    return { logs: (await loadLocal<FoodLog[]>(userId, localKey(dayId))) ?? [], offline: true };
+    return { logs: fromMirror(await loadLocal<FoodLog[]>(userId, localKey(dayId))), offline: true };
   }
   return runSerial(`food:${userId}:${dayId}`, async () => {
     await flushOutbox(userId);
@@ -114,21 +122,14 @@ export async function fetchFoodLogs(
     // Upload rows that were logged while offline (or whose upload failed).
     for (const l of local) {
       if (!l.pending) continue;
-      const stored = await upload(userId, l);
+      const stored = await upload(userId, toLog(l as unknown as Record<string, unknown>));
       if (stored) {
-        await updateLocal<FoodLog[]>(userId, localKey(dayId), (prev) =>
-          (prev ?? []).map((x) => (x.id === l.id ? stored : x)),
-        );
+        await updateLocal<FoodLog[]>(userId, localKey(dayId), (prev) => (prev ?? []).map((x) => (x.id === l.id ? stored : x)));
       }
     }
 
-    const { data, error } = await supabase
-      .from('food_logs')
-      .select('id, day, label, kcal, protein, confidence, created_at')
-      .eq('user_id', userId)
-      .eq('day', dayId)
-      .order('created_at', { ascending: true });
-    const mirror = (await loadLocal<FoodLog[]>(userId, localKey(dayId))) ?? [];
+    const { data, error } = await supabase.from('food_logs').select(COLUMNS).eq('user_id', userId).eq('day', dayId).order('created_at', { ascending: true });
+    const mirror = fromMirror(await loadLocal<FoodLog[]>(userId, localKey(dayId)));
     if (error) return { logs: mirror, offline: true };
 
     const deleting = new Set<string>();
@@ -142,11 +143,35 @@ export async function fetchFoodLogs(
   });
 }
 
+/** Food logs for every day in [from, to] (for Progress). Server first, the
+    device mirror when offline or without an account. */
+export async function fetchFoodRange(userId: string, from: string, to: string): Promise<{ logs: FoodLog[]; offline: boolean }> {
+  const days: string[] = [];
+  for (let d = from; d <= to && days.length < 62; d = addDays(d, 1)) days.push(d);
+  const mirror = async () => (await Promise.all(days.map((d) => loadLocal<FoodLog[]>(userId, localKey(d))))).flatMap((r) => fromMirror(r));
+  if (!isCloudUser(userId)) return { logs: await mirror(), offline: true };
+  const { data, error } = await supabase.from('food_logs').select(COLUMNS).eq('user_id', userId).gte('day', from).lte('day', to).limit(2000);
+  if (error) return { logs: await mirror(), offline: true };
+  const server = (data ?? []).map((r) => toLog(r as Record<string, unknown>));
+  const ids = new Set(server.map((l) => l.id));
+  const pending = (await mirror()).filter((l) => l.pending && !ids.has(l.id));
+  return { logs: [...server, ...pending], offline: false };
+}
+
 export async function saveFoodLog(userId: string, est: Estimate, dayId = todayId()): Promise<FoodLog> {
   const draft: FoodLog = {
+    ...est,
     id: newId(),
     day: dayId,
-    ...est,
+    label: est.label.trim().slice(0, 120) || 'Food',
+    kcal: n(est.kcal, 5000),
+    protein: n(est.protein, 300),
+    carbs: n(est.carbs, 1000),
+    fat: n(est.fat, 500),
+    source: est.source ?? 'text',
+    slot: est.slot ?? '',
+    items: (est.items ?? []).slice(0, 15),
+    followUp: (est.followUp ?? []).slice(0, 5),
     created_at: new Date().toISOString(),
     pending: isCloudUser(userId) ? true : undefined,
   };
@@ -155,9 +180,7 @@ export async function saveFoodLog(userId: string, est: Estimate, dayId = todayId
     if (!isCloudUser(userId)) return draft;
     const stored = await upload(userId, draft);
     if (!stored) return draft; // stays pending; uploads on the next read
-    await updateLocal<FoodLog[]>(userId, localKey(dayId), (prev) =>
-      (prev ?? []).map((x) => (x.id === draft.id ? stored : x)),
-    );
+    await updateLocal<FoodLog[]>(userId, localKey(dayId), (prev) => (prev ?? []).map((x) => (x.id === draft.id ? stored : x)));
     return stored;
   });
 }
@@ -174,7 +197,7 @@ export async function deleteFoodLog(userId: string, id: string, dayId: string): 
   });
 }
 
-// ─────────────────────── shared state (cross-tab) ───────────────────────────────
+// ─────────────────────── shared state (cross-screen) ───────────────────────
 
 export async function refreshFoodLogs(userId: string, dayId: string): Promise<void> {
   const { logs } = await fetchFoodLogs(userId, dayId);
@@ -188,8 +211,8 @@ export function useFoodLogs(dayId = todayId()) {
   const key = userId ? cacheKey(userId, dayId) : '';
   const [state, setState] = useState<FoodState>(() => getFoodCache(key) ?? EMPTY_STATE(key));
 
-  // Follow the shared cache so Coach-tab adds update this screen live; only
-  // accept state for this user and day.
+  // Follow the shared cache so adds on another screen update this one live;
+  // only accept state for this user and day.
   useEffect(() => {
     setState(getFoodCache(key) ?? EMPTY_STATE(key));
     return subscribeFood((s) => {
@@ -204,12 +227,13 @@ export function useFoodLogs(dayId = todayId()) {
   }, [userId, dayId]);
 
   const add = useCallback(
-    async (est: Estimate) => {
-      if (!userId) return;
+    async (est: Estimate): Promise<FoodLog | null> => {
+      if (!userId) return null;
       const row = await saveFoodLog(userId, est, dayId);
       const k = cacheKey(userId, dayId);
       const current = getFoodCache(k)?.logs ?? [];
       publishFood({ key: k, logs: [...current.filter((l) => l.id !== row.id), row], loaded: true });
+      return row;
     },
     [userId, dayId],
   );
@@ -230,6 +254,8 @@ export function useFoodLogs(dayId = todayId()) {
     loaded: state.key === key && state.loaded,
     kcal: logs.reduce((a, l) => a + l.kcal, 0),
     protein: logs.reduce((a, l) => a + l.protein, 0),
+    carbs: logs.reduce((a, l) => a + (l.carbs || 0), 0),
+    fat: logs.reduce((a, l) => a + (l.fat || 0), 0),
     add,
     remove,
   };

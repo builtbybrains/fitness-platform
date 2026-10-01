@@ -18,7 +18,16 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#080808"
-      }
+      },
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.WRITE_EXERCISE",
+        "android.permission.health.WRITE_ACTIVE_CALORIES_BURNED"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -28,15 +37,41 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "BUILT uses your photos to estimate the calories in a meal you choose.",
-          "cameraPermission": "BUILT uses your camera to photograph a meal and estimate its calories.",
+          "photosPermission": "BUILT uses your photos for meal estimates, progress photos and problem-report screenshots you choose.",
+          "cameraPermission": "BUILT uses your camera to photograph meals and take progress photos. Faces are blurred on your phone before upload.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "BUILT uses your camera to photograph meals and take progress photos. Faces are blurred on your phone before upload.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
         }
       ],
       [
         "expo-notifications",
         {
           "color": "#A3FF3D"
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "BUILT reads your steps, active calories, workouts, weight and sleep to keep your plan and progress accurate.",
+          "NSHealthUpdateUsageDescription": "BUILT saves the workouts you finish in the app to Apple Health.",
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ],
       "expo-font",
