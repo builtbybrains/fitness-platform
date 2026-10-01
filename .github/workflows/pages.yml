@@ -7,6 +7,7 @@ on:
     # supabase/ (or anything else) do not republish the site.
     paths:
       - 'index.html'
+      - 'admin/**'
       - 'assets/**'
       - 'robots.txt'
       - 'sitemap.xml'
@@ -26,7 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Allowlist copy: only the public site goes out. Internal files
+      # Allowlist copy: only the public site and the admin dashboard
+      # (admin/: static HTML/CSS/JS, noindex, no secrets) go out. Internal files
       # (.claude/, brain/, scripts/, supabase/, mobile/, CLAUDE.md, DESIGN.md,
       # README.md, package.json) never reach the gh-pages branch.
       - name: Collect the static site
@@ -35,6 +37,8 @@ jobs:
           rm -rf _site && mkdir _site
           cp index.html robots.txt sitemap.xml _site/
           cp -R assets _site/assets
+          mkdir _site/admin
+          cp admin/index.html admin/admin.css admin/admin.js _site/admin/
           touch _site/.nojekyll
           echo "Publishing:" && (cd _site && find . -type f | sort)
 
