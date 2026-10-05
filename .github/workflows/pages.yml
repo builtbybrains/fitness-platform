@@ -1,18 +1,10 @@
 name: Publish website to GitHub Pages
 
 on:
-  push:
-    branches: [claude/premium-ai-diet-training-site-uqlb73]
-    # The website, the admin dashboard and the app's web build publish.
-    # Commits that touch only supabase/ (or anything else) do not republish.
-    paths:
-      - 'index.html'
-      - 'admin/**'
-      - 'assets/**'
-      - 'robots.txt'
-      - 'sitemap.xml'
-      - 'mobile/**'
-      - '.github/workflows/pages.yml'
+  # Manual only. The site and the app are hosted on Vercel, which deploys every
+  # pushed branch; each automatic push to gh-pages (no mobile/ folder) made the
+  # app's Vercel project fail with "Root Directory mobile does not exist".
+  # Run it by hand (Actions → this workflow → Run) if GitHub Pages is turned on.
   workflow_dispatch:
 
 permissions:
