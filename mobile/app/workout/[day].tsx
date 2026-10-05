@@ -3,12 +3,13 @@
    to another day opens on that day; state lives in the shared plan store.
    Swapped exercises say what they replace, every exercise shows its coaching
    note, and any exercise can be replaced from here. The header maps the
-   muscles the session works. Ticking the last set completes the workout
+   muscles the session works (a smaller map and a one-line key on phones
+   under 700px tall, so the first sets sit above the Complete bar). Ticking the last set completes the workout
    and triggers the celebration. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
@@ -52,6 +53,8 @@ export default function WorkoutScreen() {
   const [swapNote, setSwapNote] = useState<string | null>(null);
   const day = days.find((d) => d.id === dayId);
   const inset = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const short = height < 700;
   const celebration = useCelebration();
   const video = useExerciseVideo();
 
@@ -126,14 +129,14 @@ export default function WorkoutScreen() {
 
   return (
     <View style={[screen, { paddingTop: inset.top }]}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 20, paddingBottom: 132, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: short ? 16 : 20, paddingBottom: 132, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <BackHeader title={w.focus} subtitle={`${w.minutes} min · ${w.exercises.length} exercises · ${progress.total} sets`} fallback="/(tabs)/plan" />
 
         {muscles.primary.length || muscles.secondary.length ? (
-          <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 20, padding: 16 }]}>
-            <MuscleMap primary={muscles.primary} secondary={muscles.secondary} size="large" />
+          <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: short ? 16 : 20, padding: short ? 12 : 16 }]}>
+            <MuscleMap primary={muscles.primary} secondary={muscles.secondary} size={short ? 'small' : 'large'} />
             <View style={{ flex: 1 }}>
-              <MuscleLegend primary={muscleNames(muscles.primary)} secondary={muscleNames(muscles.secondary)} />
+              <MuscleLegend primary={muscleNames(muscles.primary)} secondary={muscleNames(muscles.secondary)} compact={short} />
             </View>
           </View>
         ) : null}

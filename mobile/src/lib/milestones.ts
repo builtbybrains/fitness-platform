@@ -55,7 +55,9 @@ const COPY: Record<MilestoneId, { title: string; description: string }> = {
   streak_30: { title: 'Streak of 30', description: 'Thirty in a row. Built.' },
   workouts_10: { title: '10 workouts', description: 'Ten sessions done.' },
   workouts_50: { title: '50 workouts', description: 'Fifty sessions done.' },
-  first_checkin: { title: 'First check-in', description: 'Log your first weigh-in.' },
+  // Word joiners keep the hyphen unbroken and in Sora, which has no U+2011
+  // glyph (the celebration sets this title in Sora).
+  first_checkin: { title: 'First check\u2060-\u2060in', description: 'Log your first weigh-in.' },
   personal_best: { title: 'New best', description: 'Beat your best session.' },
 };
 

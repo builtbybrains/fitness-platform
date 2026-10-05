@@ -1,6 +1,7 @@
 /* Milestones on the Progress tab: a grid of round badges. Earned: a Built
    Green ring and outline icon on Carbon, with the day it happened. Not
-   yet: a muted ring, a faint icon, and for counts a thin arc and "6/10".
+   yet: a muted ring, a faint icon, and for counts a thin arc (once it is
+   long enough to read as one) and "6/10".
    A milestone earned since the last visit is shown once: the newest one
    gets the celebration overlay and every new one carries a "New" tag on
    its ring for this visit. Seen ids are kept per person on this device. */
@@ -31,6 +32,8 @@ const SEEN = 'milestonesSeen';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const RING = 56;
 const STROKE = 2;
+/** Below this share the arc is a dot that reads as a glitch, so it waits. */
+const MIN_ARC = 0.08;
 
 function dayMonth(id: string | null): string {
   if (!id) return '';
@@ -52,8 +55,8 @@ function Badge({ m, fresh }: { m: Milestone; fresh: boolean }) {
     <View accessible accessibilityLabel={spoken} style={{ width: '25%', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 2 }}>
       <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={RING} height={RING} style={{ position: 'absolute', left: 0, top: 0 }} pointerEvents="none">
-          <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={m.earned ? C.green : C.raised} strokeWidth={STROKE} fill="none" />
-          {!m.earned && share > 0 ? (
+          <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={m.earned ? C.green : C.pressed} strokeWidth={STROKE} fill="none" />
+          {!m.earned && share >= MIN_ARC ? (
             <Circle
               cx={RING / 2}
               cy={RING / 2}
@@ -109,7 +112,7 @@ export function Milestones({ items, userId, ready }: { items: Milestone[]; userI
       if (!news.length) return;
       void saveLocal(userId, SEEN, [...(seen ?? []), ...news.map((m) => m.id)]);
       setFresh((prev) => new Set([...prev, ...news.map((m) => m.id)]));
-      celebration.show({ variant: 'milestone', title: news[0].title, detail: news[0].description });
+      celebration.show({ variant: 'milestone', title: news[0].title, detail: news[0].description, icon: ICON[news[0].id] });
     });
     return () => {
       alive = false;

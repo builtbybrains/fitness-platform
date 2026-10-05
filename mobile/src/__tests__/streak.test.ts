@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { addDays } from '../lib/dates';
 import { buildWeek, DoneMap, RULES_SCHEDULE, WeekSchedule, withDone } from '../planData';
 import { currentStreak, workoutStreak } from '../streak';
-import { streakHistory, tdeeSuggestion, weeklyHistory } from '../stats';
+import { bestStreak, streakHistory, tdeeSuggestion, weeklyHistory } from '../stats';
 
 // Rules week: Mon W, Tue W, Wed rest, Thu W, Fri W, Sat rest, Sun W.
 // 2026-09-21 and 2026-09-28 are Mondays.
@@ -77,6 +77,20 @@ describe('stats', () => {
     const h = streakHistory(d, 2, TUE, RULES_SCHEDULE);
     // Last Sunday: 3. This Monday (a training day) was missed, so today: 0.
     expect(h).toEqual([3, 0]);
+  });
+
+  it('best streak sees a midweek peak that the Sunday snapshots miss', () => {
+    // Last week: Mon, Tue, Thu done (3 in a row), Fri missed, Sun done.
+    const d = done('2026-09-21', '2026-09-22', '2026-09-24', '2026-09-27');
+    expect(Math.max(...streakHistory(d, 8, TUE, RULES_SCHEDULE))).toBe(1);
+    expect(bestStreak(d, 8, TUE, RULES_SCHEDULE)).toBe(3);
+  });
+
+  it('best streak only looks inside the window', () => {
+    // Four in a row in mid-July, long before an 8-week window opening 2026-08-10.
+    const d = done('2026-07-13', '2026-07-14', '2026-07-16', '2026-07-17', '2026-09-28');
+    expect(bestStreak(d, 8, TUE, RULES_SCHEDULE)).toBe(1);
+    expect(bestStreak({}, 8, TUE, RULES_SCHEDULE)).toBe(0);
   });
 
   it('weekly history counts planned days from the plan in use, skipping the future', () => {

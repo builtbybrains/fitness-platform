@@ -3,7 +3,8 @@
    this week's calories and macros against target, and the weight trend.
    Each chart reads differently, and each has its own loading and empty
    state; trends with no data yet show a faint sample of what's coming.
-   Sections ease in on the first open of the day only.
+   The streak card and milestones ease in on the first open of the day
+   only; the sections below them are simply there.
    Opened from Today (Progress tile, streak) and Profile. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,7 +18,7 @@ import { BarChart } from '../../src/components/BarChart';
 import { Button, LinkButton } from '../../src/components/Button';
 import { BackHeader } from '../../src/components/training/BackHeader';
 import { Meter, StateBlock } from '../../src/components/training/Controls';
-import { HBars, SampleChart, TargetColumns, TrainingCalendar } from '../../src/components/training/Charts';
+import { HBars, SampleChart, sampleWeightTrend, TargetColumns, TrainingCalendar } from '../../src/components/training/Charts';
 import { Milestones } from '../../src/components/progress/Milestones';
 import { FadeIn } from '../../src/components/FadeIn';
 import { DAY_SHORT, plural } from '../../src/components/training/labels';
@@ -26,7 +27,8 @@ import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice'
 import { useAuth } from '../../src/auth';
 import { fetchWeights, WeightEntry } from '../../src/data';
 import { fetchFoodRange, FoodLog } from '../../src/foodLogs';
-import { activityByKind, activityTotals, addMacros, averageMacros, Macros, streakHistory, trainingCalendar, weeklyActivity, weeklyHistory, ZERO_MACROS } from '../../src/stats';
+import { activityByKind, activityTotals, addMacros, averageMacros, bestStreak as bestStreakIn, Macros, streakHistory, trainingCalendar, weeklyActivity, weeklyHistory, ZERO_MACROS } from '../../src/stats';
+import { weekCounts, weekStrip } from '../../src/lib/weekStrip';
 import { activityDef } from '../../src/data/activities';
 import { addDays, parseDay } from '../../src/lib/dates';
 import { milestones } from '../../src/lib/milestones';
@@ -104,9 +106,12 @@ export default function ProgressTab() {
   const since = profile?.onboarding_done_at?.slice(0, 10) ?? null;
   const calendar = useMemo(() => trainingCalendar(history, schedule, 8, now, since && Object.keys(history).every((d) => d >= since) ? since : null), [history, schedule, now, since]);
   const anyWorkout = weeks.some((w) => w.workoutsDone > 0);
-  const thisWeek = weeks[weeks.length - 1];
   const currentStreak = streaks.length ? streaks[streaks.length - 1] : 0;
-  const bestStreak = streaks.length ? Math.max(...streaks) : 0;
+  // Every day of the window, not just each week's Sunday, so a streak that
+  // peaked midweek still counts.
+  const bestStreak = useMemo(() => bestStreakIn(history, 8, now, schedule), [history, now, schedule]);
+  // The plan's whole week, counted the way Today's week strip counts it.
+  const week = useMemo(() => weekCounts(weekStrip(days, todayId)), [days, todayId]);
   const today = days[todayIdx];
 
   const fourWeeksFrom = addDays(weekStart, -21);
@@ -176,12 +181,13 @@ export default function ProgressTab() {
                   <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>{bestStreak}</Text>
                   <Text style={T.small}>best streak, 8 weeks</Text>
                 </View>
-                <View>
+                {/* Counted like Today's week strip: done of every workout in the plan's week. */}
+                <View accessible accessibilityLabel={`${week.done} of ${plural(week.planned, 'workout')} done this week`}>
                   <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>
-                    {thisWeek?.workoutsDone ?? 0}
-                    <Text style={{ fontSize: 16, color: C.muted }}>/{thisWeek?.workoutsPlanned ?? 0}</Text>
+                    {week.done}
+                    <Text style={{ fontSize: 16, color: C.muted }}>/{week.planned}</Text>
                   </Text>
-                  <Text style={T.small}>workouts this week</Text>
+                  <Text style={T.small}>done this week</Text>
                 </View>
               </View>
             </View>
@@ -202,7 +208,7 @@ export default function ProgressTab() {
           <Milestones items={badges} userId={userId} ready={historyLoaded && checkinsLoaded} />
         </FadeIn>
 
-        <FadeIn play={play} delay={80}>
+        <View>
           <View style={[cardStyle, { gap: 16 }]}>
             {anyWorkout ? (
               <>
@@ -221,9 +227,9 @@ export default function ProgressTab() {
               </>
             )}
           </View>
-        </FadeIn>
+        </View>
 
-        <FadeIn play={play} delay={120}>
+        <View>
           <View style={[cardStyle, { gap: 16 }]}>
             <SectionTitle
               title="Activities"
@@ -251,9 +257,9 @@ export default function ProgressTab() {
               </>
             )}
           </View>
-        </FadeIn>
+        </View>
 
-        <FadeIn play={play} delay={160}>
+        <View>
           <View style={[cardStyle, { gap: 16 }]}>
             <SectionTitle title="Food this week" detail={`Calories each day against ${targets.kcal.toLocaleString()} kcal`} />
             {!foodLoaded || !historyLoaded ? (
@@ -274,9 +280,9 @@ export default function ProgressTab() {
               </>
             )}
           </View>
-        </FadeIn>
+        </View>
 
-        <FadeIn play={play} delay={200}>
+        <View>
           <View style={[cardStyle, { gap: 16 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <SectionTitle title="Weight" />
@@ -294,9 +300,10 @@ export default function ProgressTab() {
             ) : (
               <SampleChart
                 kind="line"
-                caption={latest ? `Latest: ${latest.kg.toFixed(1)} kg on ${shortDate(latest.date)}. One more weigh-in and your trend appears here.` : 'Your trend appears here after your first check-in.'}
+                trend={sampleWeightTrend(profile)}
+                caption={latest ? `Latest: ${latest.kg.toFixed(1)} kg on ${shortDate(latest.date)}. One more weigh-in and your trend appears here.` : 'Your trend appears here after your first check\u2011in.'}
                 action={{
-                  label: latest ? 'Log your weight' : 'Log your first check-in',
+                  label: latest ? 'Log your weight' : 'Log your first check\u2060-\u2060in',
                   onPress: () => router.push('/checkin/weekly'),
                   // The streak card already holds the green button until the first workout.
                   variant: anyWorkout ? 'primary' : 'secondary',
@@ -314,7 +321,7 @@ export default function ProgressTab() {
               </>
             ) : null}
           </View>
-        </FadeIn>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

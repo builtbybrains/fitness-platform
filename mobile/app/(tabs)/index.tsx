@@ -1,11 +1,13 @@
-/* Today: the greeting, the coach's note for the day, this week at a
-   glance, one ring for the whole day, the day's workout right under it
-   (on short phones the note and the week follow the workout instead),
-   any check-in due, the four pillars, then activities, food and water. The
-   ring and the numbers count every macro, food off the plan and logged
-   activities, and count up on first view. Every control saves at once (to
-   the account, or to this device). The blocks fade in on the first open
-   of the day only. */
+/* Today: the greeting, the coach's note for the day, one ring for the
+   whole day, the day's workout right under it, any check-in due, this week
+   at a glance, the four pillars, then activities, food and water. On
+   phones shorter than 900px the ring is smaller, and under 700px the
+   day's calories and macros sit beside it, so the workout's play button
+   is on the first screen. The ring and the numbers count every
+   macro, food off the plan and logged activities, and count up on first
+   view. Every control saves at once (to the account, or to this device).
+   The greeting, the note and the ring fade in on the first open of the day
+   only; everything else is simply there. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Animated, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
@@ -114,8 +116,31 @@ function PillarTile({ icon, title, detail, onPress }: { icon: IconName; title: s
   );
 }
 
+/** One macro on a line, for the ring card's side column on short phones. */
+function MacroRow({ label, value, target, unit }: { label: string; value: number; target: number; unit: string }) {
+  const frac = target > 0 ? Math.min(1, value / target) : 0;
+  return (
+    <View style={{ gap: 6 }} accessible accessibilityLabel={`${label}: ${Math.round(value)} of ${Math.round(target)} ${unit === 'g' ? 'grams' : unit}`}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <Text style={T.small}>{label}</Text>
+        <Text style={{ fontFamily: FONT.displaySemi, fontSize: 14, lineHeight: 18, color: C.text }}>
+          {Math.round(value)}
+          <Text style={{ fontFamily: FONT.body, fontSize: 12, color: C.muted }}>
+            /{Math.round(target)}
+            {unit}
+          </Text>
+        </Text>
+      </View>
+      <View style={{ height: 4, borderRadius: 2, backgroundColor: C.raised, overflow: 'hidden' }}>
+        <View style={{ height: 4, width: `${frac * 100}%`, backgroundColor: C.stone, borderRadius: 2 }} />
+      </View>
+    </View>
+  );
+}
+
 function WorkoutCard({ day }: { day: WeekDay }) {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   if (day.session.kind === 'rest') {
     return (
       <Pressable
@@ -137,17 +162,24 @@ function WorkoutCard({ day }: { day: WeekDay }) {
   const s = setsOf(day);
   const muscles = musclesForExercises(w.exercises.map((e) => e.id ?? e.name));
   const done = day.done.workout;
+  const hasMap = muscles.primary.length > 0;
+  // "Upper body · Strength" on one line when it fits beside the play
+  // button (about 10.5px a character at this size); otherwise the part
+  // after the dot moves to the line below rather than breaking the title.
+  const [head, ...rest] = w.focus.split(' · ');
+  const room = Math.min(width, 640) - 40 - 40 - 72;
+  const split = rest.length > 0 && w.focus.length * 10.5 > room;
+  const title = split ? head : w.focus;
+  const meta = [split ? rest.join(' · ') : null, `${w.minutes} min`, plural(w.exercises.length, 'exercise')].filter(Boolean).join(' · ');
+  const status = done ? 'Done today. Nice work.' : s.done > 0 ? `${s.done} of ${s.total} sets logged` : `${s.total} sets to go`;
   return (
     <View style={[cardStyle, { gap: 16 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={T.small}>Today&apos;s workout{day.moved ? ', moved here' : ''}</Text>
-          <Text style={T.h2}>{w.focus}</Text>
-          <Text style={T.meta}>
-            {w.minutes} min · {plural(w.exercises.length, 'exercise')}
-          </Text>
+          <Text style={T.h2}>{title}</Text>
+          <Text style={T.meta}>{meta}</Text>
         </View>
-        {muscles.primary.length > 0 ? <MuscleMap primary={muscles.primary} secondary={muscles.secondary} size="small" /> : null}
         <IconButton
           icon={done ? 'check' : 'play'}
           variant={done ? 'carbon' : 'green'}
@@ -156,8 +188,13 @@ function WorkoutCard({ day }: { day: WeekDay }) {
           accessibilityLabel={done ? `${w.focus}, done. Review it.` : s.done > 0 ? `Continue ${w.focus}` : `Start ${w.focus}`}
         />
       </View>
-      <ProgressBar value={s.total ? s.done / s.total : 0} color={C.stone} />
-      <Text style={T.small}>{done ? 'Done today. Nice work.' : s.done > 0 ? `${s.done} of ${s.total} sets logged` : `${s.total} sets to go`}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        {hasMap ? <MuscleMap primary={muscles.primary} secondary={muscles.secondary} size="small" /> : null}
+        <View style={{ flex: 1, gap: 8 }}>
+          <ProgressBar value={s.total ? s.done / s.total : 0} color={C.stone} />
+          <Text style={T.small}>{status}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -342,9 +379,10 @@ function noteSummary(p: { day: WeekDay; yesterday: WeekDay | undefined; history:
 export default function TodayTab() {
   const router = useRouter();
   const { height } = useWindowDimensions();
-  // Short phones (360x640): a smaller ring and tighter rhythm, so today's
-  // workout and its play button are on the first screen.
-  const compact = height < 700;
+  // Below 900px tall the ring shrinks so today's workout and its play
+  // button are on the first screen; below 700px the rhythm tightens too.
+  const compact = height < 900;
+  const tight = height < 700;
   const ring = compact ? { size: 140, stroke: 12, label: 14, pct: 34 } : { size: 208, stroke: 16, label: 16, pct: 48 };
   const { days, todayIdx, todayId, syncState, streak, targets, activities, removeActivity, profile, history, historyLoaded, planLoaded, schedule } = usePlan();
   const { userId } = useAuth();
@@ -393,10 +431,11 @@ export default function TodayTab() {
   );
 
   // The numbers count up with the ring (Reduce Motion: shown at once).
-  const pctShown = Math.round(useTween(summary ? summary.progress * 100 : 0, 900));
+  const pctShown = Math.round(useTween(summary ? summary.progress * 100 : 0, 400));
   const protein = useTween(summary?.eaten.protein ?? 0);
   const carbs = useTween(summary?.eaten.carbs ?? 0);
   const fat = useTween(summary?.eaten.fat ?? 0);
+  const kcal = useTween(summary?.eaten.kcal ?? 0);
 
   if (!day || !summary || !note) return <SafeAreaView style={screen} edges={['top']} />;
 
@@ -411,63 +450,75 @@ export default function TodayTab() {
   const s = setsOf(day);
   const trainDetail = !isWorkout ? (todaysActivities.length ? `${todaysActivities.reduce((a, x) => a + x.minutes, 0)} min active` : 'Rest day') : day.done.workout ? 'Done today' : `${s.done}/${s.total} sets`;
 
-  // Each top-level block enters 40ms after the one above it.
+  // The greeting, the note and the ring enter 40ms apart; the rest is in place.
   let block = 0;
   const enterAt = () => ({ delay: block++ * 40, play: enter });
-  // The coach's note and this week sit under the greeting; on short phones
-  // they follow the workout card so its play button stays on the first screen.
-  const coachAndWeek = () => (
-    <>
-      <FadeIn {...enterAt()}>
-        <CoachNote today={todayId} summary={note} ready={planLoaded && historyLoaded} />
-      </FadeIn>
-      <FadeIn {...enterAt()}>
-        <WeekStrip days={days} today={todayId} />
-      </FadeIn>
-    </>
-  );
+  const gap = tight ? 16 : 24;
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: compact ? 8 : 20, gap: compact ? 16 : 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
-        <FadeIn {...enterAt()} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: tight ? 8 : 20, gap, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <BuiltMark size={24} />
           <StreakChip count={streak} onPress={() => router.push('/(tabs)/progress')} />
-        </FadeIn>
+        </View>
 
         <FadeIn {...enterAt()}>
           <Greeting />
         </FadeIn>
 
-        {compact ? null : coachAndWeek()}
-
-        <FadeIn {...enterAt()} style={[cardStyle, { alignItems: 'center', paddingVertical: compact ? 20 : 28, gap: compact ? 12 : 20 }]}>
-          <Ring size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done`}>
-            <Text style={{ fontFamily: FONT.body, fontSize: ring.label, color: C.stone }}>Today</Text>
-            <Text style={{ fontFamily: FONT.displaySemi, fontSize: ring.pct, lineHeight: Math.round(ring.pct * 1.17), letterSpacing: -1.5, color: C.text }}>{pctShown}%</Text>
-          </Ring>
-          <Text style={[T.meta, { textAlign: 'center' }]}>{ringLine}</Text>
-          <View style={{ flexDirection: 'row', gap: 16, alignSelf: 'stretch' }}>
-            <Meter label="Protein" value={protein} target={targets.protein} unit="g" />
-            <Meter label="Carbs" value={carbs} target={targets.carbs} unit="g" />
-            <Meter label="Fat" value={fat} target={targets.fat} unit="g" />
-          </View>
-          {summary.offPlan.kcal > 0 || summary.burned > 0 ? (
-            <Text style={[T.small, { textAlign: 'center' }]}>
-              {[summary.offPlan.kcal > 0 ? `${summary.offPlan.kcal.toLocaleString()} kcal off-plan counted` : null, summary.burned > 0 ? `${summary.burned.toLocaleString()} kcal burned in activities` : null].filter(Boolean).join(' · ')}
-            </Text>
-          ) : null}
+        <FadeIn {...enterAt()}>
+          <CoachNote today={todayId} summary={note} ready={planLoaded && historyLoaded} />
         </FadeIn>
+
+        {tight ? (
+          // Under 700px tall: the ring with the day's numbers beside it, so
+          // the workout card's play button is on the first screen. The
+          // workout and water have their own cards right below.
+          <FadeIn {...enterAt()} style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 }]}>
+            <Ring size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done. ${ringLine}`}>
+              <Text style={{ fontFamily: FONT.body, fontSize: ring.label, color: C.stone }}>Today</Text>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: ring.pct, lineHeight: Math.round(ring.pct * 1.17), letterSpacing: -1.5, color: C.text }}>{pctShown}%</Text>
+            </Ring>
+            <View style={{ flex: 1, gap: 10 }}>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 18, lineHeight: 24, color: C.text }} accessibilityLabel={`${summary.eaten.kcal} of ${targets.kcal} calories`}>
+                {Math.round(kcal).toLocaleString()}
+                <Text style={{ fontFamily: FONT.body, fontSize: 12, color: C.muted }}>/{targets.kcal.toLocaleString()} kcal</Text>
+              </Text>
+              <MacroRow label="Protein" value={protein} target={targets.protein} unit="g" />
+              <MacroRow label="Carbs" value={carbs} target={targets.carbs} unit="g" />
+              <MacroRow label="Fat" value={fat} target={targets.fat} unit="g" />
+            </View>
+          </FadeIn>
+        ) : (
+          <FadeIn {...enterAt()} style={[cardStyle, { alignItems: 'center', paddingVertical: compact ? 20 : 28, gap: compact ? 12 : 20 }]}>
+            <Ring size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done`}>
+              <Text style={{ fontFamily: FONT.body, fontSize: ring.label, color: C.stone }}>Today</Text>
+              <Text style={{ fontFamily: FONT.displaySemi, fontSize: ring.pct, lineHeight: Math.round(ring.pct * 1.17), letterSpacing: -1.5, color: C.text }}>{pctShown}%</Text>
+            </Ring>
+            <Text style={[T.meta, { textAlign: 'center' }]}>{ringLine}</Text>
+            <View style={{ flexDirection: 'row', gap: 16, alignSelf: 'stretch' }}>
+              <Meter label="Protein" value={protein} target={targets.protein} unit="g" />
+              <Meter label="Carbs" value={carbs} target={targets.carbs} unit="g" />
+              <Meter label="Fat" value={fat} target={targets.fat} unit="g" />
+            </View>
+            {summary.offPlan.kcal > 0 || summary.burned > 0 ? (
+              <Text style={[T.small, { textAlign: 'center' }]}>
+                {[summary.offPlan.kcal > 0 ? `${summary.offPlan.kcal.toLocaleString()} kcal off-plan counted` : null, summary.burned > 0 ? `${summary.burned.toLocaleString()} kcal burned in activities` : null].filter(Boolean).join(' · ')}
+              </Text>
+            ) : null}
+          </FadeIn>
+        )}
 
         {/* The check-in card renders nothing when none is due, so it shares this block's gap. */}
-        <FadeIn {...enterAt()} style={{ gap: compact ? 16 : 24 }}>
+        <View style={{ gap }}>
           <WorkoutCard day={day} />
           <CheckinDueCard />
-        </FadeIn>
+        </View>
 
-        {compact ? coachAndWeek() : null}
+        <WeekStrip days={days} today={todayId} />
 
-        <FadeIn {...enterAt()} style={{ gap: 12 }}>
+        <View style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <PillarTile icon="dumbbell" title="Train" detail={trainDetail} onPress={() => (isWorkout ? router.push(`/workout/${day.id}`) : router.push('/(tabs)/plan'))} />
             <PillarTile icon="burger" title="Nutrition" detail={`${summary.kcalLeft.toLocaleString()} kcal left`} onPress={() => router.push('/(tabs)/food')} />
@@ -476,23 +527,23 @@ export default function TodayTab() {
             <PillarTile icon="brain" title="AI Coach" detail="Ask anything" onPress={() => router.push('/(tabs)/coach')} />
             <PillarTile icon="bars" title="Progress" detail={streak > 0 ? `${streak} in a row` : 'Your weeks'} onPress={() => router.push('/(tabs)/progress')} />
           </View>
-        </FadeIn>
+        </View>
 
-        <FadeIn {...enterAt()}>
+        <View>
           <ActivityCard list={todaysActivities} health={health} onRemove={(id) => void removeActivity(id)} />
-        </FadeIn>
+        </View>
 
-        <FadeIn {...enterAt()}>
+        <View>
           <FoodCard day={day} offPlanKcal={summary.offPlan.kcal} offPlanCount={food.logs.length} />
-        </FadeIn>
+        </View>
 
-        <FadeIn {...enterAt()}>
+        <View>
           <WaterCard water={water} />
-        </FadeIn>
+        </View>
 
-        <FadeIn {...enterAt()}>
+        <View>
           <Text style={[T.small, { textAlign: 'center', color: C.faint }]}>{syncLine(syncState)}</Text>
-        </FadeIn>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

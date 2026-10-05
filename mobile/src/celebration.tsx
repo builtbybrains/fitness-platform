@@ -9,7 +9,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Animated, Easing, Platform, Pressable, Text, View } from 'react-native';
 
 import { C, FONT, T } from './design';
-import { Icon } from './components/Icon';
+import { Icon, type IconName } from './components/Icon';
 import { useReduceMotion } from './components/motion';
 import { haptic } from './lib/haptics';
 
@@ -28,6 +28,8 @@ export type CelebrationOpts =
       title: string;
       /** One line under it. */
       detail: string;
+      /** The badge's own icon; the medal when not given. */
+      icon?: IconName;
       caption?: string;
       onDone?: () => void;
     };
@@ -87,7 +89,7 @@ function Overlay({ opts, onPress }: { opts: CelebrationOpts; onPress: () => void
               marginBottom: 8,
             }}
           >
-            <Icon name={milestone ? 'medal' : 'check'} size={52} color={C.onGreen} strokeWidth={milestone ? 2.2 : 2.6} />
+            <Icon name={milestone ? (opts.icon ?? 'medal') : 'check'} size={52} color={C.onGreen} strokeWidth={milestone ? 2.2 : 2.6} />
           </View>
           <Text style={[T.hero, { textAlign: 'center' }]}>{heading}</Text>
           <Text style={{ fontFamily: FONT.displayMedium, fontSize: 16, color: C.green, textAlign: 'center' }}>{line}</Text>

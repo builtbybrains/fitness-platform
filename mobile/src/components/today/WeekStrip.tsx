@@ -1,5 +1,6 @@
 /* This week on Today: the plan's week, Monday to Sunday (the Plan tab's
-   week), one column a day. Green with a tick when the workout is done, a
+   week), one column a day. A green tint with a green tick when the workout
+   is done (so the solid green stays on today's ring and the play button), a
    green ring for today's open workout, a grey ring for a planned one, a
    quieter ring for a past one not logged (no red, no guilt) and a small dot
    for rest. A workout day opens that workout; a rest day opens the plan.
@@ -19,8 +20,8 @@ const DOT = 34;
 function Mark({ state }: { state: StripDay['state'] }) {
   if (state === 'done') {
     return (
-      <View style={{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name="check" size={18} color={C.onGreen} strokeWidth={2.5} />
+      <View style={{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: C.greenTint, borderWidth: 2, borderColor: C.greenBorder, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="check" size={16} color={C.green} strokeWidth={2.5} />
       </View>
     );
   }

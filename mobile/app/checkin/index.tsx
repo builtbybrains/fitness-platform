@@ -14,7 +14,7 @@ import { useCheckinsDue } from '../../src/components/profile/CheckinDue';
 import { monthlyDueDay } from '../../src/useReminders';
 import { dateText } from '../../src/components/onboarding/options';
 import { ErrorState, Loading, Row, RowGroup, SubScreen } from '../../src/components/profile/SubScreen';
-import { SampleChart } from '../../src/components/training/Charts';
+import { SampleChart, sampleWeightTrend } from '../../src/components/training/Charts';
 import type { Checkin } from '../../src/types';
 
 export default function Checkins() {
@@ -75,8 +75,9 @@ export default function Checkins() {
           <View style={card}>
             <SampleChart
               kind="line"
-              caption="Your trend appears here after your first check-in."
-              action={{ label: 'Log your first check-in', onPress: () => router.push('/checkin/weekly') }}
+              trend={sampleWeightTrend(profile)}
+              caption={'Your trend appears here after your first check\u2011in.'}
+              action={{ label: 'Log your first check\u2060-\u2060in', onPress: () => router.push('/checkin/weekly') }}
             />
           </View>
         ) : (

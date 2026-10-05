@@ -21,7 +21,7 @@ type Props = {
 
 export function BarChart({ values, labels, height = 140, maxValue, accessibilityLabel, tone = 'live' }: Props) {
   const [width, setWidth] = useState(300);
-  const grow = useTween(1, 700);
+  const grow = useTween(1, 400);
   if (values.length === 0) return <View style={{ height }} />;
 
   const max = Math.max(maxValue ?? 0, ...values, 1);

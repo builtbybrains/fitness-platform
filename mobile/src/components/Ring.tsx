@@ -23,7 +23,7 @@ export function Ring({ size, stroke, progress, color = C.green, trackColor = C.r
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const circ = 2 * Math.PI * r;
-  const shown = useTween(Math.max(0, Math.min(1, progress)), 900);
+  const shown = useTween(Math.max(0, Math.min(1, progress)), 400);
 
   return (
     <View

@@ -4,6 +4,7 @@
    Built Green; the wordmark is white on dark and Deep Black on light. */
 
 import React from 'react';
+import { View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 const GREEN = '#A3FF3D';
@@ -30,17 +31,13 @@ const TAGLINE_H = 140;
 
 /** The green B alone. `size` is the rendered height; width follows the mark's ratio. */
 export function BuiltMark({ size = 40 }: { size?: number }) {
+  // The label sits on a View: on web, Svg would pass `accessible` to the DOM.
   return (
-    <Svg
-      width={(size * MARK_W) / MARK_H}
-      height={size}
-      viewBox={`0 0 ${MARK_W} ${MARK_H}`}
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel="BUILT"
-    >
-      <Path d={MARK_PATH} fill={GREEN} />
-    </Svg>
+    <View accessible accessibilityRole="image" accessibilityLabel="BUILT">
+      <Svg width={(size * MARK_W) / MARK_H} height={size} viewBox={`0 0 ${MARK_W} ${MARK_H}`}>
+        <Path d={MARK_PATH} fill={GREEN} />
+      </Svg>
+    </View>
   );
 }
 
@@ -57,17 +54,12 @@ export function BuiltLogo({
   const vbH = tagline ? TAGLINE_H : LOCKUP_H;
   const ink = onLight ? DEEP_BLACK : WHITE;
   return (
-    <Svg
-      width={(height * LOCKUP_W) / vbH}
-      height={height}
-      viewBox={`0 0 ${LOCKUP_W} ${vbH}`}
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel="BUILT"
-    >
-      <Path d={MARK_PATH} fill={GREEN} />
-      <Path d={WORD_PATH} fill={ink} />
-      {tagline ? <Path d={TAGLINE_PATH} fill={ink} /> : null}
-    </Svg>
+    <View accessible accessibilityRole="image" accessibilityLabel="BUILT">
+      <Svg width={(height * LOCKUP_W) / vbH} height={height} viewBox={`0 0 ${LOCKUP_W} ${vbH}`}>
+        <Path d={MARK_PATH} fill={GREEN} />
+        <Path d={WORD_PATH} fill={ink} />
+        {tagline ? <Path d={TAGLINE_PATH} fill={ink} /> : null}
+      </Svg>
+    </View>
   );
 }

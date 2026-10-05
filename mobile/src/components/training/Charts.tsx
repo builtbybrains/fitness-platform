@@ -17,6 +17,7 @@ import { Button } from '../Button';
 import { LineChart } from '../LineChart';
 import { useTween } from '../motion';
 import type { DayCell } from '../../stats';
+import type { ProfileV2 } from '../../types';
 import { DAY_SHORT } from './labels';
 
 const CELL_FILL: Record<DayCell['state'], string> = {
@@ -83,7 +84,7 @@ function Legend({ swatch, label }: { swatch: object; label: string }) {
 }
 
 export function HBars({ rows, unit }: { rows: { label: string; value: number; detail?: string }[]; unit: string }) {
-  const grow = useTween(1, 600);
+  const grow = useTween(1, 400);
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <View style={{ gap: 12 }}>
@@ -106,7 +107,7 @@ export function HBars({ rows, unit }: { rows: { label: string; value: number; de
 }
 
 export function TargetColumns({ days, target, height = 132, todayId }: { days: { id: string; label: string; value: number }[]; target: number; height?: number; todayId: string }) {
-  const grow = useTween(1, 700);
+  const grow = useTween(1, 400);
   const top = Math.max(target * 1.25, ...days.map((d) => d.value), 1);
   const lineY = height - (target / top) * height;
   return (
@@ -148,18 +149,31 @@ export function TargetColumns({ days, target, height = 132, todayId }: { days: {
   );
 }
 
-// Illustrative only: a gentle downward weight trend and a rising week count.
+// Illustrative only: a gentle weight trend (down by default, mirrored to
+// rise for someone building muscle) and a rising week count.
 const SAMPLE_LINE = [78.4, 78.1, 78.3, 77.8, 77.6, 77.7, 77.2, 76.9];
+const SAMPLE_LINE_UP = SAMPLE_LINE.map((v) => 155.3 - v);
 const SAMPLE_BARS = [1, 2, 2, 3, 2, 3, 4, 3];
 const SAMPLE_WEEKS = ['7w', '6w', '5w', '4w', '3w', '2w', '1w', 'Now'];
+
+/** Which way a sample weight line should lean for this person: up when
+    they are building muscle or aiming above their current weight. */
+export function sampleWeightTrend(profile: Pick<ProfileV2, 'goal' | 'weight_kg' | 'target_weight_kg'> | null | undefined): 'up' | 'down' {
+  if (!profile) return 'down';
+  if (profile.goal === 'build_muscle') return 'up';
+  return profile.target_weight_kg != null && profile.weight_kg != null && profile.target_weight_kg > profile.weight_kg ? 'up' : 'down';
+}
 
 export function SampleChart({
   kind,
   caption,
   action,
   height = 120,
+  trend = 'down',
 }: {
   kind: 'line' | 'bars';
+  /** Which way the sample weight line leans: up for a gaining goal. */
+  trend?: 'up' | 'down';
   caption: string;
   action?: { label: string; onPress: () => void; variant?: 'primary' | 'secondary' };
   height?: number;
@@ -171,7 +185,7 @@ export function SampleChart({
           <Text style={[T.small, { fontSize: 11, lineHeight: 14 }]}>Sample</Text>
         </View>
         {kind === 'line' ? (
-          <LineChart values={SAMPLE_LINE} height={height} color={C.pressed} />
+          <LineChart values={trend === 'up' ? SAMPLE_LINE_UP : SAMPLE_LINE} height={height} color={C.pressed} />
         ) : (
           <BarChart values={SAMPLE_BARS} labels={SAMPLE_WEEKS} height={height} tone="sample" />
         )}
