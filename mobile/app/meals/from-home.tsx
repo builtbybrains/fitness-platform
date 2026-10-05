@@ -21,6 +21,7 @@ import { BackHeader, goBack } from '../../src/components/training/BackHeader';
 import { Chip, MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { NeedsAccount } from '../../src/components/training/PlanChange';
 import { slotForNow } from '../../src/components/food/EstimateEditor';
+import { MealImage } from '../../src/components/food/MealImage';
 import type { ApiErrorCode, GeneratedMeal, MealSlot } from '../../src/types';
 
 const SLOTS: MealSlot[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -160,6 +161,7 @@ export default function FromHomeScreen() {
 
         {meal && !busy ? (
           <View style={[cardStyle, { gap: 16 }]}>
+            <MealImage label={meal.label} items={meal.items} size="card" />
             <View style={{ gap: 6 }}>
               <Text style={T.small}>{slot}</Text>
               <Text style={T.h2}>{meal.label}</Text>

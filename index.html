@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <link rel="icon" href="assets/img/favicon.svg?v=built1" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png?v=built1">
-  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/athlete-640.webp 640w, assets/img/athlete.webp 1116w" imagesizes="(max-width: 940px) 100vw, 58vw" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/athlete-640.webp?v=2 640w, assets/img/athlete.webp?v=2 1200w" imagesizes="(max-width: 940px) 100vw, 58vw" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap">
@@ -379,7 +379,7 @@
     .app-row .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .app-workout { padding: 8px 8px 8px 8px; }
     .app-workout__img { position: relative; width: 52px; height: 52px; border-radius: 10px; overflow: hidden; flex: none; background: var(--black); }
-    .app-workout__img img { position: absolute; left: -9px; top: -2px; width: 92px; max-width: none; height: auto; }
+    .app-workout__img img { position: absolute; left: -34px; top: 0; width: 120px; max-width: none; height: auto; }
     .app-row .app-play { width: 36px; height: 36px; border-radius: 50%; background: var(--green); color: var(--black); display: grid; place-items: center; flex: none; }
     .app-row .app-play .ico { width: 14px; height: 14px; fill: currentColor; stroke: none; margin-left: 2px; }
     .app-row .chev { width: 16px; height: 16px; color: var(--faint); }
@@ -798,8 +798,8 @@
   <!-- ===== Hero (deck page 5) ===== -->
   <section class="hero" id="home" aria-labelledby="hero-title">
     <picture class="hero__media">
-      <source type="image/webp" srcset="assets/img/athlete-640.webp 640w, assets/img/athlete.webp 1116w" sizes="(max-width: 940px) 100vw, 58vw">
-      <img src="assets/img/athlete.jpg" width="1116" height="1170" alt="An athlete in a black BUILT t-shirt in a dark gym, looking ahead" fetchpriority="high">
+      <source type="image/webp" srcset="assets/img/athlete-640.webp?v=2 640w, assets/img/athlete.webp?v=2 1200w" sizes="(max-width: 940px) 100vw, 58vw">
+      <img src="assets/img/athlete.jpg?v=2" width="1200" height="1200" alt="A lean, muscular athlete standing in a dark gym, looking ahead" fetchpriority="high">
     </picture>
     <div class="container hero__inner">
       <div class="hero__copy">
@@ -973,7 +973,7 @@
             <div class="screen is-active" role="tabpanel" id="screen-today" aria-labelledby="tab-today">
               <p class="app-greet">Good morning,<br>Let&rsquo;s <b class="hl">build your best.</b></p>
               <div class="app-card app-row app-workout">
-                <span class="app-workout__img"><img src="assets/img/athlete-640.webp" alt="" width="640" height="671"></span>
+                <span class="app-workout__img"><img src="assets/img/athlete-640.webp?v=2" alt="" width="640" height="640"></span>
                 <div><b>Upper body strength</b><span>32 min &middot; Intermediate</span></div>
                 <span class="app-play" aria-hidden="true"><svg class="ico"><use href="#i-play"/></svg></span>
               </div>

@@ -16,6 +16,7 @@ import { Button } from '../Button';
 import { Notice } from '../Bits';
 import { Sheet } from '../training/Sheet';
 import { ChoiceRow, macroText, StateBlock } from '../training/Controls';
+import { MealImage } from './MealImage';
 
 type Props = {
   visible: boolean;
@@ -103,6 +104,7 @@ export function MealSwapSheet({ visible, onClose, meal, original, profile, onPic
               key={`${o.label}-${i}`}
               title={o.label}
               detail={macroText(o)}
+              left={<MealImage label={o.label} items={o.items} size="sheet" />}
               selected={picked === i}
               onPress={() => setPicked(i)}
             />

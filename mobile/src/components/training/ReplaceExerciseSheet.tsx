@@ -12,6 +12,7 @@ import { setsLabel } from '../../planData';
 import { Button } from '../Button';
 import { Notice } from '../Bits';
 import { Sheet } from './Sheet';
+import { useExerciseVideo, WatchHowIcon } from './ExerciseVideo';
 import { ChoiceRow, Segmented, StateBlock } from './Controls';
 import { equipmentLabel, muscleLabel } from './labels';
 
@@ -28,6 +29,7 @@ export function ReplaceExerciseSheet({ visible, onClose, exercise, options, onRe
   const [scope, setScope] = useState<'week' | 'always'>('week');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const video = useExerciseVideo();
 
   useEffect(() => {
     if (visible) {
@@ -82,19 +84,24 @@ export function ReplaceExerciseSheet({ visible, onClose, exercise, options, onRe
           />
           <View style={{ gap: 8 }}>
             {options.map((o) => (
-              <ChoiceRow
-                key={o.id}
-                title={o.name}
-                detail={`${equipmentLabel(o.equipment)} · ${setsLabel({ sets: exercise.unit === o.unit ? exercise.sets : o.sets, reps: exercise.unit === o.unit ? exercise.reps : o.reps, unit: o.unit })}${o.cue ? `\n${o.cue}` : ''}`}
-                selected={picked === o.id}
-                onPress={() => setPicked(o.id)}
-              />
+              <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <ChoiceRow
+                    title={o.name}
+                    detail={`${equipmentLabel(o.equipment)} · ${setsLabel({ sets: exercise.unit === o.unit ? exercise.sets : o.sets, reps: exercise.unit === o.unit ? exercise.reps : o.reps, unit: o.unit })}${o.cue ? `\n${o.cue}` : ''}`}
+                    selected={picked === o.id}
+                    onPress={() => setPicked(o.id)}
+                  />
+                </View>
+                <WatchHowIcon exercise={o} onWatch={video.watch} />
+              </View>
             ))}
           </View>
           {error ? <Notice tone="error">{error}</Notice> : null}
           {exercise.replaced_from ? <Text style={[T.small, { color: C.muted }]}>Originally {exercise.replaced_from}.</Text> : null}
         </>
       )}
+      {video.sheet}
     </Sheet>
   );
 }
