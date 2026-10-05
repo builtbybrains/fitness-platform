@@ -6,7 +6,8 @@
 
    Sizes: 'thumb' 52px (radius 14) for rows, 'card' full width at 16:10
    (radius 20) for the one meal a screen leads with, 'sheet' 72px square
-   for choices in a sheet. `checked` adds the eaten badge on a thumbnail. */
+   for choices in a sheet. `checked` adds the eaten badge on a thumbnail;
+   its tick pops in (scale 0.8 to 1, 180ms) when the meal is ticked. */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Platform, StyleProp, View, ViewStyle } from 'react-native';
@@ -15,6 +16,7 @@ import { C, R } from '../../design';
 import { mealImageSource } from '../../lib/mealImage';
 import { Icon } from '../Icon';
 import { useReduceMotion } from '../motion';
+import { usePop } from '../usePop';
 
 export type MealImageSize = 'thumb' | 'card' | 'sheet';
 
@@ -33,10 +35,12 @@ type Props = {
   size?: MealImageSize;
   /** Thumbnails in a tick list: show the eaten badge (true) or the empty ring (false). */
   checked?: boolean;
+  /** The meal was ticked a moment ago and this row is new: pop the tick on mount. */
+  justTicked?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
-export function MealImage({ label, items, size = 'thumb', checked, style }: Props) {
+export function MealImage({ label, items, size = 'thumb', checked, justTicked, style }: Props) {
   const reduce = useReduceMotion();
   const itemsKey = (items ?? []).join('|');
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,7 +111,7 @@ export function MealImage({ label, items, size = 'thumb', checked, style }: Prop
           </>
         )}
       </View>
-      {checked !== undefined ? <EatenBadge checked={checked} /> : null}
+      {checked !== undefined ? <EatenBadge checked={checked} justTicked={!!justTicked} /> : null}
     </View>
   );
 }
@@ -115,10 +119,12 @@ export function MealImage({ label, items, size = 'thumb', checked, style }: Prop
 /** The tick in the corner of a thumbnail: an empty ring until eaten, then
     the green ring and tick (the CheckBox style). The disc is Carbon, like
     the card around it, so the empty ring reads as a notch, not a hole. */
-function EatenBadge({ checked }: { checked: boolean }) {
+function EatenBadge({ checked, justTicked }: { checked: boolean; justTicked: boolean }) {
+  const scale = usePop(checked, justTicked ? false : checked);
   return (
-    <View
+    <Animated.View
       style={{
+        transform: [{ scale }],
         position: 'absolute',
         right: -5,
         bottom: -5,
@@ -133,6 +139,6 @@ function EatenBadge({ checked }: { checked: boolean }) {
       }}
     >
       {checked ? <Icon name="check" size={14} color={C.green} strokeWidth={3} /> : null}
-    </View>
+    </Animated.View>
   );
 }

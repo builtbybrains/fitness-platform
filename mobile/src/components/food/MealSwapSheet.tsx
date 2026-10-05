@@ -11,6 +11,7 @@ import { useAuth } from '../../auth';
 import { swapMeal } from '../../api/food';
 import { asApiError } from '../../api/errors';
 import { localMealSwaps } from '../../planData';
+import { haptic } from '../../lib/haptics';
 import type { PlanMealV2, ProfileV2 } from '../../types';
 import { Button } from '../Button';
 import { Notice } from '../Bits';
@@ -77,6 +78,7 @@ export function MealSwapSheet({ visible, onClose, meal, original, profile, onPic
 
   async function confirm(choice: PlanMealV2 | null) {
     if (busy) return;
+    haptic.select();
     setBusy(true);
     await onPick(choice);
     setBusy(false);
@@ -106,7 +108,10 @@ export function MealSwapSheet({ visible, onClose, meal, original, profile, onPic
               detail={macroText(o)}
               left={<MealImage label={o.label} items={o.items} size="sheet" />}
               selected={picked === i}
-              onPress={() => setPicked(i)}
+              onPress={() => {
+                if (picked !== i) haptic.select();
+                setPicked(i);
+              }}
             />
           ))}
           {note ? <Notice>{note}</Notice> : null}

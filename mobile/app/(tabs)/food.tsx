@@ -23,6 +23,7 @@ import { MealImage } from '../../src/components/food/MealImage';
 import { dayTitle } from '../../src/components/training/labels';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
+import { haptic } from '../../src/lib/haptics';
 import type { DayMeal } from '../../src/planData';
 
 const SOURCE_LABEL: Record<string, string> = { photo: 'From a photo', text: 'Typed', generated: 'Made from what you had', plan: 'Plan meal' };
@@ -33,6 +34,8 @@ export default function FoodTab() {
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
   const [swapSlot, setSwapSlot] = useState<string | null>(null);
+  // The meal ticked last: its row re-mounts as eaten, and its tick pops in.
+  const [justAte, setJustAte] = useState<string | null>(null);
   const day = days[todayIdx];
 
   const activityToday = useMemo(() => activities.filter((a) => a.day === todayId), [activities, todayId]);
@@ -77,6 +80,14 @@ export default function FoodTab() {
   const next = day.meals.find((m) => !day.done.meals.includes(m.slot)) ?? null;
   const rest = day.meals.filter((m) => m !== next);
 
+  function tick(slot: string, eaten: boolean) {
+    if (!eaten) {
+      haptic.tap();
+      setJustAte(slot);
+    }
+    void toggleMeal(day.id, slot);
+  }
+
   return (
     <SafeAreaView style={screen} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
@@ -99,14 +110,15 @@ export default function FoodTab() {
             <StateBlock kind="empty" icon="burger" title="No meals planned today" body="Log what you eat below and it counts toward your day." />
           ) : (
             <>
-              {next ? <NextMeal meal={next} onToggle={() => void toggleMeal(day.id, next.slot)} onSwap={() => setSwapSlot(next.slot)} /> : null}
+              {next ? <NextMeal meal={next} onToggle={() => tick(next.slot, false)} onSwap={() => setSwapSlot(next.slot)} /> : null}
               {rest.map((m, i) => (
                 <MealRow
                   key={m.slot}
                   meal={m}
                   first={i === 0 && !next}
                   done={day.done.meals.includes(m.slot)}
-                  onToggle={() => void toggleMeal(day.id, m.slot)}
+                  justTicked={justAte === m.slot}
+                  onToggle={() => tick(m.slot, day.done.meals.includes(m.slot))}
                   onSwap={() => setSwapSlot(m.slot)}
                 />
               ))}
@@ -215,7 +227,7 @@ function NextMeal({ meal, onToggle, onSwap }: { meal: DayMeal; onToggle: () => v
   );
 }
 
-function MealRow({ meal, first, done, onToggle, onSwap }: { meal: DayMeal; first: boolean; done: boolean; onToggle: () => void; onSwap: () => void }) {
+function MealRow({ meal, first, done, justTicked, onToggle, onSwap }: { meal: DayMeal; first: boolean; done: boolean; justTicked: boolean; onToggle: () => void; onSwap: () => void }) {
   return (
     <View style={{ paddingTop: 12, paddingBottom: 4, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
       <Pressable
@@ -225,7 +237,7 @@ function MealRow({ meal, first, done, onToggle, onSwap }: { meal: DayMeal; first
         accessibilityLabel={`${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
         style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, opacity: pressed ? 0.75 : 1 })}
       >
-        <MealImage label={meal.label} items={meal.items} size="thumb" checked={done} />
+        <MealImage label={meal.label} items={meal.items} size="thumb" checked={done} justTicked={justTicked} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={T.small}>
             {meal.slot}

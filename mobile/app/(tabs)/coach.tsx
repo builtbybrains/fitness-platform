@@ -6,12 +6,15 @@
    ("New chat" starts a fresh thread). Without an account, or when the coach
    can't be reached, it answers with built-in tips and says why.
 
-   Meal photos live in Food now; the camera button here opens that flow. */
+   Meal photos live in Food now; the camera button here opens that flow.
+
+   `?about=<text>` (the note on Today) shows that text as the coach's latest
+   message, on this screen only (it isn't saved to the history). */
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { C, FONT, R, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
@@ -83,6 +86,7 @@ export default function CoachTab() {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const online = isCloudUser(userId) && !!session;
+  const about = String(useLocalSearchParams<{ about?: string }>().about ?? '').trim().slice(0, 400);
 
   useEffect(() => {
     setMessages([]);
@@ -113,6 +117,12 @@ export default function CoachTab() {
       clearTimeout(giveUp);
     };
   }, [online, conversationId]);
+
+  // Opened from the note on Today: the note leads the conversation.
+  useEffect(() => {
+    if (!about) return;
+    setMessages((prev) => (prev.some((m) => m.role === 'coach' && m.body === about) ? prev : [...prev, { id: nextId(), role: 'coach', body: about }]));
+  }, [about]);
 
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
