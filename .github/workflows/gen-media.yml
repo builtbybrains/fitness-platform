@@ -4,15 +4,12 @@ name: Generate app media (meal photos, workout videos)
 # and mobile/src/data/exerciseVideos.generated.json with scripts/gen-media.mjs
 # and commits them back to the branch that ran it. Existing files are kept,
 # so re-runs only fill gaps. Run it by hand (Actions → this workflow → Run),
-# or it runs when the generator itself changes.
+# never on its own.
 
 on:
-  push:
-    paths:
-      - 'scripts/gen-media.mjs'
-      - '.github/workflows/gen-media.yml'
-    branches-ignore:
-      - gh-pages
+  # Manual only. Meal photos wait for a paid, watermark-free image provider
+  # (the free one stamps "pollinations.ai" on every photo), so this workflow
+  # only looks for workout videos until then.
   workflow_dispatch:
     inputs:
       force:
@@ -43,7 +40,7 @@ jobs:
 
       - name: Generate
         continue-on-error: true
-        run: node scripts/gen-media.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+        run: node scripts/gen-media.mjs --videos-only ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Commit the results
         if: always()

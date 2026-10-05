@@ -21,9 +21,12 @@ import { MoveDaySheet } from '../../src/components/training/MoveDaySheet';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
 import { ChangePlanCard } from '../../src/components/training/PlanChange';
 import { MealImage } from '../../src/components/food/MealImage';
+import { Ring } from '../../src/components/Ring';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
-import { DAY_FULL, DAY_SHORT, dayTitle, plural, timeLabel } from '../../src/components/training/labels';
+import { DAY_FULL, DAY_SHORT, plural, timeLabel } from '../../src/components/training/labels';
+import { weekCounts, weekStrip } from '../../src/lib/weekStrip';
+import { dateEyebrow, planHeaderStats, weekCountLabel } from '../../src/lib/headerStats';
 import type { PlanWorkoutV2 } from '../../src/types';
 
 function DayChip({ day, today, selected, onPress }: { day: WeekDay; today: boolean; selected: boolean; onPress: () => void }) {
@@ -105,6 +108,8 @@ export default function PlanTab() {
   const day = days[selected] ?? days[todayIdx];
   const movable = useMemo(() => movableDays(days, todayId), [days, todayId]);
   const options = useMemo(() => (day && replaceIdx != null ? optionsFor(day.id, replaceIdx) : []), [day, replaceIdx, optionsFor]);
+  // The same done/planned count as Today's week strip.
+  const week = useMemo(() => weekCounts(weekStrip(days, todayId)), [days, todayId]);
 
   const waiting = !planLoaded || (!!session && !profileLoaded);
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
@@ -112,7 +117,7 @@ export default function PlanTab() {
     return (
       <SafeAreaView style={screen} edges={['top']}>
         <View style={{ padding: 20, gap: 24, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
-          <ScreenHeader title="Your plan" subtitle={day ? `Today, ${dayTitle(day.index, day.id)}` : undefined} />
+          <ScreenHeader eyebrow={day ? dateEyebrow(day.index, day.id, true) : undefined} title="Time to" accent="train." />
           {unreachable ? (
             <OfflineBlock body="Your plan shows here as soon as BUILT answers again. Nothing you saved is lost." />
           ) : (
@@ -165,7 +170,13 @@ export default function PlanTab() {
   return (
     <SafeAreaView style={screen} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
-        <ScreenHeader title="Your plan" subtitle={selected === todayIdx ? `Today, ${dayTitle(day.index, day.id)}` : dayTitle(day.index, day.id)} />
+        <ScreenHeader
+          eyebrow={dateEyebrow(day.index, day.id, selected === todayIdx)}
+          title="Time to"
+          accent="train."
+          stats={planHeaderStats(day.session, week)}
+          right={week.planned > 0 ? <WeekRing done={week.done} planned={week.planned} /> : undefined}
+        />
 
         <OfflineNotice />
 
@@ -235,6 +246,19 @@ export default function PlanTab() {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+/** The week's workouts as a small ring. The arc is Stone: on Plan the
+    green goes to the title word, today's chip, done dots and the play
+    button. */
+function WeekRing({ done, planned }: { done: number; planned: number }) {
+  return (
+    <Ring size={48} stroke={4} progress={planned ? done / planned : 0} color={C.stone} accessibilityLabel={weekCountLabel(done, planned)}>
+      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 13, lineHeight: 16, letterSpacing: -0.2, color: C.text }}>
+        {done}/{planned}
+      </Text>
+    </Ring>
   );
 }
 
