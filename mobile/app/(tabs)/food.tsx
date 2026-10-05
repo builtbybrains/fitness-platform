@@ -20,7 +20,7 @@ import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
 import { MealImage } from '../../src/components/food/MealImage';
-import { dayTitle } from '../../src/components/training/labels';
+import { dateEyebrow, foodHeaderStats } from '../../src/lib/headerStats';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
 import { haptic } from '../../src/lib/haptics';
@@ -60,7 +60,12 @@ export default function FoodTab() {
     return (
       <SafeAreaView style={screen} edges={['top']}>
         <View style={{ padding: 20, gap: 24, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
-          <ScreenHeader title="Food" subtitle={day ? `Today, ${dayTitle(day.index, day.id)}` : undefined} />
+          <ScreenHeader
+            eyebrow={day ? dateEyebrow(day.index, day.id, true) : undefined}
+            title="Time to"
+            accent="fuel up."
+            right={unreachable ? undefined : <PhotoLogButton />}
+          />
           {unreachable ? (
             <OfflineBlock body="Your meals and what you logged show here as soon as BUILT answers again." />
           ) : (
@@ -91,7 +96,13 @@ export default function FoodTab() {
   return (
     <SafeAreaView style={screen} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
-        <ScreenHeader title="Food" subtitle={`Today, ${dayTitle(day.index, day.id)}`} />
+        <ScreenHeader
+          eyebrow={dateEyebrow(day.index, day.id, true)}
+          title="Time to"
+          accent="fuel up."
+          stats={foodHeaderStats({ eatenKcal: summary.eaten.kcal, targetKcal: targets.kcal, meals: day.meals, eatenSlots: day.done.meals })}
+          right={<PhotoLogButton />}
+        />
 
         <OfflineNotice />
 
@@ -198,6 +209,11 @@ export default function FoodTab() {
       />
     </SafeAreaView>
   );
+}
+
+/** Snap a meal straight from the header. */
+function PhotoLogButton() {
+  return <IconButton icon="camera" size={48} onPress={() => router.push('/food/log?mode=photo')} accessibilityLabel="Log food from a photo" />;
 }
 
 /** The next meal to eat: a full-width photo, then the tick row and Swap. */
