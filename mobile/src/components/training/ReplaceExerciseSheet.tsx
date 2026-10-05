@@ -9,6 +9,7 @@ import { C, T } from '../../design';
 import type { Exercise } from '../../data/exercises';
 import type { PlanExerciseV2 } from '../../types';
 import { setsLabel } from '../../planData';
+import { haptic } from '../../lib/haptics';
 import { Button } from '../Button';
 import { Notice } from '../Bits';
 import { Sheet } from './Sheet';
@@ -44,6 +45,7 @@ export function ReplaceExerciseSheet({ visible, onClose, exercise, options, onRe
 
   async function confirm() {
     if (!choice || busy) return;
+    haptic.select();
     setBusy(true);
     setError(null);
     const r = await onReplace(choice, scope);

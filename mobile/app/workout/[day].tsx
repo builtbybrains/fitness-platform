@@ -2,15 +2,16 @@
    the calendar day id (yyyy-mm-dd) in the current week, so a workout moved
    to another day opens on that day; state lives in the shared plan store.
    Swapped exercises say what they replace, every exercise shows its coaching
-   note, and any exercise can be replaced from here. Ticking the last set
-   completes the workout and triggers the celebration. */
+   note, and any exercise can be replaced from here. The header maps the
+   muscles the session works. Ticking the last set completes the workout
+   and triggers the celebration. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
+import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
 import { exerciseLabel, restFor } from '../../src/planData';
 import { usePlan } from '../../src/planStore';
 import { useRestTimer } from '../../src/useRestTimer';
@@ -19,6 +20,9 @@ import { Button } from '../../src/components/Button';
 import { ProgressBar } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
+import { SetTile } from '../../src/components/training/Controls';
+import { MuscleLegend, MuscleMap } from '../../src/components/training/MuscleMap';
+import { muscleNames, musclesForExercises } from '../../src/lib/muscles';
 import { BackHeader } from '../../src/components/training/BackHeader';
 import { useExerciseVideo, WatchHowButton } from '../../src/components/training/ExerciseVideo';
 import type { PlanWorkoutV2 } from '../../src/types';
@@ -63,6 +67,11 @@ export default function WorkoutScreen() {
     userTouchedRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayId]);
+
+  const muscles = useMemo(
+    () => (day?.session.kind === 'workout' ? musclesForExercises(day.session.exercises.map((e) => e.id ?? e.name)) : { primary: [], secondary: [] }),
+    [day],
+  );
 
   const progress = useMemo(() => {
     if (!day || day.session.kind !== 'workout') return { total: 0, done: 0 };
@@ -119,6 +128,15 @@ export default function WorkoutScreen() {
     <View style={[screen, { paddingTop: inset.top }]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 20, paddingBottom: 132, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <BackHeader title={w.focus} subtitle={`${w.minutes} min · ${w.exercises.length} exercises · ${progress.total} sets`} fallback="/(tabs)/plan" />
+
+        {muscles.primary.length || muscles.secondary.length ? (
+          <View style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 20, padding: 16 }]}>
+            <MuscleMap primary={muscles.primary} secondary={muscles.secondary} size="large" />
+            <View style={{ flex: 1 }}>
+              <MuscleLegend primary={muscleNames(muscles.primary)} secondary={muscleNames(muscles.secondary)} />
+            </View>
+          </View>
+        ) : null}
 
         <View style={{ gap: 8 }}>
           <ProgressBar value={progress.total ? progress.done / progress.total : 0} height={8} />
@@ -199,36 +217,17 @@ export default function WorkoutScreen() {
                     const load =
                       ex.kg != null ? `${ex.kg} kg` : ex.unit === 's' ? `${ex.reps}s` : ex.unit === 'm' ? `${ex.reps}m` : `${ex.reps} reps`;
                     return (
-                      <Pressable
+                      <SetTile
                         key={s}
-                        onPress={() => {
+                        index={s}
+                        load={load}
+                        on={on}
+                        onToggle={() => {
                           userTouchedRef.current = true;
                           void toggleSet(dayId, i, s);
                           if (!on) timer.start(restFor(ex));
                         }}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: on }}
-                        accessibilityLabel={`Set ${s + 1}, ${load}`}
-                        style={({ pressed }) => ({
-                          minWidth: 72,
-                          minHeight: 56,
-                          flexGrow: 1,
-                          flexBasis: 72,
-                          maxWidth: 110,
-                          paddingVertical: 8,
-                          borderRadius: R.tile,
-                          backgroundColor: pressed ? C.raised : on ? C.greenTint : C.surface,
-                          borderWidth: 1,
-                          borderColor: on ? C.greenBorder : C.lineStrong,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        })}
-                      >
-                        <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: on ? C.green : C.text }}>
-                          {on ? 'Done' : `Set ${s + 1}`}
-                        </Text>
-                        <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.stone : C.muted, marginTop: 2 }}>{load}</Text>
-                      </Pressable>
+                      />
                     );
                   })}
                 </View>

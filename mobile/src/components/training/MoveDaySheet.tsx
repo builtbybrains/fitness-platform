@@ -7,6 +7,7 @@ import { Text, View } from 'react-native';
 
 import { C, FONT, R, T } from '../../design';
 import type { WeekDay } from '../../planData';
+import { haptic } from '../../lib/haptics';
 import { Notice } from '../Bits';
 import { Sheet } from './Sheet';
 import { ChoiceRow } from './Controls';
@@ -31,6 +32,7 @@ export function MoveDaySheet({ visible, onClose, days, from, movable, today, onM
 
   async function pick(i: number) {
     if (busy != null) return;
+    haptic.select();
     setBusy(i);
     setError(null);
     const r = await onMove(i);

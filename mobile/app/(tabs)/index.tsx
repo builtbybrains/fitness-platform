@@ -26,6 +26,7 @@ import { ProgressBar } from '../../src/components/Bits';
 import { MealImage } from '../../src/components/food/MealImage';
 import { greetingWord } from '../../src/components/copy';
 import { Meter } from '../../src/components/training/Controls';
+import { MuscleMap } from '../../src/components/training/MuscleMap';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
@@ -39,6 +40,7 @@ import { getHealthDays } from '../../src/api/health';
 import { healthPlatform } from '../../src/api/device/health';
 import type { DailyNoteSummary } from '../../src/api/coach';
 import { haptic } from '../../src/lib/haptics';
+import { musclesForExercises } from '../../src/lib/muscles';
 import { addDays, mondayIndex, parseDay, todayId as localToday } from '../../src/lib/dates';
 import type { Activity, HealthDaily } from '../../src/types';
 
@@ -133,6 +135,7 @@ function WorkoutCard({ day }: { day: WeekDay }) {
   }
   const w = day.session;
   const s = setsOf(day);
+  const muscles = musclesForExercises(w.exercises.map((e) => e.id ?? e.name));
   const done = day.done.workout;
   return (
     <View style={[cardStyle, { gap: 16 }]}>
@@ -144,7 +147,7 @@ function WorkoutCard({ day }: { day: WeekDay }) {
             {w.minutes} min · {plural(w.exercises.length, 'exercise')}
           </Text>
         </View>
-        {/* MuscleMap slot */}
+        {muscles.primary.length > 0 ? <MuscleMap primary={muscles.primary} secondary={muscles.secondary} size="small" /> : null}
         <IconButton
           icon={done ? 'check' : 'play'}
           variant={done ? 'carbon' : 'green'}

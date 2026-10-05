@@ -1,18 +1,20 @@
 /* Check-ins: start the weekly weigh-in or the monthly check-in, and the
-   history of both. */
+   history of both. Before the first one, a faint sample trend shows what
+   the history turns into. */
 
 import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { T } from '../../src/design';
+import { card, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { asApiError } from '../../src/api/errors';
 import { listCheckins } from '../../src/api/checkins';
 import { useCheckinsDue } from '../../src/components/profile/CheckinDue';
 import { monthlyDueDay } from '../../src/useReminders';
 import { dateText } from '../../src/components/onboarding/options';
-import { EmptyState, ErrorState, Loading, Row, RowGroup, SubScreen } from '../../src/components/profile/SubScreen';
+import { ErrorState, Loading, Row, RowGroup, SubScreen } from '../../src/components/profile/SubScreen';
+import { SampleChart } from '../../src/components/training/Charts';
 import type { Checkin } from '../../src/types';
 
 export default function Checkins() {
@@ -70,7 +72,13 @@ export default function Checkins() {
         ) : error && !items ? (
           <ErrorState message={error} onRetry={load} retrying={loading} />
         ) : !items?.length ? (
-          <EmptyState icon="clock" title="No check-ins yet" body="Your weigh-ins and monthly reviews will show up here, with what changed in your plan each time." />
+          <View style={card}>
+            <SampleChart
+              kind="line"
+              caption="Your trend appears here after your first check-in."
+              action={{ label: 'Log your first check-in', onPress: () => router.push('/checkin/weekly') }}
+            />
+          </View>
         ) : (
           <RowGroup>
             {items.map((c) => (

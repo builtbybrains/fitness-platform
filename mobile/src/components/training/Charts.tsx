@@ -3,12 +3,18 @@
      Only this week's done days are solid green; earlier weeks use the tint,
      so the green stays rationed to what's happening now.
    - HBars: horizontal bars with a label and value (activities by kind).
-   - TargetColumns: one column per day against a target line (calories). */
+   - TargetColumns: one column per day against a target line (calories).
+   - SampleChart: the empty state for a trend. A fixed sample series in a
+     faint grey, tagged "Sample" and hidden from screen readers, with one
+     line on what will appear and one action to get there. */
 
 import React from 'react';
 import { Text, View } from 'react-native';
 
-import { C, FONT, T } from '../../design';
+import { C, FONT, R, T } from '../../design';
+import { BarChart } from '../BarChart';
+import { Button } from '../Button';
+import { LineChart } from '../LineChart';
 import { useTween } from '../motion';
 import type { DayCell } from '../../stats';
 import { DAY_SHORT } from './labels';
@@ -138,6 +144,40 @@ export function TargetColumns({ days, target, height = 132, todayId }: { days: {
           </Text>
         ))}
       </View>
+    </View>
+  );
+}
+
+// Illustrative only: a gentle downward weight trend and a rising week count.
+const SAMPLE_LINE = [78.4, 78.1, 78.3, 77.8, 77.6, 77.7, 77.2, 76.9];
+const SAMPLE_BARS = [1, 2, 2, 3, 2, 3, 4, 3];
+const SAMPLE_WEEKS = ['7w', '6w', '5w', '4w', '3w', '2w', '1w', 'Now'];
+
+export function SampleChart({
+  kind,
+  caption,
+  action,
+  height = 120,
+}: {
+  kind: 'line' | 'bars';
+  caption: string;
+  action?: { label: string; onPress: () => void; variant?: 'primary' | 'secondary' };
+  height?: number;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ gap: 8 }}>
+        <View style={{ alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill, borderWidth: 1, borderColor: C.lineStrong }}>
+          <Text style={[T.small, { fontSize: 11, lineHeight: 14 }]}>Sample</Text>
+        </View>
+        {kind === 'line' ? (
+          <LineChart values={SAMPLE_LINE} height={height} color={C.pressed} />
+        ) : (
+          <BarChart values={SAMPLE_BARS} labels={SAMPLE_WEEKS} height={height} tone="sample" />
+        )}
+      </View>
+      <Text style={T.meta}>{caption}</Text>
+      {action ? <Button label={action.label} variant={action.variant ?? 'primary'} onPress={action.onPress} style={{ alignSelf: 'flex-start' }} /> : null}
     </View>
   );
 }
