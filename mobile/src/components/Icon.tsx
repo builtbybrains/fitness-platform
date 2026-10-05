@@ -34,7 +34,8 @@ export type IconName =
   | 'edit'
   | 'trash'
   | 'clock'
-  | 'steps';
+  | 'steps'
+  | 'medal';
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 
@@ -210,6 +211,15 @@ export function Icon({ name, size = 24, color = C.green, strokeWidth = 2 }: Prop
         <>
           <Circle cx={12} cy={12} r={8.5} {...s} />
           <Path d="M12 7.5V12l3 2" {...s} />
+        </>
+      );
+      break;
+    case 'medal':
+      body = (
+        <>
+          <Path d="M8 3.5 11 9.5M16 3.5l-3 6" {...s} />
+          <Circle cx={12} cy={15} r={5.5} {...s} />
+          <Path d="M10.8 13.6 12 12.8v4.4" {...s} />
         </>
       );
       break;

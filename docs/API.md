@@ -288,6 +288,7 @@ Off-plan food counts toward the day's calories; the person confirms or edits bef
 | Function | Returns | Notes |
 | --- | --- | --- |
 | `sendCoachMessage(userId, message, conversationId = 'default')` | `CoachReply` `{ reply, model, saved, suggestPlanChange, remembered }` | When `suggestPlanChange` is set, offer "Update my plan" → `generatePlan(userId, suggestPlanChange)`. `remembered`: facts saved from this message |
+| `dailyNote(userId, summary)` | `string` | The Today note, one or two sentences. `''` means no AI note right now: show a built-in tip (`lib/coachTips.ts`). Today caches it per person and day |
 | `listMemory(userId)` | `MemoryFact[]` | For Profile → "What your coach remembers" |
 | `deleteMemory(userId, id)` | `void` | People can delete, never edit |
 | `rememberFact(userId, fact, category, source = 'behaviour')` | `MemoryFact \| null` | null when already known |
@@ -450,6 +451,9 @@ paths are in their folder, needs a front photo. 503 without a vision key.
 
 ### `coach`
 `{ message, conversationId?, localDay? }` → `{ reply, model, saved, suggestPlanChange, remembered }`.
+`{ mode: 'daily_note', localDay?, summary: { day, focus?, minutes?, workoutDone?, done7?, planned7?, streak?, mealsYesterday? } }`
+→ `{ note }` (at most 200 characters; `''` without AI). Reads profile and memory, writes neither
+chat history nor memory. 6 per person per UTC day (`ai_usage` kind `coach`).
 
 ### `checkin`
 `{ kind, day?, weight_kg?, measurements?, answers?, photo_set_id? }` →

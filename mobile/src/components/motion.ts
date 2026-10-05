@@ -38,7 +38,7 @@ export const easeOutQuart = (p: number) => 1 - Math.pow(1 - p, 4);
 
 /** A number that fills to `target`: slowly on first view, briefly after
     that, instantly when Reduce Motion is on. */
-export function useTween(target: number, first = 700, later = 250): number {
+export function useTween(target: number, first = 400, later = 250): number {
   const reduce = useReduceMotion();
   const [value, setValue] = useState(reduce ? target : 0);
   const current = useRef(reduce ? target : 0);

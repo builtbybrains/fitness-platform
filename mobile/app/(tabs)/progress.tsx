@@ -1,7 +1,10 @@
 /* Progress: the last eight weeks from real history. The streak and its
-   training calendar, workouts per week, activities by kind, this week's
-   calories and macros against target, and the weight trend. Each chart
-   reads differently, and each has its own loading and empty state.
+   training calendar, milestones, workouts per week, activities by kind,
+   this week's calories and macros against target, and the weight trend.
+   Each chart reads differently, and each has its own loading and empty
+   state; trends with no data yet show a faint sample of what's coming.
+   The streak card and milestones ease in on the first open of the day
+   only; the sections below them are simply there.
    Opened from Today (Progress tile, streak) and Profile. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -15,16 +18,24 @@ import { BarChart } from '../../src/components/BarChart';
 import { Button, LinkButton } from '../../src/components/Button';
 import { BackHeader } from '../../src/components/training/BackHeader';
 import { Meter, StateBlock } from '../../src/components/training/Controls';
-import { HBars, TargetColumns, TrainingCalendar } from '../../src/components/training/Charts';
+import { HBars, SampleChart, sampleWeightTrend, TargetColumns, TrainingCalendar } from '../../src/components/training/Charts';
+import { Milestones } from '../../src/components/progress/Milestones';
+import { FadeIn } from '../../src/components/FadeIn';
 import { DAY_SHORT, plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
 import { fetchWeights, WeightEntry } from '../../src/data';
 import { fetchFoodRange, FoodLog } from '../../src/foodLogs';
-import { activityByKind, activityTotals, addMacros, averageMacros, Macros, streakHistory, trainingCalendar, weeklyActivity, weeklyHistory, ZERO_MACROS } from '../../src/stats';
+import { activityByKind, activityTotals, addMacros, averageMacros, bestStreak as bestStreakIn, Macros, streakHistory, trainingCalendar, weeklyActivity, weeklyHistory, ZERO_MACROS } from '../../src/stats';
+import { weekCounts, weekStrip } from '../../src/lib/weekStrip';
 import { activityDef } from '../../src/data/activities';
 import { addDays, parseDay } from '../../src/lib/dates';
+import { milestones } from '../../src/lib/milestones';
+import { listCheckins } from '../../src/api/checkins';
+
+/** The day the sections last eased in: they play once a day, not on every visit. */
+let enteredOn: string | null = null;
 
 function shortLabel(label: string): string {
   if (label === 'This wk') return 'Now';
@@ -55,6 +66,12 @@ export default function ProgressTab() {
   const [weightsLoaded, setWeightsLoaded] = useState(false);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [foodLoaded, setFoodLoaded] = useState(false);
+  const [checkinDays, setCheckinDays] = useState<string[]>([]);
+  const [checkinsLoaded, setCheckinsLoaded] = useState(false);
+  const [play] = useState(() => enteredOn !== todayId);
+  useEffect(() => {
+    enteredOn = todayId;
+  }, [todayId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,6 +85,10 @@ export default function ProgressTab() {
       fetchFoodRange(userId, weekStart, todayId)
         .then(({ logs }) => alive && setFoodLogs(logs))
         .finally(() => alive && setFoodLoaded(true));
+      listCheckins(userId, undefined, 120)
+        .then((list) => alive && setCheckinDays(list.map((c) => c.day)))
+        .catch(() => undefined)
+        .finally(() => alive && setCheckinsLoaded(true));
       return () => {
         alive = false;
       };
@@ -85,9 +106,12 @@ export default function ProgressTab() {
   const since = profile?.onboarding_done_at?.slice(0, 10) ?? null;
   const calendar = useMemo(() => trainingCalendar(history, schedule, 8, now, since && Object.keys(history).every((d) => d >= since) ? since : null), [history, schedule, now, since]);
   const anyWorkout = weeks.some((w) => w.workoutsDone > 0);
-  const thisWeek = weeks[weeks.length - 1];
   const currentStreak = streaks.length ? streaks[streaks.length - 1] : 0;
-  const bestStreak = streaks.length ? Math.max(...streaks) : 0;
+  // Every day of the window, not just each week's Sunday, so a streak that
+  // peaked midweek still counts.
+  const bestStreak = useMemo(() => bestStreakIn(history, 8, now, schedule), [history, now, schedule]);
+  // The plan's whole week, counted the way Today's week strip counts it.
+  const week = useMemo(() => weekCounts(weekStrip(days, todayId)), [days, todayId]);
   const today = days[todayIdx];
 
   const fourWeeksFrom = addDays(weekStart, -21);
@@ -107,6 +131,8 @@ export default function ProgressTab() {
     [days, foodLogs, todayId],
   );
   const macroAvg = useMemo(() => averageMacros(foodDays.filter((d) => d.id <= todayId).map((d) => d.totals)), [foodDays, todayId]);
+
+  const badges = useMemo(() => milestones({ history, schedule, todayId, checkinDays }), [history, schedule, todayId, checkinDays]);
 
   const latest = weights.length ? weights[weights.length - 1] : null;
   const first = weights.length ? weights[0] : null;
@@ -140,127 +166,161 @@ export default function ProgressTab() {
 
         <OfflineNotice text="Can't reach BUILT. Showing your last saved progress." onRetry={retry} />
 
-        <View style={[cardStyle, { gap: 20 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 56, lineHeight: 62, letterSpacing: -2, color: C.text }} accessibilityLabel={`Workout streak ${currentStreak}`}>
-                {currentStreak}
-              </Text>
-              <Text style={T.bodyStrong}>workout streak</Text>
-            </View>
-            <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: C.lineStrong }} />
-            <View style={{ flex: 1, gap: 14 }}>
-              <View>
-                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>{bestStreak}</Text>
-                <Text style={T.small}>best streak, 8 weeks</Text>
-              </View>
-              <View>
-                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>
-                  {thisWeek?.workoutsDone ?? 0}
-                  <Text style={{ fontSize: 16, color: C.muted }}>/{thisWeek?.workoutsPlanned ?? 0}</Text>
+        <FadeIn play={play} delay={0}>
+          <View style={[cardStyle, { gap: 20 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 56, lineHeight: 62, letterSpacing: -2, color: C.text }} accessibilityLabel={`Workout streak ${currentStreak}`}>
+                  {currentStreak}
                 </Text>
-                <Text style={T.small}>workouts this week</Text>
+                <Text style={T.bodyStrong}>workout streak</Text>
+              </View>
+              <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: C.lineStrong }} />
+              <View style={{ flex: 1, gap: 14 }}>
+                <View>
+                  <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>{bestStreak}</Text>
+                  <Text style={T.small}>best streak, 8 weeks</Text>
+                </View>
+                {/* Counted like Today's week strip: done of every workout in the plan's week. */}
+                <View accessible accessibilityLabel={`${week.done} of ${plural(week.planned, 'workout')} done this week`}>
+                  <Text style={{ fontFamily: FONT.displaySemi, fontSize: 22, color: C.text }}>
+                    {week.done}
+                    <Text style={{ fontSize: 16, color: C.muted }}>/{week.planned}</Text>
+                  </Text>
+                  <Text style={T.small}>done this week</Text>
+                </View>
               </View>
             </View>
-          </View>
-          <TrainingCalendar rows={calendar} />
-          {!anyWorkout ? (
-            <View style={{ gap: 12 }}>
-              <Text style={T.meta}>No workouts yet. Finish one and the calendar starts to fill.</Text>
-              <Button
-                label={today?.session.kind === 'workout' && !today.done.workout ? "Start today's workout" : 'Open your plan'}
-                onPress={() => (today?.session.kind === 'workout' && !today.done.workout ? router.push(`/workout/${today.id}`) : router.push('/(tabs)/plan'))}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        {historyLoaded && anyWorkout ? (
-          <View style={[cardStyle, { gap: 16 }]}>
-            <SectionTitle title="Workouts per week" detail="This week is the bright bar" />
-            <BarChart
-              values={weeks.map((w) => w.workoutsDone)}
-              labels={weeks.map((w) => shortLabel(w.label))}
-              height={150}
-              accessibilityLabel={`Workouts per week, oldest first: ${weeks.map((w) => w.workoutsDone).join(', ')}`}
-            />
-          </View>
-        ) : null}
-
-        <View style={[cardStyle, { gap: 16 }]}>
-          <SectionTitle
-            title="Activities"
-            detail={actThisWeek.count ? `This week: ${actThisWeek.minutes} min, about ${actThisWeek.kcal.toLocaleString()} kcal burned` : 'Walking, football, padel and more'}
-          />
-          {!activitiesLoaded ? (
-            <StateBlock kind="loading" title="Loading your activities" />
-          ) : byKind.length === 0 ? (
-            <StateBlock kind="empty" icon="pulse" title="No activities in the last 4 weeks" body="Log a walk or a game and the minutes and calories show up here." action={{ label: 'Log an activity', onPress: () => router.push('/activity/log') }} />
-          ) : (
-            <>
-              <Text style={T.small}>Last 4 weeks, by activity</Text>
-              <HBars unit="min" rows={byKind.map((k) => ({ label: activityDef(k.kind).label, value: k.minutes, detail: `${k.kcal.toLocaleString()} kcal` }))} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4 }} accessible accessibilityLabel={`Activity minutes per week, oldest first: ${actWeeks.map((w) => w.minutes).join(', ')}`}>
-                {actWeeks.map((w, i) => (
-                  <View key={w.weekStartId} style={{ alignItems: 'center', gap: 4, flex: 1 }}>
-                    <Text style={{ fontFamily: FONT.displaySemi, fontSize: 14, color: i === actWeeks.length - 1 ? C.text : C.muted }}>{w.minutes}</Text>
-                    <Text style={[T.small, { fontSize: 11, color: C.faint }]}>{i === actWeeks.length - 1 ? 'Now' : `${actWeeks.length - 1 - i}w`}</Text>
-                  </View>
-                ))}
+            <TrainingCalendar rows={calendar} />
+            {!anyWorkout ? (
+              <View style={{ gap: 12 }}>
+                <Text style={T.meta}>No workouts yet. Finish one and the calendar starts to fill.</Text>
+                <Button
+                  label={today?.session.kind === 'workout' && !today.done.workout ? "Start today's workout" : 'Open your plan'}
+                  onPress={() => (today?.session.kind === 'workout' && !today.done.workout ? router.push(`/workout/${today.id}`) : router.push('/(tabs)/plan'))}
+                />
               </View>
-              <LinkButton align="flex-start" onPress={() => router.push('/activity/log')} accessibilityLabel="Log an activity">
-                <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.text }}>Log an activity</Text>
-              </LinkButton>
-            </>
-          )}
-        </View>
-
-        <View style={[cardStyle, { gap: 16 }]}>
-          <SectionTitle title="Food this week" detail={`Calories each day against ${targets.kcal.toLocaleString()} kcal`} />
-          {!foodLoaded || !historyLoaded ? (
-            <StateBlock kind="loading" title="Loading this week's food" />
-          ) : macroAvg.days === 0 ? (
-            <StateBlock kind="empty" icon="burger" title="Nothing logged this week" body="Tick meals in Food or log what you eat, and your week shows up here." action={{ label: 'Open Food', onPress: () => router.push('/(tabs)/food') }} />
-          ) : (
-            <>
-              <TargetColumns days={foodDays.map((d, i) => ({ id: d.id, label: DAY_SHORT[i], value: d.totals.kcal }))} target={targets.kcal} todayId={todayId} />
-              <Text style={T.small}>
-                Daily average over {plural(macroAvg.days, 'logged day')}: {macroAvg.avg.kcal.toLocaleString()} kcal
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 16 }}>
-                <Meter label="Protein" value={macroAvg.avg.protein} target={targets.protein} unit="g" />
-                <Meter label="Carbs" value={macroAvg.avg.carbs} target={targets.carbs} unit="g" />
-                <Meter label="Fat" value={macroAvg.avg.fat} target={targets.fat} unit="g" />
-              </View>
-            </>
-          )}
-        </View>
-
-        <View style={[cardStyle, { gap: 16 }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <SectionTitle title="Weight" />
-            {delta !== 0 ? (
-              <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>
-                {delta > 0 ? '+' : ''}
-                {delta.toFixed(1)} kg
-              </Text>
             ) : null}
           </View>
-          {!weightsLoaded ? (
-            <StateBlock kind="loading" title="Loading your weight" />
-          ) : weights.length >= 2 ? (
-            <LineChart values={weights.map((w) => w.kg)} height={140} color={C.stone} accessibilityLabel={`Weight trend from ${first?.kg} to ${latest?.kg} kilograms`} />
-          ) : (
-            <Text style={T.meta}>Weigh in a couple of times and your trend shows up here.</Text>
-          )}
-          {latest ? (
-            <Text style={T.small}>
-              Latest: {latest.kg.toFixed(1)} kg on {shortDate(latest.date)}
-            </Text>
-          ) : null}
-          <LinkButton align="flex-start" onPress={() => router.push('/checkin/weekly')} accessibilityLabel="Log your weight">
-            <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.text }}>Log your weight</Text>
-          </LinkButton>
+        </FadeIn>
+
+        <FadeIn play={play} delay={40}>
+          <Milestones items={badges} userId={userId} ready={historyLoaded && checkinsLoaded} />
+        </FadeIn>
+
+        <View>
+          <View style={[cardStyle, { gap: 16 }]}>
+            {anyWorkout ? (
+              <>
+                <SectionTitle title="Workouts per week" detail="This week is the bright bar" />
+                <BarChart
+                  values={weeks.map((w) => w.workoutsDone)}
+                  labels={weeks.map((w) => shortLabel(w.label))}
+                  height={150}
+                  accessibilityLabel={`Workouts per week, oldest first: ${weeks.map((w) => w.workoutsDone).join(', ')}`}
+                />
+              </>
+            ) : (
+              <>
+                <SectionTitle title="Workouts per week" />
+                <SampleChart kind="bars" height={150} caption="Your weeks fill in here after your first workout." />
+              </>
+            )}
+          </View>
+        </View>
+
+        <View>
+          <View style={[cardStyle, { gap: 16 }]}>
+            <SectionTitle
+              title="Activities"
+              detail={actThisWeek.count ? `This week: ${actThisWeek.minutes} min, about ${actThisWeek.kcal.toLocaleString()} kcal burned` : 'Walking, football, padel and more'}
+            />
+            {!activitiesLoaded ? (
+              <StateBlock kind="loading" title="Loading your activities" />
+            ) : byKind.length === 0 ? (
+              <StateBlock kind="empty" icon="pulse" title="No activities in the last 4 weeks" body="Log a walk or a game and the minutes and calories show up here." action={{ label: 'Log an activity', onPress: () => router.push('/activity/log') }} />
+            ) : (
+              <>
+                <Text style={T.small}>Last 4 weeks, by activity</Text>
+                <HBars unit="min" rows={byKind.map((k) => ({ label: activityDef(k.kind).label, value: k.minutes, detail: `${k.kcal.toLocaleString()} kcal` }))} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4 }} accessible accessibilityLabel={`Activity minutes per week, oldest first: ${actWeeks.map((w) => w.minutes).join(', ')}`}>
+                  {actWeeks.map((w, i) => (
+                    <View key={w.weekStartId} style={{ alignItems: 'center', gap: 4, flex: 1 }}>
+                      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 14, color: i === actWeeks.length - 1 ? C.text : C.muted }}>{w.minutes}</Text>
+                      <Text style={[T.small, { fontSize: 11, color: C.faint }]}>{i === actWeeks.length - 1 ? 'Now' : `${actWeeks.length - 1 - i}w`}</Text>
+                    </View>
+                  ))}
+                </View>
+                <LinkButton align="flex-start" onPress={() => router.push('/activity/log')} accessibilityLabel="Log an activity">
+                  <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.text }}>Log an activity</Text>
+                </LinkButton>
+              </>
+            )}
+          </View>
+        </View>
+
+        <View>
+          <View style={[cardStyle, { gap: 16 }]}>
+            <SectionTitle title="Food this week" detail={`Calories each day against ${targets.kcal.toLocaleString()} kcal`} />
+            {!foodLoaded || !historyLoaded ? (
+              <StateBlock kind="loading" title="Loading this week's food" />
+            ) : macroAvg.days === 0 ? (
+              <StateBlock kind="empty" icon="burger" title="Nothing logged this week" body="Tick meals in Food or log what you eat, and your week shows up here." action={{ label: 'Open Food', onPress: () => router.push('/(tabs)/food') }} />
+            ) : (
+              <>
+                <TargetColumns days={foodDays.map((d, i) => ({ id: d.id, label: DAY_SHORT[i], value: d.totals.kcal }))} target={targets.kcal} todayId={todayId} />
+                <Text style={T.small}>
+                  Daily average over {plural(macroAvg.days, 'logged day')}: {macroAvg.avg.kcal.toLocaleString()} kcal
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 16 }}>
+                  <Meter label="Protein" value={macroAvg.avg.protein} target={targets.protein} unit="g" />
+                  <Meter label="Carbs" value={macroAvg.avg.carbs} target={targets.carbs} unit="g" />
+                  <Meter label="Fat" value={macroAvg.avg.fat} target={targets.fat} unit="g" />
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
+        <View>
+          <View style={[cardStyle, { gap: 16 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <SectionTitle title="Weight" />
+              {delta !== 0 ? (
+                <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>
+                  {delta > 0 ? '+' : ''}
+                  {delta.toFixed(1)} kg
+                </Text>
+              ) : null}
+            </View>
+            {!weightsLoaded ? (
+              <StateBlock kind="loading" title="Loading your weight" />
+            ) : weights.length >= 2 ? (
+              <LineChart values={weights.map((w) => w.kg)} height={140} color={C.stone} accessibilityLabel={`Weight trend from ${first?.kg} to ${latest?.kg} kilograms`} />
+            ) : (
+              <SampleChart
+                kind="line"
+                trend={sampleWeightTrend(profile)}
+                caption={latest ? `Latest: ${latest.kg.toFixed(1)} kg on ${shortDate(latest.date)}. One more weigh-in and your trend appears here.` : 'Your trend appears here after your first check\u2011in.'}
+                action={{
+                  label: latest ? 'Log your weight' : 'Log your first check\u2060-\u2060in',
+                  onPress: () => router.push('/checkin/weekly'),
+                  // The streak card already holds the green button until the first workout.
+                  variant: anyWorkout ? 'primary' : 'secondary',
+                }}
+              />
+            )}
+            {weightsLoaded && weights.length >= 2 && latest ? (
+              <>
+                <Text style={T.small}>
+                  Latest: {latest.kg.toFixed(1)} kg on {shortDate(latest.date)}
+                </Text>
+                <LinkButton align="flex-start" onPress={() => router.push('/checkin/weekly')} accessibilityLabel="Log your weight">
+                  <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.text }}>Log your weight</Text>
+                </LinkButton>
+              </>
+            ) : null}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

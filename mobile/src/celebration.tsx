@@ -1,22 +1,38 @@
-/* Global workout-completion celebration. Any screen can trigger it; the
+/* Global celebration: a finished workout, or (variant 'milestone') a
+   milestone earned on the Progress tab. Any screen can trigger it; the
    overlay renders above everything and optionally calls onDone when it
    closes (used to navigate back to the Plan tab). Tap to dismiss early.
-   It fades and settles in over 300ms; with Reduce Motion it just appears. */
+   It fades and settles in over 300ms; with Reduce Motion it just appears.
+   Native gets a success haptic; no confetti, no sound. */
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, Text, Vibration, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, Text, View } from 'react-native';
 
 import { C, FONT, T } from './design';
-import { Icon } from './components/Icon';
+import { Icon, type IconName } from './components/Icon';
 import { useReduceMotion } from './components/motion';
+import { haptic } from './lib/haptics';
 
-export type CelebrationOpts = {
-  done: number;
-  total: number;
-  focus: string;
-  caption?: string;
-  onDone?: () => void;
-};
+export type CelebrationOpts =
+  | {
+      variant?: 'workout';
+      done: number;
+      total: number;
+      focus: string;
+      caption?: string;
+      onDone?: () => void;
+    }
+  | {
+      variant: 'milestone';
+      /** The milestone's title ("Streak of 7"). */
+      title: string;
+      /** One line under it. */
+      detail: string;
+      /** The badge's own icon; the medal when not given. */
+      icon?: IconName;
+      caption?: string;
+      onDone?: () => void;
+    };
 
 const Ctx = createContext<{ show: (o: CelebrationOpts) => void } | null>(null);
 
@@ -38,12 +54,16 @@ function Overlay({ opts, onPress }: { opts: CelebrationOpts; onPress: () => void
   }, [reduce, t]);
 
   const scale = t.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
+  const milestone = opts.variant === 'milestone';
+  const heading = milestone ? opts.title : 'Workout complete';
+  const line = milestone ? 'New milestone' : `${opts.done}/${opts.total} sets · ${opts.focus}`;
+  const spoken = milestone ? `New milestone: ${opts.title}. ${opts.detail}` : `Workout complete. ${opts.done} of ${opts.total} sets. ${opts.focus}.`;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Workout complete. ${opts.done} of ${opts.total} sets. ${opts.focus}. Tap to continue.`}
+      accessibilityLabel={`${spoken} Tap to continue.`}
       style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
     >
       <Animated.View
@@ -69,12 +89,11 @@ function Overlay({ opts, onPress }: { opts: CelebrationOpts; onPress: () => void
               marginBottom: 8,
             }}
           >
-            <Icon name="check" size={52} color={C.onGreen} strokeWidth={2.6} />
+            <Icon name={milestone ? (opts.icon ?? 'medal') : 'check'} size={52} color={C.onGreen} strokeWidth={milestone ? 2.2 : 2.6} />
           </View>
-          <Text style={[T.hero, { textAlign: 'center' }]}>Workout complete</Text>
-          <Text style={{ fontFamily: FONT.displayMedium, fontSize: 16, color: C.green, textAlign: 'center' }}>
-            {opts.done}/{opts.total} sets · {opts.focus}
-          </Text>
+          <Text style={[T.hero, { textAlign: 'center' }]}>{heading}</Text>
+          <Text style={{ fontFamily: FONT.displayMedium, fontSize: 16, color: C.green, textAlign: 'center' }}>{line}</Text>
+          {milestone ? <Text style={[T.body, { color: C.stone, textAlign: 'center', maxWidth: 320 }]}>{opts.detail}</Text> : null}
           <Text style={[T.meta, { textAlign: 'center' }]}>{opts.caption ?? 'Tap to continue'}</Text>
         </Animated.View>
       </Animated.View>
@@ -101,7 +120,7 @@ export function CelebrationProvider({ children }: { children: React.ReactNode })
   const show = useCallback(
     (o: CelebrationOpts) => {
       if (timer.current) clearTimeout(timer.current);
-      if (Platform.OS !== 'web') Vibration.vibrate([0, 120, 80, 120]);
+      haptic.success();
       optsRef.current = o;
       setOpts(o);
       timer.current = setTimeout(dismiss, 2200);

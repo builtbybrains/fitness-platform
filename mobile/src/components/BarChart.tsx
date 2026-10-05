@@ -1,5 +1,7 @@
 /* Bar chart on react-native-svg. Past weeks in grey, the current week in
-   Built Green; labels below in Inter. Bars grow once on first view. */
+   Built Green; labels below in Inter. Bars grow once on first view.
+   `tone="sample"` draws every bar in one faint grey, for an illustrative
+   empty state. */
 
 import React, { useState } from 'react';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
@@ -14,11 +16,12 @@ type Props = {
   height?: number;
   maxValue?: number;
   accessibilityLabel?: string;
+  tone?: 'live' | 'sample';
 };
 
-export function BarChart({ values, labels, height = 140, maxValue, accessibilityLabel }: Props) {
+export function BarChart({ values, labels, height = 140, maxValue, accessibilityLabel, tone = 'live' }: Props) {
   const [width, setWidth] = useState(300);
-  const grow = useTween(1, 700);
+  const grow = useTween(1, 400);
   if (values.length === 0) return <View style={{ height }} />;
 
   const max = Math.max(maxValue ?? 0, ...values, 1);
@@ -42,7 +45,7 @@ export function BarChart({ values, labels, height = 140, maxValue, accessibility
           const y = 6 + innerH - h;
           const isLast = i === values.length - 1;
           return (
-            <Rect key={i} x={x} y={Math.min(y, 6 + innerH - 3)} width={barW} height={Math.max(h, 3)} rx={4} fill={isLast ? C.green : '#3A3A3A'} />
+            <Rect key={i} x={x} y={Math.min(y, 6 + innerH - 3)} width={barW} height={Math.max(h, 3)} rx={4} fill={tone === 'sample' ? C.pressed : isLast ? C.green : '#3A3A3A'} />
           );
         })}
         {labels.map((l, i) => (

@@ -1,11 +1,12 @@
-/* Small controls shared by the Plan, Food and Activity screens: a
-   segmented control, answer chips, a selectable row, a state block for
-   loading, empty and error, and a macro line. */
+/* Small controls shared by the Plan, Food, Activity and Workout screens: a
+   segmented control, answer chips, a selectable row, a set tile, a state
+   block for loading, empty and error, and a macro line. */
 
-import React from 'react';
-import { ActivityIndicator, Pressable, Text, View, ViewStyle } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, Easing, Platform, Pressable, Text, View, ViewStyle } from 'react-native';
 
 import { C, FONT, R, T } from '../../design';
+import { haptic } from '../../lib/haptics';
 import { Icon, IconName } from '../Icon';
 import { Button } from '../Button';
 import { useReduceMotion } from '../motion';
@@ -149,6 +150,61 @@ export function ChoiceRow({
         {detail ? <Text style={T.meta}>{detail}</Text> : null}
       </View>
       {right ?? (selected ? <Icon name="check" size={20} color={C.green} strokeWidth={2.6} /> : null)}
+    </Pressable>
+  );
+}
+
+/** One set in the workout: tap to tick it done (or untick it). Ticking
+    gives a light tap on native and the check pops in (0.8 to 1, 180ms,
+    ease-out quart); unticking and Reduce Motion stay still. */
+export function SetTile({ index, load, on, onToggle }: { index: number; load: string; on: boolean; onToggle: () => void }) {
+  const reduce = useReduceMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const was = useRef(on);
+
+  useEffect(() => {
+    const ticked = on && !was.current;
+    was.current = on;
+    if (!ticked || reduce) return;
+    scale.setValue(0.8);
+    const a = Animated.timing(scale, { toValue: 1, duration: 180, easing: Easing.out(Easing.poly(4)), useNativeDriver: Platform.OS !== 'web' });
+    a.start();
+    return () => a.stop();
+  }, [on, reduce, scale]);
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (!on) haptic.tap();
+        onToggle();
+      }}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={`Set ${index + 1}, ${load}`}
+      style={({ pressed }) => ({
+        minWidth: 72,
+        minHeight: 56,
+        flexGrow: 1,
+        flexBasis: 72,
+        maxWidth: 110,
+        paddingVertical: 8,
+        borderRadius: R.tile,
+        backgroundColor: pressed ? C.raised : on ? C.greenTint : C.surface,
+        borderWidth: 1,
+        borderColor: on ? C.greenBorder : C.lineStrong,
+        alignItems: 'center',
+        justifyContent: 'center',
+      })}
+    >
+      {on ? (
+        <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, transform: [{ scale }] }}>
+          <Icon name="check" size={16} color={C.green} strokeWidth={2.6} />
+          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.green }}>Done</Text>
+        </Animated.View>
+      ) : (
+        <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>Set {index + 1}</Text>
+      )}
+      <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.stone : C.muted, marginTop: 2 }}>{load}</Text>
     </Pressable>
   );
 }

@@ -81,6 +81,24 @@ export function streakHistory(
   return out;
 }
 
+/** The longest running streak reached on any day of the last N weeks
+    (from the Monday that opens the window up to today). Unlike
+    streakHistory, which only samples each week's Sunday, this sees a
+    streak that peaked midweek and was broken before the weekend. */
+export function bestStreak(
+  done: DoneMap,
+  weeks = 8,
+  today = new Date(),
+  schedule: WeekSchedule = RULES_SCHEDULE,
+): number {
+  const todayId = isoDay(today);
+  const series = streakSeries(done, schedule, todayId);
+  const from = addDays(isoDay(weekStartDate(today)), -7 * (weeks - 1));
+  let best = 0;
+  for (const [id, v] of series) if (id >= from && v > best) best = v;
+  return best;
+}
+
 export function tdeeSuggestion(p: {
   gender: string;
   age: number | null;

@@ -18,10 +18,23 @@
 // are de-duplicated before saving.
 //
 // Limit: 60 messages per person per UTC day, counted from coach_messages.
+//
+// Daily note (the card on Today, asked for at most once a day per device):
+// POST { mode: "daily_note", localDay?: "yyyy-mm-dd", summary: {
+//   day: "workout" | "rest", focus?: string, minutes?: number,
+//   workoutDone?: boolean, done7?: number, planned7?: number, streak?: number,
+//   mealsYesterday?: { eaten: number, planned: number } | null } }
+// → 200 { note }   one or two sentences, at most 200 characters. An empty
+//                  note means "no AI right now": the app shows its own tip.
+// Reads the profile and coach memory; never writes chat history or memory.
+// Limit: NOTE_LIMIT per person per UTC day, counted in ai_usage (kind
+// 'coach', which chat messages don't use: they count coach_messages).
+
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { body, fail, json, localDay, preflight, serverError } from '../_shared/http.ts';
 import { requireUser } from '../_shared/env.ts';
-import { aiProvider, chat, extractJson, str } from '../_shared/ai.ts';
+import { aiProvider, chat, clampInt, extractJson, str } from '../_shared/ai.ts';
 import { MINOR_RULES, SAFETY_RULES } from '../_shared/safety.ts';
 import { describePerson, loadPerson } from '../_shared/profile.ts';
 import { cleanFacts, loadMemory, memoryForPrompt, type MemoryCategory, saveFacts } from '../_shared/memory.ts';
@@ -39,6 +52,7 @@ Deno.serve(async (req) => {
     const { supabase, user } = auth;
 
     const b = await body(req);
+    if (b.mode === 'daily_note') return await dailyNote(supabase, user.id, b);
     const userMessage = str(b.message, 800);
     if (!userMessage) return fail('bad_request', 'Type a message first.', 400);
     const conversationId = str(b.conversationId, 60, 'default');
@@ -191,6 +205,81 @@ Deno.serve(async (req) => {
     return serverError('coach', e);
   }
 });
+
+const NOTE_LIMIT = 6;
+const NOTE_MAX = 200;
+
+/** The client's summary of the week, validated and clamped. */
+function noteFacts(raw: unknown, today: string): string {
+  const s = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const rest = s.day === 'rest';
+  const focus = str(s.focus, 60);
+  const minutes = clampInt(s.minutes, 0, 240, 0);
+  const done7 = clampInt(s.done7, 0, 7, 0);
+  const planned7 = Math.max(done7, clampInt(s.planned7, 0, 7, 0));
+  const streak = clampInt(s.streak, 0, 366, 0);
+  const y = s.mealsYesterday && typeof s.mealsYesterday === 'object' ? (s.mealsYesterday as Record<string, unknown>) : null;
+  const yPlanned = y ? clampInt(y.planned, 0, 8, 0) : 0;
+  const yEaten = y ? Math.min(yPlanned, clampInt(y.eaten, 0, 8, 0)) : 0;
+  return [
+    `Today is ${today} (the user's local date).`,
+    rest ? 'Plan today: rest day.' : `Plan today: ${focus || 'workout'}${minutes ? `, about ${minutes} min` : ''}, ${s.workoutDone === true ? 'already done' : 'not done yet'}.`,
+    `Last 7 days: ${done7} of ${planned7} planned workouts done.`,
+    `Workout streak: ${streak}.`,
+    yPlanned ? `Yesterday: ${yEaten} of ${yPlanned} planned meals ticked off.` : '',
+  ].filter(Boolean).join(' ');
+}
+
+/** A model reply made safe for the Today card, or null when unusable. */
+function cleanNote(text: string): string | null {
+  let t = text
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/[*_#`>]/g, '')
+    .replace(/\s*[\u2014\u2013]\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([.,!?])/g, '$1')
+    .trim()
+    .replace(/^["'\u201C\u2018]+|["'\u201D\u2019]+$/g, '')
+    .trim();
+  if (t.length > NOTE_MAX) {
+    const cut = t.slice(0, NOTE_MAX);
+    const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    t = end >= 40 ? cut.slice(0, end + 1) : '';
+  }
+  return t.length >= 12 ? t : null;
+}
+
+async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<string, unknown>): Promise<Response> {
+  const today = localDay(b.localDay);
+  const ai = await aiProvider('text');
+  if (!ai) return json({ note: '' });
+
+  const { data: count, error: quotaErr } = await supabase.rpc('bump_ai_usage', { p_kind: 'coach', p_limit: NOTE_LIMIT });
+  if (quotaErr) throw new Error(`bump_ai_usage failed: ${quotaErr.message}`);
+  if (count === null || count === undefined) return limitReached('Your coach already wrote today\'s notes. A new one comes tomorrow.');
+
+  const [person, memory] = await Promise.all([loadPerson(supabase, userId, today), loadMemory(supabase, userId)]);
+  const system = [
+    'You are the BUILT coach writing the one short note a person sees at the top of their Today screen.',
+    `Write ONE or TWO sentences, at most ${NOTE_MAX} characters in total, in the second person ("you").`,
+    'Be warm, direct and practical: one concrete thing to do today, based on their plan and week. Never guilt-trip; if they missed workouts, point to the next step.',
+    'Plain text only: no greeting, no sign-off, no quotes, no markdown, no emoji, no hashtags, no em dashes or en dashes.',
+    'No medical claims and no supplement advice. Never invent numbers that are not in the FACTS.',
+    SAFETY_RULES,
+    person.minor ? MINOR_RULES : '',
+    `PROFILE: ${describePerson(person)}`,
+    memoryForPrompt(memory),
+    `FACTS: ${noteFacts(b.summary, today)}`,
+  ].filter(Boolean).join(' ');
+
+  const answer = await chat(
+    ai,
+    { messages: [{ role: 'system', content: system }, { role: 'user', content: 'Write my note for today.' }], max_tokens: 120, temperature: 0.7, timeoutMs: 20_000 },
+    cleanNote,
+    'coach:note',
+  );
+  return json({ note: answer?.value ?? '' });
+}
 
 function shift(day: string, n: number): string {
   const d = new Date(`${day}T12:00:00Z`);
