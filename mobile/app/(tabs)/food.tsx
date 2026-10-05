@@ -19,6 +19,7 @@ import { Icon } from '../../src/components/Icon';
 import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
+import { MealImage } from '../../src/components/food/MealImage';
 import { dayTitle } from '../../src/components/training/labels';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
@@ -72,6 +73,9 @@ export default function FoodTab() {
   const swapping = day.meals.find((m) => m.slot === swapSlot) ?? null;
   const original = swapping ? plan.days[day.planIndex]?.meals.find((m) => m.slot === swapping.slot) ?? null : null;
   const mealsDone = day.meals.filter((m) => day.done.meals.includes(m.slot)).length;
+  // The next meal to eat leads with a big photo; the rest are rows.
+  const next = day.meals.find((m) => !day.done.meals.includes(m.slot)) ?? null;
+  const rest = day.meals.filter((m) => m !== next);
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
@@ -83,7 +87,7 @@ export default function FoodTab() {
         <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} />
 
         <View style={[cardStyle, { gap: 4 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 8 }}>
             <Text style={T.h3} accessibilityRole="header">
               Today&apos;s meals
             </Text>
@@ -94,9 +98,19 @@ export default function FoodTab() {
           {day.meals.length === 0 ? (
             <StateBlock kind="empty" icon="burger" title="No meals planned today" body="Log what you eat below and it counts toward your day." />
           ) : (
-            day.meals.map((m, i) => (
-              <MealRow key={m.slot} meal={m} first={i === 0} done={day.done.meals.includes(m.slot)} onToggle={() => void toggleMeal(day.id, m.slot)} onSwap={() => setSwapSlot(m.slot)} />
-            ))
+            <>
+              {next ? <NextMeal meal={next} onToggle={() => void toggleMeal(day.id, next.slot)} onSwap={() => setSwapSlot(next.slot)} /> : null}
+              {rest.map((m, i) => (
+                <MealRow
+                  key={m.slot}
+                  meal={m}
+                  first={i === 0 && !next}
+                  done={day.done.meals.includes(m.slot)}
+                  onToggle={() => void toggleMeal(day.id, m.slot)}
+                  onSwap={() => setSwapSlot(m.slot)}
+                />
+              ))}
+            </>
           )}
         </View>
 
@@ -140,6 +154,8 @@ export default function FoodTab() {
           ) : (
             food.logs.map((log, i) => (
               <View key={log.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 64, paddingVertical: 8, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line }}>
+                {/* Only meals the coach made get a picture; food the person typed or snapped never gets an invented one. */}
+                {log.source === 'generated' ? <MealImage label={log.label} items={(log.items ?? []).map((it) => it.name)} size="thumb" style={{ marginRight: 6 }} /> : null}
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={T.bodyStrong}>{log.label}</Text>
                   <MacroLine m={log} />
@@ -172,17 +188,44 @@ export default function FoodTab() {
   );
 }
 
+/** The next meal to eat: a full-width photo, then the tick row and Swap. */
+function NextMeal({ meal, onToggle, onSwap }: { meal: DayMeal; onToggle: () => void; onSwap: () => void }) {
+  return (
+    <View style={{ gap: 8, paddingBottom: 8 }}>
+      <MealImage label={meal.label} items={meal.items} size="card" />
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: false }}
+        accessibilityLabel={`Next, ${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, paddingTop: 8, opacity: pressed ? 0.75 : 1 })}
+      >
+        <CheckBox checked={false} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={T.small}>
+            Next · {meal.slot}
+            {meal.swapped ? ' · swapped' : ''}
+          </Text>
+          <Text style={T.h3}>{meal.label}</Text>
+          <MacroLine m={meal} />
+        </View>
+      </Pressable>
+      <SwapButton slot={meal.slot} onPress={onSwap} indent={34} />
+    </View>
+  );
+}
+
 function MealRow({ meal, first, done, onToggle, onSwap }: { meal: DayMeal; first: boolean; done: boolean; onToggle: () => void; onSwap: () => void }) {
   return (
-    <View style={{ paddingVertical: 8, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
+    <View style={{ paddingTop: 12, paddingBottom: 4, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
       <Pressable
         onPress={onToggle}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done }}
         accessibilityLabel={`${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
-        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, paddingVertical: 4, opacity: pressed ? 0.75 : 1 })}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, opacity: pressed ? 0.75 : 1 })}
       >
-        <CheckBox checked={done} />
+        <MealImage label={meal.label} items={meal.items} size="thumb" checked={done} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={T.small}>
             {meal.slot}
@@ -192,15 +235,22 @@ function MealRow({ meal, first, done, onToggle, onSwap }: { meal: DayMeal; first
           <MacroLine m={meal} />
         </View>
       </Pressable>
-      <Pressable
-        onPress={onSwap}
-        accessibilityRole="button"
-        accessibilityLabel={`Swap ${meal.slot.toLowerCase()}`}
-        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44, marginLeft: 34, paddingHorizontal: 6, borderRadius: 22, backgroundColor: pressed ? C.raised : 'transparent' })}
-      >
-        <Icon name="swap" size={18} color={C.stone} />
-        <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.stone }}>Swap</Text>
-      </Pressable>
+      <SwapButton slot={meal.slot} onPress={onSwap} indent={60} />
     </View>
+  );
+}
+
+/** "Swap", lined up under the meal's name. */
+function SwapButton({ slot, onPress, indent }: { slot: string; onPress: () => void; indent: number }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Swap ${slot.toLowerCase()}`}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44, marginLeft: indent, paddingHorizontal: 6, borderRadius: 22, backgroundColor: pressed ? C.raised : 'transparent' })}
+    >
+      <Icon name="swap" size={18} color={C.stone} />
+      <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.stone }}>Swap</Text>
+    </Pressable>
   );
 }

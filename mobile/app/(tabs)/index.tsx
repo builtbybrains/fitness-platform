@@ -14,7 +14,8 @@ import { Ring } from '../../src/components/Ring';
 import { BuiltMark } from '../../src/components/BuiltLogo';
 import { Icon, IconName } from '../../src/components/Icon';
 import { Button, IconButton, LinkButton } from '../../src/components/Button';
-import { CheckBox, ProgressBar } from '../../src/components/Bits';
+import { ProgressBar } from '../../src/components/Bits';
+import { MealImage } from '../../src/components/food/MealImage';
 import { greetingWord } from '../../src/components/copy';
 import { Meter } from '../../src/components/training/Controls';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
@@ -213,7 +214,7 @@ function FoodCard({ day, offPlanKcal, offPlanCount }: { day: WeekDay; offPlanKca
           accessibilityLabel={`Next: ${next.slot}, ${next.label}, ${next.kcal} kcal. Tick it when eaten.`}
           style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingVertical: 8, opacity: pressed ? 0.75 : 1 })}
         >
-          <CheckBox checked={false} />
+          <MealImage label={next.label} items={next.items} size="thumb" checked={false} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={T.small}>Next: {next.slot}</Text>
             <Text style={T.bodyStrong}>{next.label}</Text>

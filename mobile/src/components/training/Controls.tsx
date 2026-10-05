@@ -101,13 +101,15 @@ export function Chip({
   );
 }
 
-/** A full-width choice row (radio) with a title, detail and a check. */
+/** A full-width choice row (radio) with a title, detail and a check, and
+    an optional picture on the left (a meal photo in the swap sheet). */
 export function ChoiceRow({
   title,
   detail,
   selected,
   disabled,
   onPress,
+  left,
   right,
   accessibilityLabel,
 }: {
@@ -116,6 +118,7 @@ export function ChoiceRow({
   selected?: boolean;
   disabled?: boolean;
   onPress: () => void;
+  left?: React.ReactNode;
   right?: React.ReactNode;
   accessibilityLabel?: string;
 }) {
@@ -140,6 +143,7 @@ export function ChoiceRow({
         opacity: disabled ? 0.45 : 1,
       })}
     >
+      {left}
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={T.bodyStrong}>{title}</Text>
         {detail ? <Text style={T.meta}>{detail}</Text> : null}

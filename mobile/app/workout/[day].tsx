@@ -20,6 +20,7 @@ import { ProgressBar } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
 import { BackHeader } from '../../src/components/training/BackHeader';
+import { useExerciseVideo, WatchHowButton } from '../../src/components/training/ExerciseVideo';
 import type { PlanWorkoutV2 } from '../../src/types';
 
 function mmss(sec: number): string {
@@ -48,6 +49,7 @@ export default function WorkoutScreen() {
   const day = days.find((d) => d.id === dayId);
   const inset = useSafeAreaInsets();
   const celebration = useCelebration();
+  const video = useExerciseVideo();
 
   const timer = useRestTimer();
   const [expanded, setExpanded] = useState<number | null>(0);
@@ -188,6 +190,7 @@ export default function WorkoutScreen() {
 
               {ex.replaced_from ? <Text style={[T.small, { color: C.stone }]}>Replaces {ex.replaced_from}</Text> : null}
               {ex.note ? <Text style={T.small}>{ex.note}</Text> : null}
+              <WatchHowButton exercise={ex} onWatch={video.watch} />
 
               {open ? (
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
@@ -278,6 +281,7 @@ export default function WorkoutScreen() {
           return r;
         }}
       />
+      {video.sheet}
     </View>
   );
 }

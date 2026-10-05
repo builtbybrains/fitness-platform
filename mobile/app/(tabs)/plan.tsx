@@ -16,11 +16,11 @@ import { usePlan } from '../../src/planStore';
 import { useCelebration } from '../../src/celebration';
 import { Button, IconButton, LinkButton } from '../../src/components/Button';
 import { CheckBox, Notice, ProgressBar, ScreenHeader } from '../../src/components/Bits';
-import { Icon } from '../../src/components/Icon';
 import { MacroLine, Segmented, StateBlock } from '../../src/components/training/Controls';
 import { MoveDaySheet } from '../../src/components/training/MoveDaySheet';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
 import { ChangePlanCard } from '../../src/components/training/PlanChange';
+import { MealImage } from '../../src/components/food/MealImage';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
 import { DAY_FULL, DAY_SHORT, dayTitle, plural, timeLabel } from '../../src/components/training/labels';
@@ -330,16 +330,18 @@ function MealsCard({ day, isToday }: { day: WeekDay; isToday: boolean }) {
           </Text>
           <MacroLine m={total} />
         </View>
-        <Icon name="burger" size={24} />
       </View>
       <View>
         {day.meals.map((m, i) => (
-          <View key={m.slot} style={{ minHeight: 52, paddingVertical: 8, gap: 2, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line, justifyContent: 'center' }}>
-            <Text style={T.body}>{m.label}</Text>
-            <Text style={T.small}>
-              {m.slot}
-              {m.swapped ? ' · swapped' : ''} · {m.kcal} kcal · {m.protein}g protein
-            </Text>
+          <View key={m.slot} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 68, paddingVertical: 8, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line }}>
+            <MealImage label={m.label} items={m.items} size="thumb" />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={T.body}>{m.label}</Text>
+              <Text style={T.small}>
+                {m.slot}
+                {m.swapped ? ' · swapped' : ''} · {m.kcal} kcal · {m.protein}g protein
+              </Text>
+            </View>
           </View>
         ))}
       </View>
