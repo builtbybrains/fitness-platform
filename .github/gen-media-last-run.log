@@ -1,0 +1,196 @@
+[0s] meals: 75 labels
+[1s]   ok   labneh-two-eggs-cucumber-tomato-and-pita (1s, 48017 bytes)
+[19s]   FAIL foul-with-olive-oil-lemon-and-vegetables: HTTP 402 {}
+[22s]   ok   oats-with-greek-yogurt-banana-and-walnuts (0s, 36832 bytes)
+[26s]   ok   half-a-zaatar-manousheh-with-eggs-and-vegetables (0s, 66396 bytes)
+[41s]   FAIL tofu-scramble-with-tomato-pepper-and-pita: HTTP 402 {}
+[50s]   ok   eggs-with-sauteed-vegetables-and-potatoes (6s, 53961 bytes)
+[58s]   ok   chicken-shawarma-plate-with-rice-and-fattoush (5s, 66647 bytes)
+[73s]   FAIL mujaddara-with-yogurt-and-salad: HTTP 402 {}
+[77s]   ok   chicken-taouk-with-batata-harra-and-salad (0s, 53326 bytes)
+[92s]   FAIL lentil-soup-and-a-chicken-taouk-wrap: HTTP 402 {}
+[96s]   ok   grilled-halloumi-chickpea-and-quinoa-salad (1s, 53542 bytes)
+[114s]   FAIL green-bean-stew-with-rice: HTTP 402 {}
+[117s]   ok   grilled-fish-freekeh-and-tabbouleh (0s, 66678 bytes)
+[133s]   FAIL kafta-with-grilled-vegetables-and-hummus: HTTP 402 {}
+[137s]   ok   chicken-and-vegetable-stew-with-rice (1s, 59539 bytes)
+[147s]   ok   stuffed-zucchini-with-rice-and-lentils (8s, 42268 bytes)
+[151s]   ok   salmon-with-roasted-potatoes-and-salad (1s, 53924 bytes)
+[167s]   FAIL beef-and-green-bean-stew-with-rice: HTTP 402 {}
+[182s]   FAIL greek-yogurt-with-honey-and-almonds: HTTP 402 {}
+[192s]   ok   cottage-cheese-with-an-apple (7s, 43624 bytes)
+[195s]   ok   hummus-with-carrots-and-cucumber (0s, 39531 bytes)
+[210s]   FAIL two-boiled-eggs-and-a-piece-of-fruit: HTTP 402 {}
+[226s]   FAIL dates-and-a-handful-of-mixed-nuts: HTTP 402 {}
+[241s]   FAIL roasted-chickpeas-and-an-orange: HTTP 402 {}
+[245s]   ok   greek-yogurt-bowl-berries-oats (0s, 39345 bytes)
+[253s]   ok   grilled-chicken-bowl (5s, 61608 bytes)
+[268s]   FAIL salmon-sweet-potato-salad: HTTP 402 {}
+[284s]   FAIL whey-shake-banana: HTTP 402 {}
+[299s]   FAIL eggs-on-rye-avocado: HTTP 402 {}
+[302s]   ok   tuna-wrap-mixed-greens (0s, 51815 bytes)
+[309s]   ok   turkey-chili-rice (3s, 60232 bytes)
+[312s]   ok   cottage-cheese-apple (0s, 47336 bytes)
+[315s]   ok   labneh-with-olive-oil-cucumber-tomato-and-pita (0s, 44113 bytes)
+[331s]   FAIL za-atar-manoushe-with-tomato-and-mint: HTTP 402 {}
+[334s]   ok   foul-medammas-with-lemon-olive-oil-and-pita (0s, 52121 bytes)
+[338s]   ok   three-egg-omelette-with-tomato-parsley-and-toast (0s, 56674 bytes)
+[353s]   FAIL greek-yogurt-with-oats-banana-and-a-drizzle-of-date-syrup: HTTP 402 {}
+[357s]   ok   grilled-halloumi-with-eggs-and-vegetables (0s, 49619 bytes)
+[362s]   ok   balila-warm-chickpeas-with-cumin-lemon-and-olive-oil (2s, 48139 bytes)
+[365s]   ok   eggs-with-tomatoes-and-potatoes (0s, 50271 bytes)
+[381s]   FAIL tofu-scramble-with-peppers-and-pita: HTTP 402 {}
+[384s]   ok   oats-with-soy-milk-dates-and-walnuts (0s, 40508 bytes)
+[400s]   FAIL shish-taouk-with-rice-and-salad: HTTP 402 {}
+[410s]   ok   mujadara-lentils-and-rice-with-salad (7s, 53237 bytes)
+[425s]   FAIL grilled-kafta-with-bulgur-and-fattoush: HTTP 402 {}
+[441s]   FAIL chicken-shawarma-wrap-with-garlic-and-pickles: HTTP 402 {}
+[456s]   FAIL tuna-salad-with-chickpeas-and-greens: HTTP 402 {}
+[474s]   FAIL loubieh-bi-zeit-green-beans-in-olive-oil-with-rice: HTTP 402 {}
+[489s]   FAIL mloukhieh-with-chicken-and-rice: HTTP 402 {}
+[505s]   FAIL grilled-fish-with-potatoes-and-green-salad: HTTP 402 {}
+[511s]   ok   falafel-bowl-with-hummus-and-salad (3s, 60364 bytes)
+[526s]   FAIL beef-and-vegetable-yakhneh-with-rice: HTTP 402 {}
+[541s]   FAIL grilled-halloumi-and-quinoa-salad: HTTP 402 {}
+[557s]   FAIL garlic-shrimp-with-rice-and-salad: HTTP 402 {}
+[562s]   ok   red-lentil-soup-with-a-chickpea-salad (2s, 45931 bytes)
+[578s]   FAIL grilled-chicken-breast-sweet-potato-and-salad: HTTP 402 {}
+[593s]   FAIL baked-kibbeh-with-yogurt-and-salad: HTTP 402 {}
+[609s]   FAIL salmon-rice-and-grilled-vegetables: HTTP 402 {}
+[618s]   ok   chicken-and-vegetable-freekeh (6s, 49185 bytes)
+[634s]   FAIL stuffed-zucchini-koussa-with-rice-and-yogurt: HTTP 402 {}
+[650s]   FAIL chickpea-and-spinach-stew-with-rice: HTTP 402 {}
+[665s]   FAIL eggs-hummus-and-vegetables-plate: HTTP 402 {}
+[675s]   ok   lean-beef-kafta-with-roasted-potatoes (7s, 49869 bytes)
+[690s]   FAIL tofu-and-vegetable-stir-fry-with-rice: HTTP 402 {}
+[706s]   FAIL sea-bass-with-roasted-vegetables-and-rice: HTTP 402 {}
+[721s]   FAIL lentil-and-vegetable-stew-with-potatoes: HTTP 402 {}
+[728s]   ok   greek-yogurt-with-berries (4s, 37909 bytes)
+[744s]   FAIL apple-and-a-handful-of-almonds: HTTP 402 {}
+[759s]   FAIL two-boiled-eggs-and-a-tomato: HTTP 402 {}
+[775s]   FAIL laban-yogurt-drink-and-two-dates: HTTP 402 {}
+[780s]   ok   banana-and-peanut-butter (3s, 41157 bytes)
+[796s]   FAIL cottage-cheese-with-cucumber: HTTP 402 {}
+[811s]   FAIL edamame-with-sea-salt: HTTP 402 {}
+[827s]   FAIL roasted-chickpeas: HTTP 402 {}
+[832s]   ok   fruit-salad-with-pumpkin-seeds (2s, 45912 bytes)
+[835s] meals: 33/75 images
+[835s] videos: 135 exercises
+[861s]   FAIL push_up: fetch failed
+[888s]   FAIL incline_push_up: fetch failed
+[915s]   FAIL knee_push_up: fetch failed
+[942s]   FAIL decline_push_up: fetch failed
+[969s]   FAIL wall_push_up: fetch failed
+[995s]   FAIL chest_squeeze: fetch failed
+[1021s]   FAIL db_bench_press: fetch failed
+[1049s]   FAIL db_floor_press: fetch failed
+[1076s]   FAIL incline_db_press: fetch failed
+[1103s]   FAIL db_fly: fetch failed
+[1130s]   FAIL band_chest_press: fetch failed
+[1156s]   FAIL band_fly: fetch failed
+[1183s]   FAIL barbell_bench: fetch failed
+[1210s]   FAIL machine_chest_press: fetch failed
+[1237s]   FAIL cable_fly: fetch failed
+[1264s]   FAIL chest_dip: fetch failed
+[1290s]   FAIL pull_up: fetch failed
+[1317s]   FAIL chin_up: fetch failed
+[1343s]   FAIL negative_pull_up: fetch failed
+[1370s]   FAIL band_assisted_pull_up: fetch failed
+[1396s]   FAIL lat_pulldown: fetch failed
+[1422s]   FAIL band_lat_pulldown: fetch failed
+[1448s]   FAIL db_row: fetch failed
+[1475s]   FAIL chest_supported_db_row: fetch failed
+[1502s]   FAIL band_row: fetch failed
+[1528s]   FAIL seated_cable_row: fetch failed
+[1555s]   FAIL barbell_row: fetch failed
+[1581s]   FAIL inverted_row: fetch failed
+[1606s]   FAIL superman: fetch failed
+[1633s]   FAIL kb_row: fetch failed
+[1659s]   FAIL towel_row: fetch failed
+[1685s]   FAIL renegade_row: fetch failed
+[1712s]   FAIL pike_push_up: fetch failed
+[1738s]   FAIL db_shoulder_press: fetch failed
+[1765s]   FAIL arnold_press: fetch failed
+[1792s]   FAIL lateral_raise: fetch failed
+[1817s]   FAIL band_lateral_raise: fetch failed
+[1844s]   FAIL band_overhead_press: fetch failed
+[1871s]   FAIL kb_press: fetch failed
+[1897s]   FAIL machine_shoulder_press: fetch failed
+[1924s]   FAIL barbell_ohp: fetch failed
+[1950s]   FAIL band_face_pull: fetch failed
+[1977s]   FAIL cable_face_pull: fetch failed
+[2003s]   FAIL rear_delt_fly: fetch failed
+[2029s]   FAIL plank_shoulder_tap: fetch failed
+[2056s]   FAIL wall_slide: fetch failed
+[2082s]   FAIL prone_ytw: fetch failed
+[2108s]   FAIL db_curl: fetch failed
+[2134s]   FAIL hammer_curl: fetch failed
+[2161s]   FAIL band_curl: fetch failed
+[2189s]   FAIL barbell_curl: fetch failed
+[2215s]   FAIL cable_curl: fetch failed
+[2241s]   FAIL kb_curl: fetch failed
+[2268s]   FAIL towel_curl: fetch failed
+[2295s]   FAIL diamond_push_up: fetch failed
+[2321s]   FAIL bench_dip: fetch failed
+[2348s]   FAIL isometric_triceps_press: fetch failed
+[2375s]   FAIL db_overhead_extension: fetch failed
+[2401s]   FAIL band_pushdown: fetch failed
+[2428s]   FAIL cable_pushdown: fetch failed
+[2455s]   FAIL db_skull_crusher: fetch failed
+[2481s]   FAIL close_grip_bench: fetch failed
+[2508s]   FAIL db_kickback: fetch failed
+[2535s]   FAIL kb_overhead_extension: fetch failed
+[2561s]   FAIL bodyweight_squat: fetch failed
+[2588s]   FAIL box_squat: fetch failed
+[2615s]   FAIL db_box_squat: fetch failed
+[2641s]   FAIL straight_leg_raise: fetch failed
+[2667s]   FAIL band_tke: fetch failed
+[2694s]   FAIL goblet_squat: fetch failed
+[2720s]   FAIL kb_goblet_squat: fetch failed
+[2746s]   FAIL back_squat: fetch failed
+[2772s]   FAIL front_squat: fetch failed
+[2798s]   FAIL leg_press: fetch failed
+[2824s]   FAIL leg_extension: fetch failed
+[2851s]   FAIL hack_squat: fetch failed
+[2877s]   FAIL split_squat: fetch failed
+[2904s]   FAIL bulgarian_split_squat: fetch failed
+[2930s]   FAIL walking_lunge: fetch failed
+[2957s]   FAIL reverse_lunge: fetch failed
+[2983s]   FAIL db_reverse_lunge: fetch failed
+[3010s]   FAIL step_up: fetch failed
+[3036s]   FAIL wall_sit: fetch failed
+[3062s]   FAIL band_squat: fetch failed
+[3089s]   FAIL jump_squat: fetch failed
+[3115s]   FAIL db_rdl: fetch failed
+[3141s]   FAIL barbell_rdl: fetch failed
+[3168s]   FAIL deadlift: fetch failed
+[3195s]   FAIL kb_deadlift: fetch failed
+[3221s]   FAIL kb_swing: fetch failed
+[3248s]   FAIL single_leg_rdl: fetch failed
+[3275s]   FAIL bodyweight_good_morning: fetch failed
+[3302s]   FAIL leg_curl: fetch failed
+[3329s]   FAIL band_leg_curl: fetch failed
+[3355s]   FAIL slider_leg_curl: fetch failed
+[3382s]   FAIL band_good_morning: fetch failed
+[3409s]   FAIL glute_bridge: fetch failed
+[3435s]   FAIL single_leg_glute_bridge: fetch failed
+[3462s]   FAIL hip_thrust: fetch failed
+[3489s]   FAIL db_hip_thrust: fetch failed
+[3516s]   FAIL band_lateral_walk: fetch failed
+[3542s]   FAIL cable_kickback: fetch failed
+[3570s]   FAIL glute_kickback: fetch failed
+[3596s]   FAIL kb_sumo_deadlift: fetch failed
+[3622s]   FAIL calf_raise: fetch failed
+[3649s]   FAIL db_calf_raise: fetch failed
+[3675s]   FAIL machine_calf_raise: fetch failed
+[3702s]   FAIL plank: fetch failed
+[3728s]   FAIL side_plank: fetch failed
+[3755s]   FAIL dead_bug: fetch failed
+[3781s]   FAIL bird_dog: fetch failed
+[3807s]   FAIL hollow_hold: fetch failed
+[3833s]   FAIL bicycle_crunch: fetch failed
+[3859s]   FAIL russian_twist: fetch failed
+[3886s]   FAIL hanging_knee_raise: fetch failed
+[3913s]   FAIL band_pallof_press: fetch failed
+[3914s] videos: time budget reached, the rest are left for the next run
+[3914s] videos: 0/135 found
