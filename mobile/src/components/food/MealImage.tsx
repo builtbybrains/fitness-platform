@@ -41,14 +41,14 @@ export function MealImage({ label, items, size = 'thumb', checked, style }: Prop
   const itemsKey = (items ?? []).join('|');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const source = useMemo(() => mealImageSource(label, items), [label, itemsKey]);
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>(source ? 'loading' : 'error');
   const fade = useRef(new Animated.Value(0)).current;
   const sweep = useRef(new Animated.Value(0)).current;
   const [width, setWidth] = useState(0);
 
   // A new meal starts over.
   useEffect(() => {
-    setState('loading');
+    setState(source ? 'loading' : 'error');
     fade.setValue(0);
   }, [source, fade]);
 
@@ -86,7 +86,7 @@ export function MealImage({ label, items, size = 'thumb', checked, style }: Prop
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
         style={[box, { overflow: 'hidden', backgroundColor: C.raised, alignItems: 'center', justifyContent: 'center' }]}
       >
-        {state === 'error' ? (
+        {state === 'error' || !source ? (
           <Icon name="burger" size={ICON[size]} color={C.stone} />
         ) : (
           <>

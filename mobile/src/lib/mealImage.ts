@@ -38,6 +38,12 @@ export function mealSeed(key: string): number {
 }
 
 // ─── On-demand photo provider ───────────────────────────────────────────
+// Off until a provider that meets the bar is approved: the free Pollinations
+// tier stamps a "pollinations.ai" watermark on every image and refuses most
+// requests (HTTP 402), so meals show the icon tile instead. Turn this on
+// once aiMealPhotoUrl() points at a paid, watermark-free source.
+export const ON_DEMAND_MEAL_PHOTOS = false;
+
 // The one place that knows who draws on-demand meal photos. Today it is
 // Pollinations (free Flux, no key, private=true keeps them out of the public
 // feed). To serve them from our own Supabase function later, change only
@@ -55,12 +61,14 @@ export function hasBundledMealImage(label: string): boolean {
 }
 
 /** The photo for a meal: the bundled one for library meals, an on-demand
-    one for anything else. `items` (what goes in it) sharpen the on-demand
+    one for anything else (null when there is none, so the caller shows the
+    icon tile). `items` (what goes in it) sharpen the on-demand
     picture for meals the coach invented. */
-export function mealImageSource(label: string, items?: string[]): ImageSourcePropType {
+export function mealImageSource(label: string, items?: string[]): ImageSourcePropType | null {
   const key = slug(label);
   const bundled = MEAL_IMAGES[key];
   if (bundled != null) return bundled;
+  if (!ON_DEMAND_MEAL_PHOTOS) return null;
   const parts = (items ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
   const subject = parts.length ? `${label.trim()}, made with ${parts.join(', ')}` : label.trim();
   return { uri: aiMealPhotoUrl(mealPrompt(subject), mealSeed(key)) };
