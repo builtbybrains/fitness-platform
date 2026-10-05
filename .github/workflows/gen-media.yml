@@ -1,0 +1,53 @@
+name: Generate app media (meal photos, workout videos)
+
+# Builds mobile/assets/meals/*.webp, mobile/src/data/mealImages.generated.ts
+# and mobile/src/data/exerciseVideos.generated.json with scripts/gen-media.mjs
+# and commits them back to the branch that ran it. Existing files are kept,
+# so re-runs only fill gaps. Run it by hand (Actions → this workflow → Run),
+# or it runs when the generator itself changes.
+
+on:
+  push:
+    paths:
+      - 'scripts/gen-media.mjs'
+      - '.github/workflows/gen-media.yml'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Regenerate everything (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gen-media-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the image encoder
+        run: npm install --no-save --no-package-lock sharp@0.33
+
+      - name: Generate
+        run: node scripts/gen-media.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      - name: Commit the results
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mobile/assets/meals mobile/src/data/mealImages.generated.ts mobile/src/data/exerciseVideos.generated.json
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -q -m "Generate meal photos and workout videos (scripts/gen-media.mjs)"
+          git pull --rebase -q origin "${GITHUB_REF_NAME}"
+          git push -q origin "HEAD:${GITHUB_REF_NAME}"
