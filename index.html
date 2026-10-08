@@ -691,6 +691,14 @@
       .ex { padding: 12px; gap: 12px; }
     }
 
+    /* The narrowest phones (320): the switcher bar and the phone mockup fit inside the gutters */
+    @media (max-width: 339px) {
+      .switcher__bar { gap: 6px; }
+      .tab { padding: 0 9px; }
+      .switcher .icon-btn { width: 44px; height: 44px; }
+      .phone { width: min(288px, 100%); }
+    }
+
     @media (hover: none) {
       .btn:hover .ico--arrow, .link-arrow:hover .ico, .shortcut:hover .chev { transform: none; }
     }
@@ -713,6 +721,7 @@
 
     /* How it works: a small object rides in the corner of each step card */
     .slot3d--step { float: right; width: 116px; height: 116px; margin: -14px -14px 6px 12px; }
+    @media (min-width: 1200px) { .slot3d--step { width: 148px; height: 148px; } }
 
     /* A head with its object beside it (features, progress) */
     .head-3d {
@@ -908,7 +917,7 @@
         <article class="roadmap__step is-left">
           <div class="roadmap__marker" aria-hidden="true">1</div>
           <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+            <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Tell us about you</h3>
             <p>A short setup that captures what actually matters for your plan.</p>
             <ul class="step-list">
@@ -936,7 +945,7 @@
         <article class="roadmap__step is-left">
           <div class="roadmap__marker" aria-hidden="true">3</div>
           <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+            <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Follow your daily plan</h3>
             <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
             <ul class="step-list">
@@ -950,7 +959,7 @@
         <article class="roadmap__step is-right">
           <div class="roadmap__marker" aria-hidden="true">4</div>
           <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-bars" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-bars.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+            <div class="slot3d slot3d--step" data-3d="how-ring" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-ring.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Track. Improve. Repeat.</h3>
             <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
             <ul class="step-list">
@@ -973,7 +982,7 @@
           <h2 class="h-1">Everything You Need to Build You.</h2>
           <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
         </div>
-        <div class="slot3d" data-3d="features" aria-hidden="true"><img src="assets/img/3d/features.webp" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
+        <div class="slot3d" data-3d="features" aria-hidden="true"><img src="assets/img/3d/features.webp?v=2" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="feature-group">
@@ -1032,7 +1041,7 @@
         </ul>
       </div>
 
-      <div class="slot3d" data-3d="diet" aria-hidden="true"><img src="assets/img/3d/diet.webp" alt="" width="330" height="600" loading="lazy" decoding="async"></div>
+      <div class="slot3d" data-3d="diet" aria-hidden="true"><img src="assets/img/3d/diet.webp?v=2" alt="" width="330" height="600" loading="lazy" decoding="async"></div>
 
       <div class="split__media switcher" data-tabs>
         <div class="switcher__bar">
@@ -1155,7 +1164,7 @@
         </div>
       </div>
 
-      <div class="slot3d" data-3d="training" aria-hidden="true"><img src="assets/img/3d/training.webp" alt="" width="310" height="500" loading="lazy" decoding="async"></div>
+      <div class="slot3d" data-3d="training" aria-hidden="true"><img src="assets/img/3d/training.webp?v=2" alt="" width="310" height="500" loading="lazy" decoding="async"></div>
 
       <div class="split__media">
         <div class="workout">
@@ -1193,7 +1202,12 @@
         <h2 class="h-1">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
       </div>
-      <div class="slot3d" data-3d="accountability" aria-hidden="true"><img src="assets/img/3d/accountability.webp" alt="" width="300" height="500" loading="lazy" decoding="async"></div>
+      <div class="slot3d" data-3d="accountability" aria-hidden="true">
+        <picture>
+          <source media="(max-width: 1099px)" srcset="assets/img/3d/accountability-wide.webp?v=3" width="756" height="360">
+          <img src="assets/img/3d/accountability.webp?v=3" alt="" width="300" height="500" loading="lazy" decoding="async">
+        </picture>
+      </div>
       <div class="split__media">
         <div class="timeline-card">
           <div class="timeline" data-activate>
@@ -1221,7 +1235,7 @@
           <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
           <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
         </div>
-        <div class="slot3d slot3d--wide" data-3d="progress" aria-hidden="true"><img src="assets/img/3d/progress.webp" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
+        <div class="slot3d slot3d--wide" data-3d="progress" aria-hidden="true"><img src="assets/img/3d/progress.webp?v=2" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="dash">
@@ -1473,8 +1487,8 @@
   <section class="final" id="start">
     <div class="slot3d slot3d--orbit" data-3d="final" data-3d-avoid="#start h2, #start .lead, #start .btn, #start .soon" aria-hidden="true">
       <picture>
-        <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp" width="720" height="400">
-        <img src="assets/img/3d/final.webp" alt="" width="1520" height="800" loading="lazy" decoding="async">
+        <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
+        <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
       </picture>
     </div>
     <div class="container">
@@ -1722,7 +1736,7 @@
       var sTicking = false;
       var drawSpy = function () {
         sTicking = false;
-        var line = window.scrollY + Math.max(nav.offsetHeight + 150, window.innerHeight * 0.3);
+        var line = window.scrollY + Math.max(nav.offsetHeight + 150, window.innerHeight * 0.5); // a section is current once its top passes the middle of the screen
         var current = spy[0];
         spy.forEach(function (t) { if (t.section.offsetTop <= line) current = t; });
         if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = spy[spy.length - 1];
@@ -1886,7 +1900,7 @@
           gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
         } catch (e) { gl = null; }
         if (!gl) return;
-        import('./assets/js/site-3d.min.js?v=1').then(function (m) {
+        import('./assets/js/site-3d.min.js?v=2').then(function (m) {
           m.mount({ canvas: canvas, context: gl, slots: slots3d });
         }).catch(function () { /* the posters stay */ });
       };

@@ -14,7 +14,7 @@
  * drawn, so objects stay glued to their slots while the compositor scrolls.
  *
  * Look (DESIGN.md, "3D"): matte black rubber, brushed steel, Carbon metal, matte Stone, and
- * Built Green only as collars, rings, bars the brief asks for, and the B. One studio light set
+ * Built Green as one accent per object: a collar, a ring, the latest bar, the B on the last streak tile. One studio light set
  * for every object: warm-neutral key top left, cool fill right, a faint green rim (0.2) from
  * behind, low sky, softbox reflections. No bloom, no glow.
  *
@@ -34,7 +34,6 @@ import {
   CanvasTexture,
   CatmullRomCurve3,
   Color,
-  ConeGeometry,
   CustomBlending,
   CylinderGeometry,
   DirectionalLight,
@@ -42,12 +41,10 @@ import {
   ExtrudeGeometry,
   Group,
   HemisphereLight,
-  IcosahedronGeometry,
   LatheGeometry,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
-  OctahedronGeometry,
   OneMinusSrcAlphaFactor,
   OrthographicCamera,
   PerspectiveCamera,
@@ -58,6 +55,7 @@ import {
   ShaderMaterial,
   Shape,
   ShapeGeometry,
+  SphereGeometry,
   SRGBColorSpace,
   TorusGeometry,
   TubeGeometry,
@@ -66,8 +64,10 @@ import {
   WebGLRenderer,
   ZeroFactor,
 } from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const GREEN = 0xa3ff3d;
+const RIM = 0.2; // the faint green rim light; a slot can ask for less with `rim`
 const TAU = Math.PI * 2;
 
 /* ---------- small maths ---------- */
@@ -195,6 +195,22 @@ function knurlTexture() {
   return t;
 }
 
+function ribTexture() {
+  // vertical grip ribs for the shaker cap, used as a bump map: smooth ring, ribbed light
+  const c = document.createElement('canvas');
+  c.width = 16; c.height = 4;
+  const g = c.getContext('2d');
+  for (let x = 0; x < 16; x++) {
+    const v = Math.round(128 + 110 * Math.cos((x / 16) * TAU));
+    g.fillStyle = `rgb(${v},${v},${v})`;
+    g.fillRect(x, 0, 1, 4);
+  }
+  const t = new CanvasTexture(c);
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.repeat.set(40, 1);
+  return t;
+}
+
 function shadowTexture() {
   // soft contact shadow: a blurred ellipse, darkest at the centre, no edge
   const c = document.createElement('canvas');
@@ -254,14 +270,19 @@ const M = {
   rubber: () => new MeshStandardMaterial({ color: 0x262626, roughness: 0.52, metalness: 0, envMapIntensity: 1.1 }),
   steel: (roughness = 0.3) => new MeshStandardMaterial({ color: 0xd4d7db, metalness: 0.9, roughness, envMapIntensity: 1.6 }),
   carbon: () => new MeshStandardMaterial({ color: 0x1f1f1f, metalness: 0.7, roughness: 0.36, envMapIntensity: 1.2 }),
-  iron: () => new MeshStandardMaterial({ color: 0x202020, metalness: 0.3, roughness: 0.5, envMapIntensity: 1.2 }),
+  // cast iron: matte enough that the bell never shows a bowling-ball highlight
+  iron: () => new MeshStandardMaterial({ color: 0x202020, metalness: 0.15, roughness: 0.66, envMapIntensity: 0.8 }),
   plastic: () => new MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 0.46, envMapIntensity: 1.2 }),
   stone: (flatShading = false) => new MeshStandardMaterial({ color: 0xe9e9e9, metalness: 0, roughness: 0.82, flatShading }),
   // Stone a step down for big lit faces, so they sit under white copy instead of glaring
   stoneSoft: () => new MeshStandardMaterial({ color: 0xbdbdbd, metalness: 0, roughness: 0.85 }),
+  // matte Carbon for the streak tiles: catches the key light, never mirrors the green rim
+  carbonMatte: () => new MeshStandardMaterial({ color: 0x282828, metalness: 0, roughness: 0.78, envMapIntensity: 0.2 }),
+  // graphite: a matte dark Stone for chart bars that are not the highlight
+  graphite: () => new MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0, roughness: 0.6 }),
   // Brand green skips tone mapping so ACES cannot wash it toward yellow: the B is never recoloured.
   green: () => new MeshStandardMaterial({ color: GREEN, roughness: 0.42, metalness: 0.05, toneMapped: false }),
-  // Large green surfaces (bars, flame) sit a step under the brand hex so the lit face lands on it.
+  // Large green surfaces (the last bar, the flame tip) sit a step under the brand hex so the lit face lands on it.
   greenMatte: (flatShading = false) => new MeshStandardMaterial({ color: new Color(GREEN).multiplyScalar(0.62), roughness: 0.78, metalness: 0, flatShading, toneMapped: false }),
   mark: () => new MeshStandardMaterial({
     color: GREEN, emissive: GREEN, emissiveIntensity: 0.15, roughness: 0.5, metalness: 0, toneMapped: false,
@@ -396,10 +417,14 @@ function buildShaker() {
   const mg = wrappedMark(0.4, -0.08, (x) => Math.sqrt(Math.max(0, R * R - x * x)) + 0.004);
   g.add(new Mesh(mg, M.mark()));
 
-  // cap: faceted grip ring, a flip spout off-centre so the twist is visible, a thin green collar
+  // cap: a smooth grip ring with fine ribs (bump, not facets), a flip spout off-centre so the
+  // twist is visible, a thin green collar
   const cap = new Group();
   const carbon = M.carbon();
-  const ring = new Mesh(new CylinderGeometry(0.4, 0.42, 0.24, 22), new MeshStandardMaterial({ color: 0x1f1f1f, metalness: 0.4, roughness: 0.42, flatShading: true, envMapIntensity: 1.2 }));
+  const ribs = ribTexture();
+  const ring = new Mesh(new CylinderGeometry(0.4, 0.42, 0.24, 48), new MeshStandardMaterial({
+    color: 0x1f1f1f, metalness: 0.4, roughness: 0.42, bumpMap: ribs, bumpScale: 1.2, envMapIntensity: 1.2,
+  }));
   cap.add(ring);
   const top = new Mesh(new CylinderGeometry(0.34, 0.4, 0.05, 44), carbon);
   top.position.y = 0.145;
@@ -431,34 +456,43 @@ function plateGeometry(R) {
   return new LatheGeometry(pts, 56);
 }
 
-/* ---------- streak flame: stacked low-poly forms, green and Stone, matte, no glow ---------- */
-function buildFlame() {
-  const g = new Group();
-  const green = M.greenMatte(true);
-  const stone = M.stone(true);
-  const specs = [
-    { geo: new IcosahedronGeometry(0.62, 0), mat: green, p: [0, -0.62, 0], s: [1, 0.66, 1], r: [0.2, 0.3, 0] },
-    { geo: new OctahedronGeometry(0.5, 0), mat: stone, p: [-0.04, -0.08, 0.02], s: [1, 0.86, 1], r: [0, 0.6, 0.1] },
-    { geo: new OctahedronGeometry(0.2, 0), mat: green, p: [0.44, 0.02, 0.1], s: [1, 1.5, 1], r: [0, 0.2, -0.45] },
-    { geo: new IcosahedronGeometry(0.38, 0), mat: green, p: [0.04, 0.4, -0.02], s: [1, 1, 1], r: [0.5, 0.1, 0.2] },
-    { geo: new OctahedronGeometry(0.17, 0), mat: stone, p: [-0.38, 0.36, 0.06], s: [1, 1.6, 1], r: [0, 0.4, 0.4] },
-    { geo: new ConeGeometry(0.27, 0.62, 5), mat: stone, p: [0.1, 0.86, 0], s: [1, 1, 1], r: [0, 0.3, -0.12] },
-    { geo: new ConeGeometry(0.15, 0.5, 4), mat: green, p: [0.18, 1.3, 0.02], s: [1, 1, 1], r: [0, 0.5, -0.2] },
+/* ---------- week streak: seven Carbon tiles, a Stone check on six, the green B on the seventh ---------- */
+const TILE_W = 0.34, TILE_H = 0.46, TILE_T = 0.07;
+function buildStreakTiles(rt) {
+  // each tile hinges on its bottom front edge: rotation.x = PI/2 lays it face down toward the viewer
+  const tileGeo = new RoundedBoxGeometry(TILE_W, TILE_H, TILE_T, 3, 0.026);
+  tileGeo.translate(0, TILE_H / 2, -TILE_T / 2);
+  const tileMat = M.carbonMatte();
+  const stone = M.stoneSoft();
+  // the check: a short arm and a long arm, rounded, raised a little off the face
+  const arm = (x0, y0, x1, y1) => {
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const g = new RoundedBoxGeometry(len + 0.034, 0.034, 0.016, 2, 0.012);
+    g.rotateZ(Math.atan2(y1 - y0, x1 - x0));
+    g.translate((x0 + x1) / 2, (y0 + y1) / 2, 0.008);
+    return g;
+  };
+  const checkA = arm(-0.085, 0.235, -0.03, 0.18), checkB = arm(-0.03, 0.18, 0.09, 0.3);
+  const markGeo = new ExtrudeGeometry(markShape(), { depth: 0.014, bevelEnabled: false, curveSegments: 4 });
+  const ms = 0.24 / 127.5;
+  markGeo.scale(ms, ms, 1);
+  markGeo.translate(0, TILE_H / 2, 0);
+  const markMats = [
+    new MeshBasicMaterial({ color: GREEN, toneMapped: false }),
+    new MeshStandardMaterial({ color: GREEN, roughness: 0.55, metalness: 0.05, toneMapped: false }),
   ];
-  const forms = specs.map((sp) => {
-    const m = new Mesh(sp.geo, sp.mat);
-    m.position.set(...sp.p);
-    m.rotation.set(...sp.r);
-    const holder = new Group();
-    holder.add(m);
-    holder.userData = { rest: new Vector3(...sp.p), s: new Vector3(...sp.s) };
-    m.position.set(0, 0, 0);
-    holder.position.copy(holder.userData.rest);
-    holder.scale.copy(holder.userData.s);
-    g.add(holder);
-    return holder;
+  return Array.from({ length: 7 }, (_, i) => {
+    const seat = new Group();     // where the tile stands, turned to face the camera
+    const hinge = new Group();    // flips about the bottom front edge
+    hinge.add(new Mesh(tileGeo, tileMat));
+    if (i < 6) hinge.add(new Mesh(checkA, stone), new Mesh(checkB, stone));
+    else hinge.add(new Mesh(markGeo, markMats));
+    seat.add(hinge);
+    const sh = contactShadow(rt, 0.62, 0.34, -0.001, 0.55);
+    sh.position.z = 0.02;
+    seat.add(sh);
+    return { seat, hinge };
   });
-  return { group: g, forms };
 }
 
 /* ---------- medal: Carbon disc, green rings, the raised B ---------- */
@@ -573,22 +607,23 @@ function heroSlot(rt) {
   };
 }
 
-/* ---------- how it works: four small objects that spin and scale in with their step ---------- */
+/* ---------- how it works: four small objects, each with its own entrance as its step arrives ----------
+   The phone flips up from flat, the tape turns in on its coil, the dumbbell and shaker slide
+   together from either side, the progress ring fills. `e` is the eased entrance (0 to 1). */
 function stepSlot(rt, build, phase) {
   const root = new Group();
   const holder = new Group();
   const inner = build(rt);
-  holder.add(inner.group || inner);
+  holder.add(inner.group);
   root.add(holder);
   const camera = cam(5.7, 1.0);
   return {
     root, camera, aspect: 1,
     update(c) {
-      const e = outCubic(win(0.03, 0.38, c.p));
-      holder.scale.setScalar(0.3 + 0.7 * e);
-      holder.rotation.y = -(1 - e) * Math.PI * 1.1 + (c.p - 0.5) * 0.7;
+      const e = outCubic(win(0.06, 0.42, c.p));
+      holder.rotation.y = (c.p - 0.5) * 0.5;
       holder.position.y = bob(c, 0.035, 5, phase);
-      if (inner.update) inner.update(c, e);
+      inner.update(c, e);
     },
   };
 }
@@ -611,8 +646,22 @@ function howPhone() {
   const mark = new Mesh(markGeometry(0.44), M.flatGreen());
   mark.position.set(0, 0.04, zf + 0.005);
   g.add(mark);
-  g.rotation.set(-0.12, 0, 0.06);
-  return g;
+  // hinge on the bottom edge: the phone starts lying face up and stands up toward the viewer
+  const BASE = 0.95;
+  g.position.y = BASE;
+  g.rotation.z = 0.06;
+  const hinge = new Group();
+  hinge.add(g);
+  hinge.position.y = -BASE;
+  const root = new Group();
+  root.add(hinge);
+  return {
+    group: root,
+    update(c, e) {
+      hinge.rotation.x = -0.12 - (1 - e) * 1.42;
+      root.scale.setScalar(0.86 + 0.14 * e);
+    },
+  };
 }
 
 function howTape(rt) {
@@ -648,25 +697,33 @@ function howTape(rt) {
   geo.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
+  const coil = new Group();
+  g.add(coil);
   const band = new Mesh(geo, new MeshStandardMaterial({ map: tapeTexture(), roughness: 0.62, metalness: 0.05, side: DoubleSide }));
-  g.add(band);
+  coil.add(band);
 
   const hub = new Mesh(new CylinderGeometry(0.5, 0.5, width * 0.96, 48), M.carbon());
-  g.add(hub);
+  coil.add(hub);
   const mark = new Mesh(markGeometry(0.5), M.flatGreen());
   mark.rotation.set(-Math.PI / 2, 0, -0.75); // cancels the coil's turn below, so the B reads upright
   mark.position.y = (width * 0.96) / 2 + 0.003;
-  g.add(mark);
+  coil.add(mark);
   // the hook at the free end: a thin green tab
   const hook = new Mesh(new BoxGeometry(0.035, width + 0.06, 0.09), M.green());
   hook.position.set(ex + tx * tail, 0, ez + tz * tail);
   hook.rotation.y = -aEnd;
-  g.add(hook);
+  coil.add(hook);
 
   // tip the coil toward the viewer so the layers and the printed face both read
   g.rotation.set(0.62, 0.75, 0.0);
-  g.scale.setScalar(1.08);
-  return g;
+  return {
+    group: g,
+    update(c, e) {
+      // the coil turns in on its own axis, the way a tape winds, and settles with the B upright
+      coil.rotation.y = (1 - e) * TAU * 0.55;
+      g.scale.setScalar(1.08 * (0.7 + 0.3 * e));
+    },
+  };
 }
 
 function howPair(rt) {
@@ -681,31 +738,72 @@ function howPair(rt) {
   sh.group.position.set(0.48, -0.25, -0.3);
   sh.group.rotation.y = -0.35;
   g.add(sh.group);
-  g.add(contactShadow(rt, 2.6, 1.4, -0.78, 0.7));
-  return g;
-}
-
-function howBars(rt) {
-  const g = new Group();
-  const heights = [0.6, 1.0, 1.5];
-  const mats = [M.stoneSoft(), M.stoneSoft(), M.greenMatte()];
-  const bars = heights.map((h, i) => {
-    const geo = new BoxGeometry(0.4, 1, 0.4);
-    geo.translate(0, 0.5, 0);
-    const m = new Mesh(geo, mats[i]);
-    m.position.set((i - 1) * 0.56, -0.78, 0);
-    g.add(m);
-    return m;
-  });
-  g.add(contactShadow(rt, 2.4, 1.2, -0.78, 0.55));
-  g.rotation.y = -0.45;
+  const shadow = contactShadow(rt, 2.6, 1.4, -0.78, 0.7);
+  g.add(shadow);
   return {
     group: g,
-    update(c) {
-      bars.forEach((b, i) => {
-        const k = outCubic(win(0.04 + i * 0.07, 0.3 + i * 0.07, c.p));
-        b.scale.y = Math.max(0.02, heights[i] * k);
-      });
+    update(c, e) {
+      // the two slide in from either side and meet in the middle
+      const off = (1 - e) * 0.75;
+      db.position.x = -0.32 - off;
+      db.rotation.y = 0.55 + (1 - e) * 0.7;
+      sh.group.position.x = 0.48 + off;
+      sh.group.rotation.y = -0.35 - (1 - e) * 0.9;
+      shadow.scale.x = 0.7 + 0.3 * e;
+    },
+  };
+}
+
+/** a torus whose triangles run in order from 12 o'clock, clockwise, so a draw range draws an arc */
+function arcTube(R, r, radial, tubular) {
+  const pos = [], nor = [], idx = [];
+  for (let i = 0; i <= tubular; i++) {
+    const a = (i / tubular) * TAU;
+    const cx = Math.sin(a), cy = Math.cos(a);
+    for (let j = 0; j <= radial; j++) {
+      const v = (j / radial) * TAU;
+      const nx = cx * Math.cos(v), ny = cy * Math.cos(v), nz = Math.sin(v);
+      pos.push(cx * R + nx * r, cy * R + ny * r, nz * r);
+      nor.push(nx, ny, nz);
+    }
+  }
+  for (let i = 0; i < tubular; i++) {
+    for (let j = 0; j < radial; j++) {
+      const a = i * (radial + 1) + j, b = a + radial + 1;
+      idx.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
+  geo.setAttribute('normal', new BufferAttribute(new Float32Array(nor), 3));
+  geo.setIndex(idx);
+  return geo;
+}
+
+function howRing() {
+  // the app's progress ring in 3D: a Carbon track, a green arc that fills as the step arrives
+  const g = new Group();
+  const R = 0.7, r = 0.12, RAD = 18, TUB = 120, FULL = 0.75;
+  g.add(new Mesh(arcTube(R, r, RAD, TUB), M.carbon()));
+  const green = M.green();
+  const arc = new Mesh(arcTube(R, r * 1.08, RAD, TUB), green);
+  g.add(arc);
+  // round ends, like the app ring's stroke caps
+  const capGeo = new SphereGeometry(r * 1.08, 20, 12);
+  const start = new Mesh(capGeo, green);
+  start.position.set(0, R, 0);
+  const head = new Mesh(capGeo, green);
+  g.add(start, head);
+  g.rotation.set(-0.28, 0.42, 0);
+  return {
+    group: g,
+    update(c, e) {
+      const n = Math.round(FULL * e * TUB);
+      arc.geometry.setDrawRange(0, n * RAD * 6);
+      arc.visible = start.visible = head.visible = n > 0;
+      const a = (n / TUB) * TAU;
+      head.position.set(Math.sin(a) * R, Math.cos(a) * R, 0);
+      g.scale.setScalar(0.82 + 0.18 * e);
     },
   };
 }
@@ -722,7 +820,8 @@ function featuresSlot(rt) {
   return {
     root, camera, aspect: 1,
     update(c) {
-      turn.rotation.y = (c.p - 0.5) * TAU * 0.8;
+      // a short swing (about 34 degrees each way) so the B faces the viewer most of the scroll
+      turn.rotation.y = (c.p - 0.5) * 1.2;
       turn.rotation.z = (c.p - 0.5) * -0.12;
       turn.position.y = -0.3 + bob(c, 0.03, 6);
     },
@@ -758,7 +857,10 @@ function trainingSlot(rt) {
   const root = new Group();
   const stack = new Group();
   root.add(stack);
+  // a stack of rubber faces catches the green rim more than any other object: this slot's
+  // rubber takes less environment and the slot draws with a dimmer rim (see `rim` below)
   const rubber = M.rubber();
+  rubber.envMapIntensity = 0.8;
   const radii = [0.98, 0.88, 0.78, 0.68, 0.58];
   const T = 0.18, base = -0.95;
   const plates = radii.map((R, i) => {
@@ -778,7 +880,7 @@ function trainingSlot(rt) {
   root.add(contactShadow(rt, 2.8, 1.6, base - 0.001, 0.9));
   const camera = cam(7.3, 2.6, 0, [0, -0.15, 0]);
   return {
-    root, camera, aspect: 0.62,
+    root, camera, aspect: 0.62, rim: 0.12,
     update(c) {
       let top = base;
       plates.forEach((pl, i) => {
@@ -799,34 +901,63 @@ function trainingSlot(rt) {
   };
 }
 
-/* ---------- accountability: the streak flame builds itself up with scroll ---------- */
+/* ---------- accountability: a week streak; the tiles flip up one by one, the last shows the B ----------
+   Wide slots (phones, tablets) stand the week in a gentle arc facing the viewer. Tall slots (the narrow
+   desktop column) run the same week as a curving path toward the viewer, Monday furthest, the B nearest. */
 function accountabilitySlot(rt) {
   const root = new Group();
-  const f = buildFlame();
-  const sway = new Group();
-  sway.add(f.group);
-  sway.position.y = -0.2;
-  root.add(sway);
-  root.add(contactShadow(rt, 1.9, 1.0, -1.05, 0.75));
-  const camera = cam(6.7, 0.8, 0, [0, 0.08, 0]);
-  return {
-    root, camera, aspect: 0.6,
+  const week = new Group();
+  root.add(week);
+  const tiles = buildStreakTiles(rt);
+  tiles.forEach((t) => week.add(t.seat));
+  const camera = new PerspectiveCamera(28, 1, 0.1, 60);
+  let mode = '';
+  const slot = {
+    // tiles lying face down catch the green rim at a grazing angle; a dimmer rim keeps them Carbon
+    root, camera, aspect: 0.62, rim: 0.06,
+    layout(W, H) {
+      const next = W / H >= 1 ? 'wide' : 'tall';
+      if (next === mode) return;
+      mode = next;
+      if (mode === 'wide') {
+        slot.aspect = 2.1;
+        camera.position.set(0, 0.95, 3.75);
+        camera.lookAt(0, 0.2, 0.3);
+        // a gentle arc: the ends come a little toward the viewer
+        const R = 3.2, step = 0.135;
+        tiles.forEach((t, i) => {
+          const a = (i - 3) * step;
+          t.seat.position.set(R * Math.sin(a), -0.05, R * (1 - Math.cos(a)));
+          t.seat.rotation.y = -a;
+          t.seat.scale.setScalar(1);
+        });
+      } else {
+        slot.aspect = 0.62;
+        camera.position.set(0, 3.3, 5.6);
+        camera.lookAt(0, -0.3, -0.55);
+        tiles.forEach((t, i) => {
+          const z = -2.15 + i * 0.62;
+          const x = 0.42 * Math.sin((i / 6) * Math.PI) - 0.12;
+          t.seat.position.set(x, -0.55, z);
+          t.seat.rotation.y = Math.atan2(camera.position.x - x, camera.position.z - z) * 0.6;
+          t.seat.scale.setScalar(1.25);
+        });
+      }
+    },
     update(c) {
-      f.forms.forEach((h, i) => {
-        const k = outCubic(win(0.04 + i * 0.055, 0.22 + i * 0.055, c.p));
-        h.visible = k > 0.001;
-        h.scale.copy(h.userData.s).multiplyScalar(Math.max(0.001, k));
-        h.position.copy(h.userData.rest);
-        h.position.y -= (1 - k) * 0.35;
-        h.position.x += bob(c, 0.012 * (i / 3 + 0.4), 3.4, i * 0.9);
+      tiles.forEach((t, i) => {
+        const k = outCubic(win(0.08 + i * 0.075, 0.24 + i * 0.075, c.p));
+        t.hinge.rotation.x = (1 - k) * (Math.PI / 2);
       });
-      f.group.rotation.y = (c.p - 0.5) * 1.3;
-      sway.rotation.z = Math.sin(c.p * TAU) * 0.05;
+      week.position.y = bob(c, 0.02, 6);
+      week.rotation.y = (c.p - 0.5) * 0.16;
     },
   };
+  slot.layout(300, 500);
+  return slot;
 }
 
-/* ---------- progress: a bar chart rising in green as the section scrolls through ---------- */
+/* ---------- progress: a week of bars rising as the section scrolls; only this week's is green ---------- */
 function progressSlot(rt) {
   const root = new Group();
   const chart = new Group();
@@ -835,11 +966,13 @@ function progressSlot(rt) {
   plate.position.y = -0.92;
   chart.add(plate);
   const heights = [0.5, 0.68, 0.62, 0.9, 1.06, 1.0, 1.46];
-  const green = M.greenMatte();
+  // mirrors the app's weekly card: past weeks in graphite, the latest week in green
+  const past = M.graphite();
+  const latest = M.greenMatte();
+  const barGeo = new RoundedBoxGeometry(0.3, 1, 0.42, 3, 0.03);
+  barGeo.translate(0, 0.5, 0);
   const bars = heights.map((h, i) => {
-    const geo = new BoxGeometry(0.3, 1, 0.42);
-    geo.translate(0, 0.5, 0);
-    const m = new Mesh(geo, green);
+    const m = new Mesh(barGeo, i === heights.length - 1 ? latest : past);
     m.position.set((i - 3) * 0.41, -0.86, 0);
     chart.add(m);
     return m;
@@ -987,7 +1120,7 @@ const BUILDERS = {
   'how-phone': (rt) => stepSlot(rt, howPhone, 0),
   'how-tape': (rt) => stepSlot(rt, howTape, 1.3),
   'how-pair': (rt) => stepSlot(rt, howPair, 2.6),
-  'how-bars': (rt) => stepSlot(rt, howBars, 3.9),
+  'how-ring': (rt) => stepSlot(rt, howRing, 3.9),
   features: featuresSlot,
   diet: dietSlot,
   training: trainingSlot,
@@ -1018,7 +1151,7 @@ function runtime(renderer) {
   key.position.set(-3, 5, 6);
   const fill = new DirectionalLight(0xc8d8ff, 1.25);
   fill.position.set(6, -0.5, 4);
-  const rim = new DirectionalLight(GREEN, 0.2);
+  const rim = new DirectionalLight(GREEN, RIM);
   rim.position.set(1.5, 3, -6);
   const sky = new HemisphereLight(0xffffff, 0x080808, 0.22);
   scene.add(key, fill, rim, sky);
@@ -1045,7 +1178,7 @@ function runtime(renderer) {
   maskScene.add(quad);
   const maskCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  return { renderer, scene, maskScene, maskCam, maskMat, shadowTex: shadowTexture(), roots: [] };
+  return { renderer, scene, rim, maskScene, maskCam, maskMat, shadowTex: shadowTexture(), roots: [] };
 }
 
 function buildSlot(rt, name) {
@@ -1057,8 +1190,9 @@ function buildSlot(rt, name) {
   return slot;
 }
 
-function showOnly(rt, root) {
-  for (const r of rt.roots) r.visible = r === root;
+function showOnly(rt, slot) {
+  for (const r of rt.roots) r.visible = r === slot.root;
+  rt.rim.intensity = slot.rim ?? RIM;
 }
 
 /** object-fit: contain against the scene's composition aspect, aligned by ax / ay */
@@ -1083,7 +1217,7 @@ export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.
   renderer.setSize(width, height, false);
   const rt = runtime(renderer);
   const slot = buildSlot(rt, name);
-  showOnly(rt, slot.root);
+  showOnly(rt, slot);
   frameCamera(slot, width, height, ax, ay);
   const rect = { left: 0, top: 0, width, height, right: width, bottom: height };
   slot.update({ still: true, p, t: 0, dt: 0, pointer: { x: 0, y: 0, active: false }, track: rect, rect, vw: width, vh: height, fine: false });
@@ -1161,7 +1295,7 @@ export function mount(opts = {}) {
 
   const build = (e) => {
     e.slot = buildSlot(rt, e.name);
-    showOnly(rt, e.slot.root);
+    showOnly(rt, e.slot);
     try { renderer.compile(rt.scene, e.slot.camera); } catch { /* compiles on first draw instead */ }
   };
 
@@ -1244,7 +1378,7 @@ export function mount(opts = {}) {
         still: false, dt, t: e.t, p: e.p, track: tr, rect: r, avoid: e.avoidRect, vw, vh,
         pointer, fine: fine.matches, started: e.live,
       });
-      showOnly(rt, e.slot.root);
+      showOnly(rt, e.slot);
       const top = r.top + off;
       renderer.setViewport(r.left, ch - (top + r.height), r.width, r.height);
       const x0 = Math.max(0, r.left), x1 = Math.min(vw, r.right);

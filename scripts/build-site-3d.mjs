@@ -51,6 +51,8 @@ const r = spawnSync(esbuild, [
   '--target=es2020',
   '--legal-comments=none',
   `--alias:three=${THREE}`,
+  // three's add-ons (RoundedBoxGeometry) come from the same copy of three
+  `--alias:three/addons=${join(dirname(dirname(THREE)), 'examples', 'jsm')}`,
   `--outfile=${OUT}`,
 ], { stdio: 'inherit' });
 if (r.status !== 0) process.exit(r.status || 1);

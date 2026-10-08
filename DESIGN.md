@@ -128,21 +128,30 @@ one copy of three.js).
 - Objects, one per slot (`<div class="slot3d" data-3d="name">` holding its poster):
   - hero: the BUILT hex dumbbell.
   - how it works: one small object per step card: a phone with the green B on a dark screen,
-    a coiled measuring tape on a Carbon hub, a dumbbell and shaker pair, three rising bars.
-  - features: a kettlebell with the B on its bell.
-  - diet: the BUILT shaker bottle with a twist cap and a thin green collar.
+    a coiled measuring tape on a Carbon hub, a dumbbell and shaker pair, the app's progress ring
+    (a Carbon track with a green arc and round ends).
+  - features: a kettlebell with the B on its bell, matte cast iron (no bowling-ball highlight).
+  - diet: the BUILT shaker bottle with a smooth ribbed twist cap (fine ribs, no facets) and a thin
+    green collar.
   - training: weight plates stacking onto a steel pin, a green collar on top.
-  - accountability: the streak flame, low-poly forms stacked in green and Stone, matte, flat shaded.
-  - progress: a bar chart on a Carbon base, the bars in green.
+  - accountability: a week streak, like the app's week strip: seven rounded matte Carbon tiles,
+    a small matte Stone check on the first six, the green B on the seventh. In a narrow desktop
+    column the week curves toward the viewer (Monday furthest, the B nearest); in a wide slot it
+    stands in a gentle arc. Each layout has its own poster.
+  - progress: a week of rounded bars on a Carbon base, past weeks in graphite (`#3A3A3A`, matte) and
+    only the latest week in green, like the app's weekly card. Bars appear here only; the step card
+    for progress uses the ring.
   - pricing: the B medal (Carbon disc, green ring, raised B).
   - final call: dumbbell, kettlebell and shaker together.
-- Materials: matte black rubber, brushed and knurled steel, Carbon metal, matte Stone, matte black
-  plastic. Built Green only as collars, rings, the progress bars, the flame's green forms and the B
-  (emissive 0.15 at most). Never recolour the rubber or the steel. Brand green skips tone mapping so
+- Materials: matte black rubber, brushed and knurled steel, Carbon metal, matte cast iron, matte Stone,
+  matte black plastic. One green accent per object: a collar, a ring, the progress ring's arc, the
+  latest bar or the B (emissive 0.15 at most). Everything else on the object stays
+  in the neutrals. Never recolour the rubber or the steel. Brand green skips tone mapping so
   it lands on `#A3FF3D`; big green faces sit a step under it so the lit face, not a glare, is the
   brand colour.
 - Light: one studio set shared by every object. Soft warm-neutral key from top left, cool fill from
-  the right, a faint green rim from behind (0.2), low sky light, reflections from a built-in softbox
+  the right, a faint green rim from behind (0.2; the plate stack draws with 0.12 and the streak tiles with
+  0.06 so rubber faces and Carbon tiles never read as green), low sky light, reflections from a built-in softbox
   environment. ACES tone mapping, sRGB output. No neon, no bloom, no glow, no light rays.
 - Ground: soft contact shadows on an invisible floor where an object stands. No visible floor,
   edge or plinth. Everything is transparent over the page.
@@ -153,8 +162,10 @@ one copy of three.js).
   headline (desktop) or orbit above the headline (phones).
 - Motion: every pose is a function of the slot's scroll progress (0 as the slot's centre meets the
   bottom of the screen, 1 as it reaches the top), eased, so scrolling back plays it backwards.
-  Step objects spin and scale in as their card arrives; the kettlebell turns; the shaker cap screws
-  down; plates drop on one by one; the flame builds up from its base; the bars rise; the medal flips
+  Each step object has its own entrance as its card arrives: the phone flips up from lying flat,
+  the tape turns in on its coil, the dumbbell and shaker slide together from either side, the
+  progress ring's arc fills to 75%. The kettlebell swings about 34 degrees each way so the B faces
+  the viewer through most of the scroll; the shaker cap screws down; plates drop on one by one; the streak tiles flip up one by one from lying face down, the B last; the bars rise; the medal flips
   face up as the pricing head arrives, then leans toward a mouse pointer (up to 17 degrees,
   damped; mouse and trackpad only); the final three swing round each other. A bob of a few pixels
   runs only while a slot is on screen. The hero keeps its own loop: slow float (about 8px, 6s,
@@ -163,7 +174,8 @@ one copy of three.js).
 - Layout: desktop objects sit beside the copy (a column beside the features and progress heads, a
   narrow middle column in the diet, training and accountability splits from 1100px, above the copy
   in that column from 941px). Phones and tablets: the object sits above its heading, 180px tall,
-  centred (136px inside the step cards).
+  centred (136px inside the step cards). On desktop the step object sits in the card's top corner,
+  116px, 148px from 1200px wide.
 - Cost: nothing draws while the tab is hidden or when no slot is near the screen; pixel ratio capped
   at 2; scenes build as their slot comes within half a screen; the engine loads after the page's load
   event, when the browser is idle, so it never delays the first paint.
