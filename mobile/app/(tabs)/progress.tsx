@@ -4,7 +4,8 @@
    Each chart reads differently, and each has its own loading and empty
    state; trends with no data yet show a faint sample of what's coming.
    The streak card and milestones ease in on the first open of the day
-   only; the sections below them are simply there.
+   only; the sections below them are simply there. While the history
+   loads, the streak card, milestones and a chart stand in as shapes.
    Opened from Today (Progress tile, streak) and Profile. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,7 +13,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
-import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
+import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { LineChart } from '../../src/components/LineChart';
 import { BarChart } from '../../src/components/BarChart';
 import { Button, LinkButton } from '../../src/components/Button';
@@ -21,6 +22,7 @@ import { Meter, StateBlock } from '../../src/components/training/Controls';
 import { HBars, SampleChart, sampleWeightTrend, TargetColumns, TrainingCalendar } from '../../src/components/training/Charts';
 import { Milestones } from '../../src/components/progress/Milestones';
 import { FadeIn } from '../../src/components/FadeIn';
+import { Bone, Skeleton } from '../../src/components/Skeleton';
 import { DAY_SHORT, plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
@@ -55,6 +57,53 @@ function SectionTitle({ title, detail }: { title: string; detail?: string }) {
       </Text>
       {detail ? <Text style={T.small}>{detail}</Text> : null}
     </View>
+  );
+}
+
+/** Progress while the history loads: the streak card, milestones, a chart. */
+function ProgressSkeleton() {
+  return (
+    <Skeleton label="Loading your training history" style={{ gap: 24 }}>
+      <Bone radius={R.card} style={{ padding: 20, gap: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+          <View style={{ flex: 1, gap: 8 }}>
+            <Bone width={56} height={56} radius={8} tone="raised" />
+            <Bone width="70%" height={16} radius={6} tone="raised" />
+          </View>
+          <View style={{ flex: 1, gap: 14 }}>
+            <Bone width="60%" height={36} radius={6} tone="raised" />
+            <Bone width="60%" height={36} radius={6} tone="raised" />
+          </View>
+        </View>
+        <View style={{ gap: 6 }}>
+          {[0, 1, 2, 3].map((r) => (
+            <View key={r} style={{ flexDirection: 'row', gap: 6 }}>
+              {[0, 1, 2, 3, 4, 5, 6].map((c) => (
+                <Bone key={c} height={14} radius={4} tone="raised" style={{ flex: 1 }} />
+              ))}
+            </View>
+          ))}
+        </View>
+      </Bone>
+      <Bone radius={R.card} style={{ padding: 20, gap: 12 }}>
+        <Bone width="35%" height={18} radius={6} tone="raised" />
+        {[0, 1].map((r) => (
+          <View key={r} style={{ flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8 }}>
+            {[0, 1, 2, 3].map((c) => (
+              <Bone key={c} circle height={56} tone="raised" />
+            ))}
+          </View>
+        ))}
+      </Bone>
+      <Bone radius={R.card} style={{ padding: 20, gap: 16 }}>
+        <Bone width="45%" height={18} radius={6} tone="raised" />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: 150 }}>
+          {[40, 70, 55, 90, 60, 100, 75, 85].map((h, i) => (
+            <Bone key={i} height={h} radius={6} tone="raised" style={{ flex: 1 }} />
+          ))}
+        </View>
+      </Bone>
+    </Skeleton>
   );
 }
 
@@ -150,9 +199,7 @@ export default function ProgressTab() {
           {unreachable ? (
             <OfflineBlock body="Your streak, workouts and weight trend show here as soon as BUILT answers again. Nothing you logged is lost." onRetry={retry} />
           ) : (
-            <View style={cardStyle}>
-              <StateBlock kind="loading" title="Loading your training history" />
-            </View>
+            <ProgressSkeleton />
           )}
         </ScrollView>
       </SafeAreaView>

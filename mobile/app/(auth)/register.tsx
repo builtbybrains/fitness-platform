@@ -1,6 +1,7 @@
 /* Create account: email and password (no email verification for now).
    A server trigger creates the profile row; the entry gate then opens the
-   questionnaire, which asks for the name first. */
+   questionnaire, which asks for the name first. The same floating dumbbell
+   as sign-in sits above the lockup. */
 
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
@@ -10,6 +11,7 @@ import { router } from 'expo-router';
 import { screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { BuiltLogo } from '../../src/components/BuiltLogo';
+import { AuthHero } from '../../src/components/three/AuthHero';
 import { Button } from '../../src/components/Button';
 import { Field } from '../../src/components/Field';
 import { Notice } from '../../src/components/Bits';
@@ -68,7 +70,8 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: 'center', gap: 32, maxWidth: 480, width: '100%', alignSelf: 'center' }}
         >
-          <View style={{ alignItems: 'center', paddingTop: 16 }}>
+          <View style={{ alignItems: 'center', gap: 12, paddingTop: 16 }}>
+            <AuthHero />
             <BuiltLogo height={62} tagline />
           </View>
 

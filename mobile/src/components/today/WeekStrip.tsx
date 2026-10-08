@@ -3,17 +3,19 @@
    is done (so the solid green stays on today's ring and the play button), a
    green ring for today's open workout, a grey ring for a planned one, a
    quieter ring for a past one not logged (no red, no guilt) and a small dot
-   for rest. A workout day opens that workout; a rest day opens the plan.
-   States come from lib/weekStrip. */
+   for rest. A workout day opens that workout; a rest day opens the plan,
+   and a pressed day tilts under the finger (components/Tilt). States come
+   from lib/weekStrip. */
 
 import { useMemo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { C, FONT, T } from '../../design';
 import { weekCounts, weekStrip, type StripDay, type StripInput } from '../../lib/weekStrip';
 import { plural } from '../training/labels';
 import { Icon } from '../Icon';
+import { TiltPressable } from '../Tilt';
 
 const DOT = 34;
 
@@ -39,7 +41,7 @@ function Mark({ state }: { state: StripDay['state'] }) {
 function Column({ day }: { day: StripDay }) {
   const rest = day.state === 'rest';
   return (
-    <Pressable
+    <TiltPressable
       onPress={() => (rest ? router.push('/(tabs)/plan') : router.push(`/workout/${day.id}`))}
       accessibilityRole="button"
       accessibilityLabel={day.label}
@@ -48,7 +50,7 @@ function Column({ day }: { day: StripDay }) {
     >
       <Text style={[T.small, day.isToday ? { color: C.text, fontFamily: FONT.bodySemi } : null]}>{day.letter}</Text>
       <Mark state={day.state} />
-    </Pressable>
+    </TiltPressable>
   );
 }
 

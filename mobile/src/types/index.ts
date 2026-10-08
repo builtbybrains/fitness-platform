@@ -405,6 +405,13 @@ export type CoachReply = {
   suggestPlanChange: string | null;
   /** Facts saved to memory from this message. */
   remembered: MemoryFact[];
+  /** Up to three follow-up questions to offer as chips ([] when none). */
+  suggestions: string[];
+  /** The conversation this reply belongs to, with its server title (null
+      on a backend that doesn't name threads yet). */
+  thread: { id: string; title: string } | null;
+  /** Messages left today, when the server says (null when it doesn't). */
+  remainingToday: number | null;
 };
 
 // ═══════════════════════════════ photos ═══════════════════════════════

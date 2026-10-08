@@ -1,5 +1,7 @@
 /* The day's food against target: calories as the big number, then
-   protein, carbs and fat. Off-plan food and activity are named so the
+   protein, carbs and fat. When the macro donut shows above it (3D), the
+   protein, carbs and fat row is left out (`macros={false}`): the donut's
+   chips carry those numbers. Off-plan food and activity are named so the
    person sees where the numbers come from. The numbers and bar count up
    on first view (Reduce Motion: they show at once). */
 
@@ -12,7 +14,7 @@ import { Meter } from '../training/Controls';
 import { useTween } from '../motion';
 import type { Macros } from '../../stats';
 
-export function DayTotals({ eaten, offPlan, burned, targets }: { eaten: Macros; offPlan: number; burned: number; targets: Macros }) {
+export function DayTotals({ eaten, offPlan, burned, targets, macros = true }: { eaten: Macros; offPlan: number; burned: number; targets: Macros; macros?: boolean }) {
   const kcal = Math.round(useTween(eaten.kcal));
   const protein = useTween(eaten.protein);
   const carbs = useTween(eaten.carbs);
@@ -36,11 +38,13 @@ export function DayTotals({ eaten, offPlan, burned, targets }: { eaten: Macros; 
         </View>
       </View>
       <ProgressBar value={targets.kcal ? kcal / targets.kcal : 0} height={8} />
-      <View style={{ flexDirection: 'row', gap: 16 }}>
-        <Meter label="Protein" value={protein} target={targets.protein} unit="g" />
-        <Meter label="Carbs" value={carbs} target={targets.carbs} unit="g" />
-        <Meter label="Fat" value={fat} target={targets.fat} unit="g" />
-      </View>
+      {macros ? (
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <Meter label="Protein" value={protein} target={targets.protein} unit="g" />
+          <Meter label="Carbs" value={carbs} target={targets.carbs} unit="g" />
+          <Meter label="Fat" value={fat} target={targets.fat} unit="g" />
+        </View>
+      ) : null}
       {notes.length ? <Text style={T.small}>{notes.join(' ')}</Text> : null}
     </View>
   );

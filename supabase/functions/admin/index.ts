@@ -19,10 +19,37 @@
 //   GET  /reports/<id>         report, thread, user; screenshot as a 10-minute signed link
 //   POST /reports/<id>/reply   {body, status?} → adds the reply, notifies the person by push
 //   POST /reports/<id>/status  {status}
+//
+// Customers (CRM) and finance (./erp.ts; tables and functions in
+// supabase/erp.sql). Money is integer cents, USD; dates are yyyy-mm-dd.
+//   GET  /crm/customers             ?q&stage&plan&sort&limit&offset&streak  CRM customers plus app accounts not in the CRM yet
+//   GET  /crm/customers.csv         same filters, CSV download
+//   POST /crm/customers             {name, email, phone, stage, plan, price_cents, started_on, renews_on, source, tags} or {user_id} to adopt an app account
+//   GET  /crm/customers/<id>        customer, linked account, notes, tasks, invoices, payments (id may be an app account id)
+//   POST /crm/customers/<id>        any of the create fields; only the keys sent change
+//   POST /crm/customers/<id>/archive  {archived?: false to restore}
+//   POST /crm/customers/<id>/notes  {body}
+//   GET  /crm/tasks                 ?open=1&customer_id&limit
+//   POST /crm/tasks                 {title, due_on?, customer_id?}
+//   POST /crm/tasks/<id>            {title?, due_on?, customer_id?, done?}
+//   GET  /finance/summary           ?from&to  totals, MRR, subscriptions by plan, 12 months, categories, outstanding, churn, tasks
+//   GET  /finance/transactions      ?kind&category&from&to&q&customer_id&include_void&limit&offset
+//   GET  /finance/transactions.csv  same filters, CSV download
+//   POST /finance/transactions      {kind, category, amount_cents, occurred_on?, customer_id?, description?}
+//   POST /finance/transactions/<id>       any of those; only the keys sent change
+//   POST /finance/transactions/<id>/void
+//   GET  /finance/invoices          ?status&customer_id&q&limit&offset
+//   POST /finance/invoices          {customer_id, issued_on?, due_on?, notes?, lines: [{description, qty, unit_cents}]} → a draft; total computed here
+//   GET  /finance/invoices/<id>
+//   GET  /finance/invoices/<id>.html   printable page (self-contained HTML)
+//   POST /finance/invoices/<id>     edit a draft (same fields)
+//   POST /finance/invoices/<id>/status  {status: sent|paid|void, paid_on?}; paid creates the income transaction once
 // Full request and response examples: docs/API.md, "admin".
 //
 // CORS: only https://builtbybrains.github.io, the Vercel site
-// https://fitness-platform-blue.vercel.app and http://localhost:<any> /
+// https://fitness-platform-blue.vercel.app, this project's Vercel preview
+// deployments (https://fitness-platform-<hash or branch>-brains-ai.vercel.app,
+// the brains-ai team only) and http://localhost:<any> /
 // http://127.0.0.1:<any> (for testing). Everything runs with the service
 // role inside this function; nothing about it reaches a browser except the
 // JSON answers below.
@@ -30,8 +57,9 @@
 import { serviceClient } from '../_shared/env.ts';
 import { GENERIC_ERROR } from '../_shared/http.ts';
 import { sendPush } from '../_shared/push.ts';
+import { erpRoute } from './erp.ts';
 
-const ALLOWED_ORIGIN = /^(https:\/\/builtbybrains\.github\.io|https:\/\/fitness-platform-blue\.vercel\.app|http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$/;
+const ALLOWED_ORIGIN = /^(https:\/\/builtbybrains\.github\.io|https:\/\/fitness-platform-blue\.vercel\.app|https:\/\/fitness-platform-[a-z0-9-]+-brains-ai\.vercel\.app|http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = ['new', 'in_progress', 'fixed'];
 
@@ -231,6 +259,15 @@ Deno.serve(async (req) => {
         return send(ctx, 200, data);
       }
     }
+
+    const erp = await erpRoute(db, route, url, method, {
+      headers: ctx.headers,
+      send: (status, payload) => send(ctx, status, payload),
+      err: (status, code, message, extra) => err(ctx, status, code, message, extra),
+      readJson: () => readJson(req),
+      csvCell,
+    });
+    if (erp) return erp;
 
     return err(ctx, 404, 'not_found', 'Unknown route.');
   } catch (e) {

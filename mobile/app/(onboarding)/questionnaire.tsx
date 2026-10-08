@@ -36,6 +36,7 @@ import { Button } from '../../src/components/Button';
 import { Notice } from '../../src/components/Bits';
 import { BuiltMark } from '../../src/components/BuiltLogo';
 import { QuestionShell } from '../../src/components/onboarding/QuestionShell';
+import { StepObject } from '../../src/components/onboarding/StepObject';
 import { CheckRow } from '../../src/components/onboarding/Controls';
 import { birthDateOf, draftFromProfile, QUESTIONS, type Draft, type QuestionId } from '../../src/components/onboarding/questions';
 import { daysText } from '../../src/components/onboarding/options';
@@ -189,6 +190,7 @@ export default function Questionnaire() {
         onPrimary={submit}
         busy={busy}
         error={err}
+        lead={<StepObject screen={q.id} />}
       >
         {q.render({ draft, set, profile })}
       </QuestionShell>
@@ -285,6 +287,7 @@ function GuardianStep({ progress, progressLabel, back, onDone, nextStep }: StepP
     <QuestionShell
       title={GUARDIAN_TITLE}
       helper={GUARDIAN_TEXT}
+      lead={<StepObject screen="guardian" />}
       progress={progress}
       progressLabel={progressLabel}
       onBack={back}
@@ -416,6 +419,7 @@ function WaiverStep({ progress, progressLabel, back, onDone }: StepProps) {
     <QuestionShell
       title={WAIVER_TITLE}
       helper="Read this once. It's short."
+      lead={<StepObject screen="waiver" />}
       progress={progress}
       progressLabel={progressLabel}
       onBack={back}
@@ -541,7 +545,7 @@ function FinishStep({ onFix, onDone, applyProfile }: { onFix: (code: string) => 
           ? () => void requestReminderPermission().then((granted) => setRemind(granted ? 'on' : 'off'))
           : undefined
       }
-      lead={<BuiltMark size={40} />}
+      lead={<StepObject screen="finish" fallback={<BuiltMark size={40} />} />}
     >
       <View style={{ flexDirection: 'row', backgroundColor: C.card, borderRadius: R.card, padding: 20 }}>
         <View style={{ flex: 1, gap: 2 }}>

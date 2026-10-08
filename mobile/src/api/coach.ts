@@ -21,7 +21,27 @@ export async function sendCoachMessage(userId: string, message: string, conversa
     saved: data.saved !== false,
     suggestPlanChange: typeof data.suggestPlanChange === 'string' && data.suggestPlanChange ? data.suggestPlanChange : null,
     remembered: Array.isArray(data.remembered) ? (data.remembered as MemoryFact[]) : [],
+    ...replyExtras(data as Record<string, unknown>),
   };
+}
+
+/** The newer reply fields (follow-up suggestions, the thread's title,
+    messages left today), read defensively: an older backend leaves them
+    out and the chat simply goes without. */
+export function replyExtras(data: Record<string, unknown> | null | undefined): Pick<CoachReply, 'suggestions' | 'thread' | 'remainingToday'> {
+  const d = data ?? {};
+  const suggestions = Array.isArray(d.suggestions)
+    ? d.suggestions
+        .filter((s): s is string => typeof s === 'string')
+        .map((s) => s.replace(/\s+/g, ' ').trim())
+        .filter((s) => s.length > 0 && s.length <= 120)
+        .slice(0, 3)
+    : [];
+  const t = d.thread as { id?: unknown; title?: unknown } | null | undefined;
+  const thread = t && typeof t.id === 'string' && t.id ? { id: t.id, title: typeof t.title === 'string' ? t.title.trim().slice(0, 80) : '' } : null;
+  const raw = d.remaining_today ?? d.remainingToday;
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : NaN;
+  return { suggestions, thread, remainingToday: Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null };
 }
 
 /** What the Today note is written from: small, and clamped again on the server. */

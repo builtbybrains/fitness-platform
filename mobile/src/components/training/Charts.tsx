@@ -3,19 +3,22 @@
      Only this week's done days are solid green; earlier weeks use the tint,
      so the green stays rationed to what's happening now.
    - HBars: horizontal bars with a label and value (activities by kind).
+     They grow from the left one after another on first view.
    - TargetColumns: one column per day against a target line (calories).
+     The columns grow from the baseline one after another on first view.
    - SampleChart: the empty state for a trend. A fixed sample series in a
      faint grey, tagged "Sample" and hidden from screen readers, with one
      line on what will appear and one action to get there. */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Text, View } from 'react-native';
 
 import { C, FONT, R, T } from '../../design';
 import { BarChart } from '../BarChart';
 import { Button } from '../Button';
 import { LineChart } from '../LineChart';
-import { useTween } from '../motion';
+import { useElapsed, useInView } from '../motion';
+import { staggered, staggerTotal } from '../../lib/motionMath';
 import type { DayCell } from '../../stats';
 import type { ProfileV2 } from '../../types';
 import { DAY_SHORT } from './labels';
@@ -84,11 +87,12 @@ function Legend({ swatch, label }: { swatch: object; label: string }) {
 }
 
 export function HBars({ rows, unit }: { rows: { label: string; value: number; detail?: string }[]; unit: string }) {
-  const grow = useTween(1, 400);
+  const box = useRef<View>(null);
+  const elapsed = useElapsed(staggerTotal(rows.length, 60), useInView(box));
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
-    <View style={{ gap: 12 }}>
-      {rows.map((r) => (
+    <View ref={box} style={{ gap: 12 }}>
+      {rows.map((r, i) => (
         <View key={r.label} style={{ gap: 6 }} accessible accessibilityLabel={`${r.label}: ${r.value} ${unit}${r.detail ? `, ${r.detail}` : ''}`}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <Text style={[T.bodyStrong, { flexShrink: 1 }]}>{r.label}</Text>
@@ -98,7 +102,7 @@ export function HBars({ rows, unit }: { rows: { label: string; value: number; de
             </Text>
           </View>
           <View style={{ height: 10, borderRadius: 5, backgroundColor: C.raised, overflow: 'hidden' }}>
-            <View style={{ height: 10, width: `${(r.value / max) * 100 * grow}%`, borderRadius: 5, backgroundColor: C.stone }} />
+            <View style={{ height: 10, width: `${(r.value / max) * 100 * staggered(elapsed, i, 60)}%`, borderRadius: 5, backgroundColor: C.stone }} />
           </View>
         </View>
       ))}
@@ -107,11 +111,13 @@ export function HBars({ rows, unit }: { rows: { label: string; value: number; de
 }
 
 export function TargetColumns({ days, target, height = 132, todayId }: { days: { id: string; label: string; value: number }[]; target: number; height?: number; todayId: string }) {
-  const grow = useTween(1, 400);
+  const box = useRef<View>(null);
+  const elapsed = useElapsed(staggerTotal(days.length), useInView(box));
   const top = Math.max(target * 1.25, ...days.map((d) => d.value), 1);
   const lineY = height - (target / top) * height;
   return (
     <View
+      ref={box}
       accessible
       accessibilityRole="image"
       accessibilityLabel={`Calories each day against your target of ${target}: ${days.map((d) => `${d.label} ${d.value}`).join(', ')}`}
@@ -119,8 +125,8 @@ export function TargetColumns({ days, target, height = 132, todayId }: { days: {
     >
       <View style={{ height, flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
         <View style={{ position: 'absolute', left: 0, right: 0, top: lineY, borderTopWidth: 1, borderStyle: 'dashed', borderColor: C.muted }} />
-        {days.map((d) => {
-          const h = (d.value / top) * height * grow;
+        {days.map((d, i) => {
+          const h = (d.value / top) * height * staggered(elapsed, i);
           const future = d.id > todayId;
           const near = target > 0 && d.value >= target * 0.9 && d.value <= target * 1.1;
           return (

@@ -4,7 +4,10 @@
    long enough to read as one) and "6/10".
    A milestone earned since the last visit is shown once: the newest one
    gets the celebration overlay and every new one carries a "New" tag on
-   its ring for this visit. Seen ids are kept per person on this device. */
+   its ring for this visit. Seen ids are kept per person on this device.
+   A badge tilts toward the finger while it is held (components/Tilt).
+   Above the grid, the latest one earned stands as a 3D medal with its
+   icon on a shelf (TrophyShelf), when 3D is available. */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -14,10 +17,14 @@ import { C, card as cardStyle, FONT, R, T } from '../../design';
 import { useCelebration } from '../../celebration';
 import { loadLocal, saveLocal } from '../../lib/localFallback';
 import { newlyEarned, nextMilestone, type Milestone, type MilestoneId } from '../../lib/milestones';
-import { Icon, type IconName } from '../Icon';
+import { Icon } from '../Icon';
+import type { MedalIcon } from '../three/iconStrokes';
+import { latestEarned } from '../three/layout';
+import { TiltPressable } from '../Tilt';
 import { useTween } from '../motion';
+import { TrophyShelf } from './TrophyShelf';
 
-const ICON: Record<MilestoneId, IconName> = {
+const ICON: Record<MilestoneId, MedalIcon> = {
   first_workout: 'dumbbell',
   streak_3: 'flame',
   streak_7: 'flame',
@@ -52,7 +59,8 @@ function Badge({ m, fresh }: { m: Milestone; fresh: boolean }) {
     : `${m.title}. ${m.progress ? `${m.progress.value} of ${m.progress.target}. ` : ''}Not earned yet. ${m.description}`;
 
   return (
-    <View accessible accessibilityLabel={spoken} style={{ width: '25%', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 2 }}>
+    // Held, not tapped: no action, so it stays out of the keyboard's tab order.
+    <TiltPressable accessible focusable={false} accessibilityLabel={spoken} style={{ width: '25%', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 2 }}>
       <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={RING} height={RING} style={{ position: 'absolute', left: 0, top: 0 }} pointerEvents="none">
           <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={m.earned ? C.green : C.pressed} strokeWidth={STROKE} fill="none" />
@@ -86,7 +94,7 @@ function Badge({ m, fresh }: { m: Milestone; fresh: boolean }) {
         </Text>
         <Text style={[T.small, { fontSize: 11, lineHeight: 14, color: C.faint }]}>{caption}</Text>
       </View>
-    </View>
+    </TiltPressable>
   );
 }
 
@@ -123,6 +131,7 @@ export function Milestones({ items, userId, ready }: { items: Milestone[]; userI
 
   const earned = items.filter((m) => m.earned).length;
   const next = nextMilestone(items);
+  const latest = latestEarned(items);
 
   return (
     <View style={[cardStyle, { gap: 12 }]}>
@@ -134,6 +143,7 @@ export function Milestones({ items, userId, ready }: { items: Milestone[]; userI
           {earned} of {items.length} earned
         </Text>
       </View>
+      <TrophyShelf latest={latest} icon={latest ? ICON[latest.id] : 'medal'} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -2 }}>
         {items.map((m) => (
           <Badge key={m.id} m={m} fresh={fresh.has(m.id)} />

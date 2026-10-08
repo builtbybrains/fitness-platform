@@ -224,7 +224,7 @@ export default function ProfileTab() {
         <HealthCard />
 
         <RowGroup title="Settings and help">
-          <Row icon="bell" title="Reminders" detail="Each reminder on or off, and quiet hours" onPress={() => router.push('/settings/reminders')} />
+          <Row icon="bell" title="Reminders" detail="Each reminder on or off, quiet hours, vibration" onPress={() => router.push('/settings/reminders')} />
           <Row icon="flag" title="Report a problem" onPress={() => router.push('/report/new')} />
           <Row icon="list" title="My reports" badge={unread ? `${unread} new` : undefined} onPress={() => router.push('/report')} />
         </RowGroup>

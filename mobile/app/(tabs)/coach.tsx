@@ -2,45 +2,70 @@
    plan, today, the questionnaire and what it remembers, and saves new facts
    itself (shown under its reply, all listed in Profile, What your coach
    remembers). When it suggests a plan change, "Update my plan" asks the
-   planner and shows what changed and why. History persists per conversation
-   ("New chat" starts a fresh thread). Without an account, or when the coach
-   can't be reached, it answers with built-in tips and says why.
+   planner and shows what changed and why. Without an account, or when the
+   coach can't be reached, it answers with built-in tips and says why.
 
-   Meal photos live in Food now; the camera button here opens that flow.
+   History: every conversation is kept (coach_threads with an account, this
+   device without one). The header's chats button opens them all (Chats
+   sheet: grouped, searchable, rename, pin, archive); "New chat" starts a
+   fresh one, listed once its first message is sent. The last open chat
+   reopens next time. A chat opens on its latest 50 messages; scrolling to
+   the top (or "Load earlier") brings the 50 before, without moving what is
+   on screen.
+
+   Under the header, "Your coach sees" shows today's context; on an empty
+   chat the starter questions come from it too. A new reply types itself
+   out (tap to finish), and its follow-up questions sit under it as chips.
+   Long press a message to copy it, regenerate the latest reply, or edit
+   and resend your latest message.
+
+   Meal photos live in Food; the camera button here opens that flow.
 
    `?about=<text>` (the note on Today) shows that text as the coach's latest
    message, on this screen only (it isn't saved to the history). */
 
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { C, FONT, R, screen, T } from '../../src/design';
+import { C, FONT, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
-import { usePlan, type PlanChangeResult } from '../../src/planStore';
-import { supabase } from '../../src/lib/supabase';
+import { usePlan } from '../../src/planStore';
 import { isCloudUser } from '../../src/lib/cloud';
+import { haptic } from '../../src/lib/haptics';
 import { sendCoachMessage } from '../../src/api/coach';
 import { asApiError } from '../../src/api/errors';
-import { BuiltMark } from '../../src/components/BuiltLogo';
 import { Button, IconButton, LinkButton } from '../../src/components/Button';
-import { Notice, ScreenHeader } from '../../src/components/Bits';
-import { Icon } from '../../src/components/Icon';
-import { ChangeSummary, NeedsAccount } from '../../src/components/training/PlanChange';
-import type { MemoryFact } from '../../src/types';
+import { ScreenHeader } from '../../src/components/Bits';
+import { coachContextChips, pickStarters } from '../../src/lib/coachStarters';
+import { newThreadId, previewOf, titleFromMessage, upsertThread, mergeThreads, type CoachThread } from '../../src/lib/coachThreads';
+import {
+  appendLocalMessages,
+  fetchPage,
+  fetchThreads,
+  getLastThread,
+  getRemaining,
+  loadLocalPage,
+  loadLocalThreads,
+  patchThread,
+  saveLocalThreads,
+  setLastThread,
+  setRemaining as storeRemaining,
+  trimLocalMessages,
+  type Page,
+  type StoredMsg,
+} from '../../src/lib/coachHistory';
+import { AskChips } from '../../src/components/coach/Chips';
+import { ChatsSheet } from '../../src/components/coach/ChatsSheet';
+import { Composer } from '../../src/components/coach/Composer';
+import { ContextSheet, ContextStrip } from '../../src/components/coach/ContextStrip';
+import { CoachIconButton } from '../../src/components/coach/icons';
+import { BubbleIn, CoachBubble, CoachMessage, TypingDots, UserMessage, type Msg } from '../../src/components/coach/Message';
+import { actionsFor, canCopy, copyableText, copyText, MessageActionsSheet, Toast, type MessageAction } from '../../src/components/coach/MessageActions';
+import { useCoachDay } from '../../src/components/coach/useCoachDay';
 
-type Msg = {
-  id: string;
-  role: 'user' | 'coach';
-  body: string;
-  note?: string;
-  suggest?: string | null;
-  remembered?: MemoryFact[];
-  change?: { state: 'busy' } | { state: 'done'; result: PlanChangeResult };
-};
-
-const SUGGESTIONS = ['What should I eat after training?', "I'm too tired to train today", 'My knee hurts when I squat'];
+const FALLBACK_STARTERS = ['What should I eat after training?', "I'm too tired to train today", "How's my week going?"];
 
 function rulesReply(message: string): string {
   const m = message.toLowerCase();
@@ -48,109 +73,264 @@ function rulesReply(message: string): string {
   if (m.includes('knee') || m.includes('back') || m.includes('shoulder') || m.includes('hurt') || m.includes('pain')) {
     return 'Skip anything that hurts and use Replace on that exercise in your plan: the options avoid the area. If the pain is sharp or lasts, check with a doctor.';
   }
-  if (m.includes('protein') || m.includes('eat') || m.includes('meal') || m.includes('food')) {
+  if (m.includes('protein') || m.includes('eat') || m.includes('meal') || m.includes('food') || m.includes('snack')) {
     return 'Anchor every meal with protein: eggs or labneh at breakfast, a palm of chicken, fish or lentils later. Budget picks: canned tuna, cottage cheese, foul.';
   }
+  if (m.includes('warm')) return 'Five minutes of easy cardio, then two light sets of your first exercise. You are ready when you feel warm, not tired.';
   if (m.includes('tired') || m.includes('rest') || m.includes('skip')) return 'Real-life mode: a 10-minute walk still counts. Start with one set and let momentum do the rest.';
   return 'Keep it simple today: one workout, protein on every plate, water before 6pm. What is the smallest next step for you right now?';
 }
 
+const WEB = Platform.OS === 'web';
+/** How long a chat or a page may take before the device's copy is used. */
+const LOAD_TIMEOUT_MS = 6000;
+
 let seq = 0;
 const nextId = () => `m${Date.now()}-${seq++}`;
 
-function CoachAvatar() {
-  return (
-    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
-      <BuiltMark size={16} />
-    </View>
-  );
+function withTimeout<T>(p: Promise<T>, ms = LOAD_TIMEOUT_MS): Promise<T | null> {
+  return Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))]);
 }
 
-function CoachBubble({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', maxWidth: '94%' }}>
-      <CoachAvatar />
-      <View style={{ flexShrink: 1, backgroundColor: C.card, borderRadius: R.card, borderTopLeftRadius: 6, paddingVertical: 12, paddingHorizontal: 16, gap: 10 }}>{children}</View>
-    </View>
-  );
+function rowToMsg(r: StoredMsg): Msg {
+  return { id: r.id ?? nextId(), rowId: r.id, role: r.role, body: r.body, createdAt: r.created_at, note: r.note };
 }
+
+/** A time for a new message, never earlier than the one before it on screen. */
+function stamp(after?: string): string {
+  const now = Date.now();
+  const prev = after ? Date.parse(after) : NaN;
+  return new Date(Number.isFinite(prev) && prev >= now ? prev + 1 : now).toISOString();
+}
+
+type ScrollNode = { scrollHeight: number; scrollTop: number };
 
 export default function CoachTab() {
   const { session, userId } = useAuth();
   const { regenerate, generating } = usePlan();
-  const [conversationId, setConversationId] = useState('default');
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [input, setInput] = useState('');
-  const [inputFocused, setInputFocused] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
   const online = isCloudUser(userId) && !!session;
   const about = String(useLocalSearchParams<{ about?: string }>().about ?? '').trim().slice(0, 400);
+  const coachDay = useCoachDay();
+  // Under 400px the title keeps its line: New chat becomes a round plus.
+  const narrow = useWindowDimensions().width < 400;
 
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [threads, setThreads] = useState<CoachThread[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [hasOlder, setHasOlder] = useState(false);
+  /** The list says this chat has messages, but none could be read. */
+  const [missing, setMissing] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [input, setInput] = useState('');
+  /** The chat a reply is on its way for (one at a time). */
+  const [busyFor, setBusyFor] = useState<string | null>(null);
+  const [remaining, setRemainingState] = useState<number | null>(null);
+  const [chatsOpen, setChatsOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
+  const [actionMsg, setActionMsg] = useState<Msg | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const threadsRef = useRef<CoachThread[]>([]);
+  const threadRef = useRef<string | null>(null);
+  threadRef.current = threadId;
+  const messagesRef = useRef<Msg[]>([]);
+  messagesRef.current = messages;
+  const scrollRef = useRef<ScrollView>(null);
+  /** Following the latest message (near the bottom). */
+  const pinned = useRef(true);
+  /** Older messages are being put on top: where the list stood before. */
+  const prepend = useRef<ScrollNode | null>(null);
+  /** Paging by scroll starts once the chat has opened at its bottom. */
+  const pageReady = useRef(false);
+  const busy = busyFor !== null;
+
+  const commitThreads = useCallback(
+    (next: CoachThread[]) => {
+      threadsRef.current = next;
+      setThreads(next);
+      if (userId) void saveLocalThreads(userId, next);
+    },
+    [userId],
+  );
+
+  // Who is chatting: their last open chat and today's allowance.
   useEffect(() => {
+    setThreadId(null);
     setMessages([]);
-    if (!online) return;
+    setRemainingState(null);
+    threadsRef.current = [];
+    setThreads([]);
+    if (!userId) return;
     let alive = true;
-    setHistoryLoading(true);
-    // Never leave the spinner up for a slow or unreachable server.
-    const giveUp = setTimeout(() => alive && setHistoryLoading(false), 6000);
-    supabase
-      .from('coach_messages')
-      .select('role, body')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
-      .limit(50)
-      .then(
-        ({ data }) => {
-          if (!alive) return;
-          if (Array.isArray(data) && data.length) {
-            const loaded: Msg[] = data.map((d) => ({ id: nextId(), role: d.role === 'user' ? 'user' : 'coach', body: String(d.body ?? '') }));
-            setMessages((prev) => (prev.length ? [...loaded, ...prev] : loaded));
-          }
-          setHistoryLoading(false);
-        },
-        () => alive && setHistoryLoading(false),
-      );
+    void getLastThread(userId).then((id) => alive && setThreadId(id ?? 'default'));
+    void getRemaining(userId).then((n) => alive && n != null && setRemainingState(n));
     return () => {
       alive = false;
-      clearTimeout(giveUp);
     };
-  }, [online, conversationId]);
+  }, [userId]);
+
+  const loadThreads = useCallback(async () => {
+    if (!userId) return;
+    const local = await loadLocalThreads(userId);
+    // Keep anything added while the device copy was read.
+    commitThreads(mergeThreads(threadsRef.current, local));
+    if (!online) return;
+    setThreadsLoading(true);
+    const server = await withTimeout(fetchThreads());
+    setThreadsLoading(false);
+    if (server) commitThreads(mergeThreads(server, threadsRef.current));
+  }, [userId, online, commitThreads]);
+
+  useEffect(() => {
+    void loadThreads();
+  }, [loadThreads]);
+
+  useEffect(() => {
+    if (userId && threadId) void setLastThread(userId, threadId);
+  }, [userId, threadId]);
+
+  // Open a chat: its latest page, from the server or this device.
+  useEffect(() => {
+    if (!userId || !threadId) return;
+    let alive = true;
+    pageReady.current = false;
+    pinned.current = true;
+    setHistoryLoading(true);
+    setHasOlder(false);
+    (async () => {
+      const page: Page = (online ? await withTimeout(fetchPage(threadId)) : null) ?? (await loadLocalPage(userId, threadId));
+      if (!alive) return;
+      const loaded = page.rows.map(rowToMsg);
+      setMessages((prev) => [...loaded, ...prev]);
+      setMissing(!loaded.length && (threadsRef.current.find((t) => t.id === threadId)?.message_count ?? 0) > 0);
+      setHasOlder(page.more);
+      setHistoryLoading(false);
+      // An older chat (from before chats were listed) joins the list.
+      if (loaded.length && !threadsRef.current.some((t) => t.id === threadId)) {
+        const firstUser = loaded.find((m) => m.role === 'user');
+        const last = loaded[loaded.length - 1];
+        commitThreads(
+          upsertThread(threadsRef.current, threadId, {
+            title: firstUser ? titleFromMessage(firstUser.body) : '',
+            last_preview: previewOf(last.body),
+            last_role: last.role,
+            message_count: loaded.length,
+            created_at: loaded[0].createdAt || new Date().toISOString(),
+            updated_at: last.createdAt || new Date().toISOString(),
+          }),
+        );
+      }
+      setTimeout(() => {
+        if (alive) pageReady.current = true;
+      }, 500);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [userId, threadId, online, commitThreads]);
 
   // Opened from the note on Today: the note leads the conversation.
   useEffect(() => {
     if (!about) return;
-    setMessages((prev) => (prev.some((m) => m.role === 'coach' && m.body === about) ? prev : [...prev, { id: nextId(), role: 'coach', body: about }]));
+    setMessages((prev) => (prev.some((m) => m.role === 'coach' && m.body === about) ? prev : [...prev, { id: nextId(), role: 'coach', body: about, createdAt: '', fresh: true, ephemeral: true }]));
   }, [about]);
 
-  useEffect(() => {
-    const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
-    return () => clearTimeout(t);
-  }, [messages, busy]);
+  // Older messages went on top: keep what was on screen where it was (web;
+  // phones do it with maintainVisibleContentPosition).
+  useLayoutEffect(() => {
+    const before = prepend.current;
+    if (!before || !WEB) return;
+    prepend.current = null;
+    const node = (scrollRef.current as unknown as { getScrollableNode?: () => ScrollNode } | null)?.getScrollableNode?.();
+    if (node) node.scrollTop = node.scrollHeight - before.scrollHeight + before.scrollTop;
+  }, [messages]);
 
-  async function send(text = input.trim()) {
-    if (!text || busy || !userId) return;
-    setInput('');
-    setMessages((prev) => [...prev, { id: nextId(), role: 'user', body: text }]);
-    setBusy(true);
+  const loadOlder = useCallback(async () => {
+    const tid = threadRef.current;
+    if (!userId || !tid || loadingOlder || !hasOlder) return;
+    const shown = messagesRef.current.filter((m) => !m.ephemeral);
+    const oldest = shown[0];
+    if (!oldest) return;
+    setLoadingOlder(true);
+    const skip = new Set(shown.filter((m) => m.rowId && m.createdAt === oldest.createdAt).map((m) => m.rowId!));
+    const page: Page =
+      (online && oldest.rowId ? await withTimeout(fetchPage(tid, { before: oldest.createdAt, skip })) : null) ?? (await loadLocalPage(userId, tid, shown.length));
+    if (threadRef.current !== tid) return;
+    const node = (scrollRef.current as unknown as { getScrollableNode?: () => ScrollNode } | null)?.getScrollableNode?.();
+    if (node) prepend.current = { scrollHeight: node.scrollHeight, scrollTop: node.scrollTop };
+    else prepend.current = { scrollHeight: 0, scrollTop: 0 };
+    setMessages((prev) => [...page.rows.map(rowToMsg), ...prev]);
+    setHasOlder(page.more);
+    setLoadingOlder(false);
+  }, [userId, online, loadingOlder, hasOlder]);
+
+  function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    pinned.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 80;
+    if (contentOffset.y < 60 && pageReady.current && hasOlder && !loadingOlder) void loadOlder();
+  }
+
+  function onContentSizeChange() {
+    if (prepend.current && !WEB) {
+      prepend.current = null;
+      return;
+    }
+    if (pinned.current) scrollRef.current?.scrollToEnd({ animated: false });
+  }
+
+  function setRemaining(n: number) {
+    setRemainingState(n);
+    if (userId) void storeRemaining(userId, n);
+  }
+
+  function touchThread(id: string, patch: (t: CoachThread | undefined) => Partial<CoachThread>) {
+    const found = threadsRef.current.find((t) => t.id === id);
+    commitThreads(upsertThread(threadsRef.current, id, { ...patch(found), updated_at: new Date().toISOString() }));
+  }
+
+  async function send(textArg?: string, opts: { again?: boolean } = {}) {
+    const text = (textArg ?? input).trim();
+    const tid = threadRef.current;
+    if (!text || busy || !userId || !tid || remaining === 0) return;
+    pinned.current = true;
+    setMissing(false);
+    const last = messagesRef.current.filter((m) => !m.ephemeral).pop();
+    if (!opts.again) {
+      setInput('');
+      const at = stamp(last?.createdAt);
+      setMessages((prev) => [...prev, { id: nextId(), role: 'user', body: text, createdAt: at, fresh: true }]);
+      void appendLocalMessages(userId, tid, [{ role: 'user', body: text, created_at: at }]);
+      touchThread(tid, (t) => ({ title: t?.title || titleFromMessage(text), last_preview: previewOf(text), last_role: 'user', message_count: (t?.message_count ?? 0) + 1 }));
+    }
+    setBusyFor(tid);
     let msg: Msg;
+    let title = '';
     try {
-      const r = await sendCoachMessage(userId, text, conversationId);
+      const r = await sendCoachMessage(userId, text, tid);
+      if (r.remainingToday != null) setRemaining(r.remainingToday);
+      if (r.thread?.id === tid && r.thread.title) title = r.thread.title;
       msg = r.reply.trim()
-        ? { id: nextId(), role: 'coach', body: r.reply.trim(), suggest: r.suggestPlanChange, remembered: r.remembered }
-        : { id: nextId(), role: 'coach', body: rulesReply(text), note: "Your coach didn't answer that one. Here's a quick tip for now." };
+        ? { id: nextId(), role: 'coach', body: r.reply.trim(), createdAt: '', suggest: r.suggestPlanChange, remembered: r.remembered, suggestions: r.suggestions, reveal: true }
+        : { id: nextId(), role: 'coach', body: rulesReply(text), createdAt: '', note: "Your coach didn't answer that one. Here's a quick tip for now." };
     } catch (e) {
       const err = asApiError(e);
+      if (err.code === 'limit_reached') setRemaining(0);
       msg = {
         id: nextId(),
         role: 'coach',
         body: rulesReply(text),
+        createdAt: '',
         note: err.code === 'needs_account' ? 'A quick tip from this device. Your AI coach comes with a free account.' : `${err.message} Here's a quick tip for now.`,
       };
     }
-    setMessages((prev) => [...prev, msg]);
-    setBusy(false);
+    msg.createdAt = stamp(messagesRef.current.filter((m) => !m.ephemeral).pop()?.createdAt);
+    void appendLocalMessages(userId, tid, [{ role: 'coach', body: msg.body, created_at: msg.createdAt, ...(msg.note ? { note: msg.note } : {}) }]);
+    touchThread(tid, (t) => ({ title: title || t?.title || '', last_preview: previewOf(msg.body), last_role: 'coach', message_count: (t?.message_count ?? 0) + 1 }));
+    setBusyFor(null);
+    // Still on that chat: show it (otherwise it is waiting there).
+    if (threadRef.current === tid) setMessages((prev) => [...prev, { ...msg, fresh: true }]);
   }
 
   async function updatePlan(id: string, instruction: string) {
@@ -160,37 +340,159 @@ export default function CoachTab() {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, change: { state: 'done', result } } : m)));
   }
 
-  function startNewChat() {
+  function openThread(id: string) {
+    setChatsOpen(false);
+    if (id === threadId) return;
+    setMessages([]);
     setInput('');
-    setConversationId(`chat-${Date.now()}`);
+    setThreadId(id);
   }
 
-  const canSend = !!input.trim() && !busy;
+  function startNewChat() {
+    haptic.select();
+    setInput('');
+    setMessages([]);
+    setThreadId(newThreadId());
+  }
+
+  function renameThread(id: string, title: string) {
+    touchThreadQuiet(id, { title });
+    if (online) void patchThread(id, { title });
+  }
+  function pinThread(id: string, on: boolean) {
+    touchThreadQuiet(id, { pinned: on });
+    if (online) void patchThread(id, { pinned: on });
+  }
+  function archiveThread(id: string, on: boolean) {
+    const archived_at = on ? new Date().toISOString() : null;
+    touchThreadQuiet(id, { archived_at });
+    if (online) void patchThread(id, { archived_at });
+  }
+  /** Rename, pin, archive: the chat keeps its place in time. */
+  function touchThreadQuiet(id: string, patch: Partial<CoachThread>) {
+    const found = threadsRef.current.find((t) => t.id === id);
+    if (!found) return;
+    commitThreads(upsertThread(threadsRef.current, id, { ...patch, updated_at: found.updated_at }));
+  }
+
+  // Message actions.
+  const real = messages.filter((m) => !m.ephemeral);
+  const lastReal = real[real.length - 1];
+  const lastUser = [...real].reverse().find((m) => m.role === 'user');
+  const copyOk = canCopy();
+  const actionList = (m: Msg) =>
+    actionsFor(m, {
+      isLastCoach: m.role === 'coach' && lastReal?.id === m.id && !!lastUser,
+      isLastUser: m.role === 'user' && lastUser?.id === m.id,
+      busy,
+      copy: copyOk,
+    });
+
+  async function onAction(a: MessageAction, m: Msg) {
+    setActionMsg(null);
+    const tid = threadRef.current;
+    if (a === 'copy') {
+      const ok = await copyText(copyableText(m));
+      setToast(ok ? 'Copied' : "Couldn't copy that");
+      return;
+    }
+    if (!userId || !tid) return;
+    // With an account the server keeps every turn, so the old one stays on
+    // screen too: regenerate asks again below it, edit fills the box.
+    if (online) {
+      if (a === 'regenerate') {
+        const question = [...messagesRef.current].slice(0, messagesRef.current.findIndex((x) => x.id === m.id)).reverse().find((x) => x.role === 'user');
+        if (question) void send(question.body);
+      } else {
+        setInput(m.body);
+      }
+      return;
+    }
+    const idx = messagesRef.current.findIndex((x) => x.id === m.id);
+    if (idx < 0) return;
+    const kept = messagesRef.current.slice(0, idx);
+    if (a === 'regenerate') {
+      const question = [...kept].reverse().find((x) => x.role === 'user');
+      if (!question) return;
+      setMessages(kept);
+      if (m.createdAt) await trimLocalMessages(userId, tid, m.createdAt);
+      const count = threadsRef.current.find((t) => t.id === tid)?.message_count ?? 0;
+      touchThreadQuiet(tid, { message_count: Math.max(0, count - 1) });
+      void send(question.body, { again: true });
+      return;
+    }
+    // Edit and resend: the turn leaves the screen, the text goes back in the box.
+    setMessages(kept);
+    if (m.createdAt) await trimLocalMessages(userId, tid, m.createdAt);
+    const prev = kept.filter((x) => !x.ephemeral).pop();
+    const removed = messagesRef.current.length - kept.length;
+    const count = threadsRef.current.find((t) => t.id === tid)?.message_count ?? 0;
+    touchThreadQuiet(tid, { last_preview: prev ? previewOf(prev.body) : '', last_role: prev?.role ?? '', message_count: Math.max(0, count - removed) });
+    setInput(m.body);
+  }
+
+  const chips = useMemo(() => (coachDay ? coachContextChips(coachDay) : []), [coachDay]);
+  const starters = useMemo(() => (coachDay ? pickStarters(coachDay) : FALLBACK_STARTERS), [coachDay]);
+  const showDots = busyFor !== null && busyFor === threadId;
+  const followUps = lastReal?.role === 'coach' && !lastReal.reveal && !busy && !input.trim() ? (lastReal.suggestions ?? []) : [];
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8, gap: 6, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
-          <ScreenHeader title="AI Coach" right={<Button compact variant="secondary" icon="plus" label="New chat" onPress={startNewChat} accessibilityLabel="Start a new chat" />} />
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4, gap: 4, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
+          <ScreenHeader
+            title="AI Coach"
+            right={
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <CoachIconButton
+                  icon="chats"
+                  onPress={() => {
+                    haptic.select();
+                    setChatsOpen(true);
+                    void loadThreads();
+                  }}
+                  accessibilityLabel="Your chats"
+                  accessibilityHint="Opens every conversation with your coach"
+                />
+                {narrow ? (
+                  <IconButton icon="plus" onPress={startNewChat} accessibilityLabel="Start a new chat" />
+                ) : (
+                  <Button compact variant="secondary" icon="plus" label="New chat" onPress={startNewChat} accessibilityLabel="Start a new chat" />
+                )}
+              </View>
+            }
+          />
           {online ? (
-            <Pressable
-              onPress={() => router.push('/memory')}
-              accessibilityRole="link"
-              accessibilityLabel="Your coach remembers what you tell it. See what it remembers in Profile."
-              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, opacity: pressed ? 0.7 : 1 })}
-            >
-              <Text style={[T.meta, { flexShrink: 1 }]}>
-                Remembers what you tell it.{' '}
-                <Text style={{ fontFamily: FONT.bodySemi, color: C.text }}>See what it remembers</Text>
-              </Text>
-              <Icon name="chevronRight" size={16} color={C.muted} />
-            </Pressable>
+            <ContextStrip chips={chips} onOpen={() => setContextOpen(true)} />
           ) : (
             <Text style={[T.meta, { minHeight: 44, textAlignVertical: 'center', paddingTop: 12 }]}>Quick tips on this device. Sign up free for your AI coach.</Text>
           )}
         </View>
 
-        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
+        <ScrollView
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
+          scrollEventThrottle={64}
+          onContentSizeChange={onContentSizeChange}
+          maintainVisibleContentPosition={WEB ? undefined : { minIndexForVisible: 0 }}
+          contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+        >
+          {hasOlder ? (
+            <View style={{ alignItems: 'center', minHeight: 44, justifyContent: 'center' }}>
+              {loadingOlder ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} accessibilityLiveRegion="polite">
+                  <ActivityIndicator size="small" color={C.muted} />
+                  <Text style={T.meta}>Loading earlier messages</Text>
+                </View>
+              ) : (
+                <LinkButton onPress={() => void loadOlder()} accessibilityLabel="Load earlier messages">
+                  Load earlier
+                </LinkButton>
+              )}
+            </View>
+          ) : null}
+
           {historyLoading && messages.length === 0 ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }} accessibilityLiveRegion="polite">
               <ActivityIndicator size="small" color={C.green} />
@@ -199,29 +501,14 @@ export default function CoachTab() {
           ) : messages.length === 0 ? (
             <View style={{ gap: 12 }}>
               <CoachBubble>
-                <Text style={[T.body, { color: C.stone }]}>I&apos;m your BUILT coach. Ask about training, food or recovery and I&apos;ll give you the next step. Tell me about injuries or your schedule and I&apos;ll remember.</Text>
+                <Text style={[T.body, { color: C.stone }]}>
+                  {missing
+                    ? "This chat's messages aren't on this device. Ask anything and we'll pick it up from here."
+                    : "I'm your BUILT coach. Ask about training, food or recovery and I'll give you the next step. Tell me about injuries or your schedule and I'll remember."}
+                </Text>
               </CoachBubble>
-              <View style={{ gap: 8, paddingLeft: 46 }}>
-                {SUGGESTIONS.map((s) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => void send(s)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ask: ${s}`}
-                    style={({ pressed }) => ({
-                      alignSelf: 'flex-start',
-                      minHeight: 44,
-                      justifyContent: 'center',
-                      paddingHorizontal: 16,
-                      borderRadius: R.pill,
-                      borderWidth: 1,
-                      borderColor: C.lineStrong,
-                      backgroundColor: pressed ? C.raised : 'transparent',
-                    })}
-                  >
-                    <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 15, color: C.text }}>{s}</Text>
-                  </Pressable>
-                ))}
+              <AskChips items={starters} onPick={(s) => void send(s)} label="Questions to start with" disabled={busy || remaining === 0} />
+              <View style={{ paddingLeft: 46 }}>
                 <LinkButton align="flex-start" onPress={() => router.push('/food/log?mode=photo')} accessibilityLabel="Log a meal from a photo in Food">
                   <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.muted }}>Logging a meal? Snap it in Food</Text>
                 </LinkButton>
@@ -229,113 +516,53 @@ export default function CoachTab() {
             </View>
           ) : null}
 
-          {messages.map((m) =>
-            m.role === 'user' ? (
-              <View key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '84%', backgroundColor: C.raised, borderRadius: R.card, borderTopRightRadius: 6, paddingVertical: 12, paddingHorizontal: 16 }}>
-                <Text style={T.body}>{m.body}</Text>
-              </View>
+          {messages.map((m) => {
+            const acts = actionList(m);
+            const onActions = acts.length ? setActionMsg : undefined;
+            return m.role === 'user' ? (
+              <UserMessage key={m.id} msg={m} onActions={onActions} />
             ) : (
-              <CoachBubble key={m.id}>
-                {m.note ? <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 14, lineHeight: 20, color: C.warn }}>{m.note}</Text> : null}
-                <Text style={[T.body, { color: C.stone }]}>{m.body}</Text>
-                {m.remembered?.length ? (
-                  <Pressable onPress={() => router.push('/memory')} accessibilityRole="link" accessibilityLabel={`Saved to memory: ${m.remembered.map((f) => f.fact).join('; ')}. See what your coach remembers.`} style={{ minHeight: 44, justifyContent: 'center' }}>
-                    <Text style={T.small}>
-                      Remembered: {m.remembered.map((f) => f.fact).join('; ')}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {m.suggest ? (
-                  m.change?.state === 'done' ? (
-                    m.change.result.ok ? (
-                      <ChangeSummary bare changes={m.change.result.changes} summary={m.change.result.summary} onSeePlan={() => router.push('/(tabs)/plan')} />
-                    ) : m.change.result.code === 'needs_account' ? (
-                      <NeedsAccount message={m.change.result.error ?? ''} />
-                    ) : (
-                      <View style={{ gap: 8 }}>
-                        <Notice tone="error">{m.change.result.error ?? "Your plan couldn't be changed right now."}</Notice>
-                        <Button compact variant="secondary" icon="refresh" label="Try again" onPress={() => void updatePlan(m.id, m.suggest!)} />
-                      </View>
-                    )
-                  ) : (
-                    <View style={{ gap: 8, paddingTop: 2 }}>
-                      <Text style={T.small}>Suggested change: {m.suggest}</Text>
-                      <Button
-                        compact
-                        variant="secondary"
-                        icon={m.change?.state === 'busy' ? undefined : 'refresh'}
-                        label={m.change?.state === 'busy' ? 'Updating your plan' : 'Update my plan'}
-                        busy={m.change?.state === 'busy'}
-                        disabled={generating && m.change?.state !== 'busy'}
-                        onPress={() => void updatePlan(m.id, m.suggest!)}
-                        accessibilityLabel={`Update my plan: ${m.suggest}`}
-                      />
-                    </View>
-                  )
-                ) : null}
-              </CoachBubble>
-            ),
-          )}
+              <CoachMessage
+                key={m.id}
+                msg={m}
+                onActions={onActions}
+                onRevealDone={(id) => setMessages((prev) => prev.map((x) => (x.id === id && x.reveal ? { ...x, reveal: false } : x)))}
+                onUpdatePlan={(id, ins) => void updatePlan(id, ins)}
+                generating={generating}
+              />
+            );
+          })}
 
-          {busy ? (
-            <CoachBubble>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} accessibilityLiveRegion="polite">
-                <ActivityIndicator size="small" color={C.green} />
-                <Text style={T.meta}>Thinking</Text>
-              </View>
-            </CoachBubble>
+          {followUps.length ? <AskChips items={followUps} onPick={(s) => void send(s)} label="Follow-up questions" disabled={remaining === 0} /> : null}
+
+          {showDots ? (
+            <BubbleIn side="left" play>
+              <CoachBubble>
+                <TypingDots />
+              </CoachBubble>
+            </BubbleIn>
           ) : null}
         </ScrollView>
 
-        <View style={{ paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
-            <IconButton icon="camera" variant="bare" onPress={() => router.push('/food/log?mode=photo')} accessibilityLabel="Log a meal from a photo" />
-            <View
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                paddingLeft: 18,
-                paddingRight: 4,
-                minHeight: 52,
-                borderRadius: 26,
-                backgroundColor: C.card,
-                borderWidth: 1,
-                borderColor: inputFocused ? C.green : C.inputBorder,
-              }}
-            >
-              <TextInput
-                value={input}
-                onChangeText={setInput}
-                placeholder="Ask your coach anything"
-                placeholderTextColor={C.faint}
-                accessibilityLabel="Message your coach"
-                multiline
-                numberOfLines={1}
-                maxLength={800}
-                onSubmitEditing={() => void send()}
-                onKeyPress={(e) => {
-                  // Web: Enter sends, Shift+Enter adds a line.
-                  const ev = e.nativeEvent as { key: string; shiftKey?: boolean };
-                  if (Platform.OS === 'web' && ev.key === 'Enter' && !ev.shiftKey) {
-                    (e as unknown as { preventDefault: () => void }).preventDefault();
-                    void send();
-                  }
-                }}
-                submitBehavior="submit"
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-                style={[
-                  { flex: 1, color: C.text, fontSize: 16, fontFamily: FONT.body, maxHeight: 110, paddingVertical: 12 },
-                  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null,
-                ]}
-              />
-              <IconButton icon="arrowRight" variant="green" size={44} onPress={() => void send()} disabled={!canSend} busy={busy} accessibilityLabel="Send message" />
-            </View>
-          </View>
+        <View style={{ position: 'relative' }}>
+          <Toast text={toast} onDone={() => setToast(null)} />
+          <Composer value={input} onChange={setInput} onSend={() => void send()} onPhoto={() => router.push('/food/log?mode=photo')} busy={busy} remaining={remaining} />
         </View>
       </KeyboardAvoidingView>
+
+      <ChatsSheet
+        visible={chatsOpen}
+        onClose={() => setChatsOpen(false)}
+        threads={threads}
+        currentId={threadId}
+        loading={threadsLoading}
+        onOpen={openThread}
+        onRename={renameThread}
+        onPin={pinThread}
+        onArchive={archiveThread}
+      />
+      <ContextSheet visible={contextOpen} onClose={() => setContextOpen(false)} />
+      <MessageActionsSheet msg={actionMsg} actions={actionMsg ? actionList(actionMsg) : []} onClose={() => setActionMsg(null)} onAction={(a, m) => void onAction(a, m)} />
     </SafeAreaView>
   );
 }

@@ -22,6 +22,7 @@ import { ProgressBar } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
 import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerciseSheet';
 import { SetTile } from '../../src/components/training/Controls';
+import { PlateStack } from '../../src/components/training/PlateStack';
 import { MuscleLegend, MuscleMap } from '../../src/components/training/MuscleMap';
 import { muscleNames, musclesForExercises } from '../../src/lib/muscles';
 import { BackHeader } from '../../src/components/training/BackHeader';
@@ -141,11 +142,14 @@ export default function WorkoutScreen() {
           </View>
         ) : null}
 
-        <View style={{ gap: 8 }}>
-          <ProgressBar value={progress.total ? progress.done / progress.total : 0} height={8} />
-          <Text style={T.small} accessibilityLiveRegion="polite">
-            {progress.done} of {progress.total} sets done
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <PlateStack done={progress.done} total={progress.total} complete={allSetsDone || !!day.done.workout} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <ProgressBar value={progress.total ? progress.done / progress.total : 0} height={8} />
+            <Text style={T.small} accessibilityLiveRegion="polite">
+              {progress.done} of {progress.total} sets done
+            </Text>
+          </View>
         </View>
 
         {timer.running ? (

@@ -2,7 +2,7 @@
    segmented control, answer chips, a selectable row, a set tile, a state
    block for loading, empty and error, and a macro line. */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Platform, Pressable, Text, View, ViewStyle } from 'react-native';
 
 import { C, FONT, R, T } from '../../design';
@@ -10,10 +10,14 @@ import { haptic } from '../../lib/haptics';
 import { Icon, IconName } from '../Icon';
 import { Button } from '../Button';
 import { useReduceMotion } from '../motion';
+import { SwipeRow } from '../SwipeRow';
+import { segmentX } from '../../lib/motionMath';
 
 /** One choice out of a few, side by side (radio group). The one segmented
     control in the app: the selected segment is raised Carbon with a white
-    label, never a green fill. */
+    label, never a green fill. The raised thumb slides to a new choice on a
+    touch spring (about 250ms, no visible overshoot); Reduce Motion: it
+    jumps. */
 export function Segmented<V extends string | number>({
   options,
   value,
@@ -25,8 +29,51 @@ export function Segmented<V extends string | number>({
   onChange: (v: V) => void;
   label: string;
 }) {
+  const reduce = useReduceMotion();
+  const [width, setWidth] = useState(0);
+  const x = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+  const index = options.findIndex((o) => o.value === value);
+  const seg = segmentX(width, options.length, Math.max(0, index), 4, 4);
+  // Until the row is measured the selected segment draws its own fill.
+  const thumb = index >= 0 && seg != null;
+
+  useEffect(() => {
+    if (!seg || index < 0) return;
+    if (!placed.current || reduce) {
+      placed.current = true;
+      x.setValue(seg.x);
+      return;
+    }
+    const a = Animated.spring(x, { toValue: seg.x, stiffness: 420, damping: 38, mass: 1, useNativeDriver: Platform.OS !== 'web' });
+    a.start();
+    return () => a.stop();
+  }, [seg?.x, index, reduce, x]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: R.pill, padding: 4, gap: 4 }}>
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel={label}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: R.pill, padding: 4, gap: 4 }}
+    >
+      {thumb ? (
+        <Animated.View
+          style={{
+            pointerEvents: 'none',
+            position: 'absolute',
+            left: 0,
+            top: 4,
+            bottom: 4,
+            width: seg.w,
+            borderRadius: R.pill,
+            backgroundColor: C.raised,
+            borderWidth: 1,
+            borderColor: C.lineStrong,
+            transform: [{ translateX: x }],
+          }}
+        />
+      ) : null}
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -44,9 +91,9 @@ export function Segmented<V extends string | number>({
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: 4,
-              backgroundColor: on ? C.raised : pressed ? C.card : 'transparent',
+              backgroundColor: on ? (thumb ? 'transparent' : C.raised) : pressed ? C.card : 'transparent',
               borderWidth: 1,
-              borderColor: on ? C.lineStrong : 'transparent',
+              borderColor: on && !thumb ? C.lineStrong : 'transparent',
             })}
           >
             <Text style={{ fontFamily: on ? FONT.bodySemi : FONT.bodyMedium, fontSize: 14, lineHeight: 18, textAlign: 'center', color: on ? C.text : C.muted }}>{o.label}</Text>
@@ -154,9 +201,10 @@ export function ChoiceRow({
   );
 }
 
-/** One set in the workout: tap to tick it done (or untick it). Ticking
-    gives a light tap on native and the check pops in (0.8 to 1, 180ms,
-    ease-out quart); unticking and Reduce Motion stay still. */
+/** One set in the workout: tap to tick it done (or untick it), or swipe it
+    right to tick it. Ticking gives a light tap (a short buzz on Android web)
+    and the check pops in (0.8 to 1, 180ms, ease-out quart); unticking and
+    Reduce Motion stay still. */
 export function SetTile({ index, load, on, onToggle }: { index: number; load: string; on: boolean; onToggle: () => void }) {
   const reduce = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
@@ -172,40 +220,40 @@ export function SetTile({ index, load, on, onToggle }: { index: number; load: st
     return () => a.stop();
   }, [on, reduce, scale]);
 
+  const press = () => {
+    if (!on) haptic.tap();
+    onToggle();
+  };
+
   return (
-    <Pressable
-      onPress={() => {
-        if (!on) haptic.tap();
-        onToggle();
-      }}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: on }}
-      accessibilityLabel={`Set ${index + 1}, ${load}`}
-      style={({ pressed }) => ({
-        minWidth: 72,
-        minHeight: 56,
-        flexGrow: 1,
-        flexBasis: 72,
-        maxWidth: 110,
-        paddingVertical: 8,
-        borderRadius: R.tile,
-        backgroundColor: pressed ? C.raised : on ? C.greenTint : C.surface,
-        borderWidth: 1,
-        borderColor: on ? C.greenBorder : C.lineStrong,
-        alignItems: 'center',
-        justifyContent: 'center',
-      })}
-    >
-      {on ? (
-        <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, transform: [{ scale }] }}>
-          <Icon name="check" size={16} color={C.green} strokeWidth={2.6} />
-          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.green }}>Done</Text>
-        </Animated.View>
-      ) : (
-        <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>Set {index + 1}</Text>
-      )}
-      <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.stone : C.muted, marginTop: 2 }}>{load}</Text>
-    </Pressable>
+    <SwipeRow label="Done" compact enabled={!on} onCommit={press} style={{ minWidth: 72, flexGrow: 1, flexBasis: 72, maxWidth: 110 }}>
+      <Pressable
+        onPress={press}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: on }}
+        accessibilityLabel={`Set ${index + 1}, ${load}`}
+        style={({ pressed }) => ({
+          minHeight: 56,
+          paddingVertical: 8,
+          borderRadius: R.tile,
+          backgroundColor: pressed ? C.raised : on ? C.greenTint : C.surface,
+          borderWidth: 1,
+          borderColor: on ? C.greenBorder : C.lineStrong,
+          alignItems: 'center',
+          justifyContent: 'center',
+        })}
+      >
+        {on ? (
+          <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, transform: [{ scale }] }}>
+            <Icon name="check" size={16} color={C.green} strokeWidth={2.6} />
+            <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.green }}>Done</Text>
+          </Animated.View>
+        ) : (
+          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>Set {index + 1}</Text>
+        )}
+        <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: on ? C.stone : C.muted, marginTop: 2 }}>{load}</Text>
+      </Pressable>
+    </SwipeRow>
   );
 }
 

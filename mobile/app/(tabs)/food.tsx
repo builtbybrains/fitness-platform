@@ -2,14 +2,16 @@
    for one with similar calories and protein. The second option is to log
    what you actually have: type it or snap it, answer a quick question or
    two, check the numbers, save. Or ask for a meal made from what's at home.
-   Off-plan food counts toward the day. */
+   Off-plan food counts toward the day. A meal can also be swiped right to
+   tick it eaten. Pull down to re-read the plan and
+   what was logged; while they load, the screen's shape stands in. */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
+import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { usePlan } from '../../src/planStore';
 import { useFoodLogs } from '../../src/foodLogs';
 import { daySummary } from '../../src/stats';
@@ -18,8 +20,13 @@ import { CheckBox, ScreenHeader } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
 import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
+import { MacroDonut } from '../../src/components/food/MacroDonut';
+import { useCan3D } from '../../src/components/three/support';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
 import { MealImage } from '../../src/components/food/MealImage';
+import { Bone, Skeleton } from '../../src/components/Skeleton';
+import { usePullRefresh } from '../../src/components/usePullRefresh';
+import { SwipeRow } from '../../src/components/SwipeRow';
 import { dateEyebrow, foodHeaderStats } from '../../src/lib/headerStats';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
@@ -29,14 +36,21 @@ import type { DayMeal } from '../../src/planData';
 const SOURCE_LABEL: Record<string, string> = { photo: 'From a photo', text: 'Typed', generated: 'Made from what you had', plan: 'Plan meal' };
 
 export default function FoodTab() {
-  const { days, todayIdx, todayId, targets, activities, profile, plan, planLoaded, swapMeal, toggleMeal } = usePlan();
+  const { days, todayIdx, todayId, targets, activities, profile, plan, planLoaded, swapMeal, toggleMeal, reload } = usePlan();
   const { session, profileLoaded, profileError } = useAuth();
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
+  // With the 3D donut on screen, its chips carry protein, carbs and fat, so
+  // the totals card drops its macros row. Without it, the totals keep it.
+  const can3D = useCan3D();
+  const [donutFailed, setDonutFailed] = useState(false);
+  const donut = can3D && !donutFailed;
   const [swapSlot, setSwapSlot] = useState<string | null>(null);
   // The meal ticked last: its row re-mounts as eaten, and its tick pops in.
   const [justAte, setJustAte] = useState<string | null>(null);
   const day = days[todayIdx];
+  const refreshFood = food.refresh;
+  const refreshControl = usePullRefresh(useCallback(() => Promise.all([reload(), refreshFood()]), [reload, refreshFood]));
 
   const activityToday = useMemo(() => activities.filter((a) => a.day === todayId), [activities, todayId]);
   const summary = useMemo(
@@ -69,9 +83,7 @@ export default function FoodTab() {
           {unreachable ? (
             <OfflineBlock body="Your meals and what you logged show here as soon as BUILT answers again." />
           ) : (
-            <View style={cardStyle}>
-              <StateBlock kind="loading" title="Loading today's meals" />
-            </View>
+            <FoodSkeleton />
           )}
         </View>
       </SafeAreaView>
@@ -95,18 +107,21 @@ export default function FoodTab() {
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <ScrollView refreshControl={refreshControl} contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <ScreenHeader
           eyebrow={dateEyebrow(day.index, day.id, true)}
           title="Time to"
           accent="fuel up."
-          stats={foodHeaderStats({ eatenKcal: summary.eaten.kcal, targetKcal: targets.kcal, meals: day.meals, eatenSlots: day.done.meals })}
+          // The day's totals card shows kcal left, so the header skips that chip.
+          stats={foodHeaderStats({ eatenKcal: summary.eaten.kcal, targetKcal: targets.kcal, meals: day.meals, eatenSlots: day.done.meals }).filter((st) => st.icon !== 'flame')}
           right={<PhotoLogButton />}
         />
 
         <OfflineNotice />
 
-        <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} />
+        <MacroDonut eaten={summary.eaten} onFail={() => setDonutFailed(true)} />
+
+        <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} macros={!donut} />
 
         <View style={[cardStyle, { gap: 4 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 8 }}>
@@ -211,6 +226,48 @@ export default function FoodTab() {
   );
 }
 
+/** Food while it loads: header stats, the day's totals, then the next meal's photo and the rest as rows. */
+function FoodSkeleton() {
+  return (
+    <Skeleton label="Loading today's meals" style={{ gap: 24 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[96, 80, 72].map((w) => (
+          <Bone key={w} width={w} height={32} radius={R.pill} />
+        ))}
+      </View>
+      <Bone radius={R.card} style={{ padding: 20, gap: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Bone width="40%" height={28} radius={8} tone="raised" />
+          <Bone width="25%" height={14} radius={6} tone="raised" />
+        </View>
+        <Bone height={8} radius={4} tone="raised" />
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <Bone key={i} height={40} radius={8} tone="raised" style={{ flex: 1 }} />
+          ))}
+        </View>
+      </Bone>
+      <Bone radius={R.card} style={{ padding: 20, gap: 12 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Bone width="40%" height={18} radius={6} tone="raised" />
+          <Bone width="20%" height={14} radius={6} tone="raised" />
+        </View>
+        <Bone height={180} radius={R.card} tone="raised" />
+        <Bone width="70%" height={22} radius={6} tone="raised" />
+        {[0, 1].map((i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 8 }}>
+            <Bone height={52} width={52} tone="raised" />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Bone width="60%" height={16} radius={6} tone="raised" />
+              <Bone width="40%" height={12} radius={6} tone="raised" />
+            </View>
+          </View>
+        ))}
+      </Bone>
+    </Skeleton>
+  );
+}
+
 /** Snap a meal straight from the header. */
 function PhotoLogButton() {
   return <IconButton icon="camera" size={48} onPress={() => router.push('/food/log?mode=photo')} accessibilityLabel="Log food from a photo" />;
@@ -221,23 +278,26 @@ function NextMeal({ meal, onToggle, onSwap }: { meal: DayMeal; onToggle: () => v
   return (
     <View style={{ gap: 8, paddingBottom: 8 }}>
       <MealImage label={meal.label} items={meal.items} size="card" />
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: false }}
-        accessibilityLabel={`Next, ${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
-        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, paddingTop: 8, opacity: pressed ? 0.75 : 1 })}
-      >
-        <CheckBox checked={false} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={T.small}>
-            Next · {meal.slot}
-            {meal.swapped ? ' · swapped' : ''}
-          </Text>
-          <Text style={T.h3}>{meal.label}</Text>
-          <MacroLine m={meal} />
-        </View>
-      </Pressable>
+      {/* Tap or swipe right to tick it eaten. */}
+      <SwipeRow label="Eaten" onCommit={onToggle} background={C.card}>
+        <Pressable
+          onPress={onToggle}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: false }}
+          accessibilityLabel={`Next, ${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, paddingTop: 8, opacity: pressed ? 0.75 : 1 })}
+        >
+          <CheckBox checked={false} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={T.small}>
+              Next · {meal.slot}
+              {meal.swapped ? ' · swapped' : ''}
+            </Text>
+            <Text style={T.h3}>{meal.label}</Text>
+            <MacroLine m={meal} />
+          </View>
+        </Pressable>
+      </SwipeRow>
       <SwapButton slot={meal.slot} onPress={onSwap} indent={34} />
     </View>
   );
@@ -246,23 +306,26 @@ function NextMeal({ meal, onToggle, onSwap }: { meal: DayMeal; onToggle: () => v
 function MealRow({ meal, first, done, justTicked, onToggle, onSwap }: { meal: DayMeal; first: boolean; done: boolean; justTicked: boolean; onToggle: () => void; onSwap: () => void }) {
   return (
     <View style={{ paddingTop: 12, paddingBottom: 4, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: done }}
-        accessibilityLabel={`${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
-        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, opacity: pressed ? 0.75 : 1 })}
-      >
-        <MealImage label={meal.label} items={meal.items} size="thumb" checked={done} justTicked={justTicked} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={T.small}>
-            {meal.slot}
-            {meal.swapped ? ' · swapped' : ''}
-          </Text>
-          <Text style={[T.bodyStrong, { color: done ? C.muted : C.text }]}>{meal.label}</Text>
-          <MacroLine m={meal} />
-        </View>
-      </Pressable>
+      {/* Tap to tick or untick; swipe right to tick a meal not eaten yet. */}
+      <SwipeRow label="Eaten" enabled={!done} onCommit={onToggle} background={C.card}>
+        <Pressable
+          onPress={onToggle}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: done }}
+          accessibilityLabel={`${meal.slot}: ${meal.label}. ${meal.kcal} kcal, ${meal.protein} grams protein, ${meal.carbs} grams carbs, ${meal.fat} grams fat`}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, opacity: pressed ? 0.75 : 1 })}
+        >
+          <MealImage label={meal.label} items={meal.items} size="thumb" checked={done} justTicked={justTicked} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={T.small}>
+              {meal.slot}
+              {meal.swapped ? ' · swapped' : ''}
+            </Text>
+            <Text style={[T.bodyStrong, { color: done ? C.muted : C.text }]}>{meal.label}</Text>
+            <MacroLine m={meal} />
+          </View>
+        </Pressable>
+      </SwipeRow>
       <SwapButton slot={meal.slot} onPress={onSwap} indent={60} />
     </View>
   );

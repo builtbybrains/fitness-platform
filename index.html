@@ -16,14 +16,14 @@
   <meta property="og:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="BUILT. Build your best.">
+  <meta property="og:image:alt" content="BUILT. Build your best. A black hex dumbbell with green collars and the green B on its end.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="BUILT | Build your best.">
   <meta name="twitter:description" content="An all-in-one fitness and nutrition platform powered by AI coaching.">
   <meta name="twitter:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <link rel="icon" href="assets/img/favicon.svg?v=built1" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png?v=built1">
-  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/athlete-640.webp?v=2 640w, assets/img/athlete.webp?v=2 1200w" imagesizes="(max-width: 940px) 100vw, 58vw" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" imagesizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap">
@@ -223,14 +223,19 @@
       padding-top: calc(var(--nav-h) + clamp(40px, 7vh, 88px));
       padding-bottom: clamp(56px, 8vw, 104px);
     }
-    .hero__media { position: absolute; top: 0; right: 0; bottom: 0; width: min(58%, 900px); }
-    .hero__media img {
-      width: 100%; height: 100%; object-fit: cover; object-position: 55% 18%;
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%), linear-gradient(180deg, #000 72%, transparent 100%);
+    /* The 3D dumbbell and its still poster share one square composition, fitted like
+       object-fit: contain and aligned by --ax / --ay, so the canvas lands exactly on the poster. */
+    .hero__media {
+      --ax: 0.5; --ay: 0.46;
+      --m-left: 0.3; --m-bottom: 0.28; /* the same mask, applied to the live drawing by the 3D engine */
+      position: absolute; top: 0; right: 0; bottom: 0; width: min(58%, 900px);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%), linear-gradient(180deg, #000 72%, transparent 100%);
       -webkit-mask-composite: source-in;
-      mask-image: linear-gradient(90deg, transparent 0%, #000 42%), linear-gradient(180deg, #000 72%, transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0%, #000 30%), linear-gradient(180deg, #000 72%, transparent 100%);
       mask-composite: intersect;
     }
+    .hero__poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
+    .hero__media.is-3d-live .hero__poster { visibility: hidden; }
     .hero__inner { position: relative; z-index: 1; }
     .hero__copy { max-width: min(600px, 54%); }
     .hero__copy .hero__tag { margin: 0 0 20px; font-size: 0.875rem; }
@@ -248,9 +253,16 @@
     .pillar:nth-child(3)::before { content: ''; position: absolute; left: -12px; top: 2px; bottom: 2px; width: 1px; background: var(--line-strong); }
 
     .js .hero__copy > * { animation: rise var(--t-slow) var(--ease-quart) both; animation-delay: calc(var(--d, 0) * 70ms + 80ms); }
-    .js .hero__media { animation: fade 600ms var(--ease-quart) both; }
+    /* No entrance on the hero media: the poster is the LCP image and must paint at once. */
     @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes tilt-in { from { opacity: 0; transform: perspective(900px) rotateX(6deg) translateY(16px); } to { opacity: 1; transform: perspective(900px); } }
+
+    /* Scroll reveal: headings and copy rise in order; the phone and the price card settle in
+       from a slight 3D tilt. Only what starts below the fold is held back. */
+    .js .is-pending > *, .js .is-pending[data-reveal='tilt'] { opacity: 0; }
+    .js .is-revealed > * { animation: rise var(--t-slow) var(--ease-quart) backwards; animation-delay: calc(var(--d, 0) * 80ms); }
+    .js .is-revealed[data-reveal='tilt'] { animation: tilt-in 400ms var(--ease-expo) backwards; }
+    .js .is-revealed[data-reveal='tilt'] > * { animation: none; }
 
     /* ---------- How it works: scroll-scrubbed roadmap ---------- */
     /* Above 860px the cards interlock: each step spans two rows, so the next card starts
@@ -337,7 +349,7 @@
     .phone__screen { position: relative; height: 100%; border-radius: 38px; overflow: hidden; background: var(--black); }
     .phone__island { position: absolute; z-index: 3; top: 10px; left: 50%; width: 84px; height: 24px; transform: translateX(-50%); border-radius: 99px; background: var(--black); box-shadow: inset 0 0 0 1px var(--line); }
     .statusbar {
-      position: absolute; z-index: 2; top: 0; left: 0; right: 0; height: 44px;
+      position: absolute; z-index: 2; top: 0; left: 0; right: 0; height: 44px; background: var(--black);
       display: flex; align-items: center; justify-content: space-between; padding: 2px 24px 0 28px;
       font-size: 12px; font-weight: 600; font-family: var(--font-display);
     }
@@ -379,7 +391,7 @@
     .app-row .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .app-workout { padding: 8px 8px 8px 8px; }
     .app-workout__img { position: relative; width: 52px; height: 52px; border-radius: 10px; overflow: hidden; flex: none; background: var(--black); }
-    .app-workout__img img { position: absolute; left: -34px; top: 0; width: 120px; max-width: none; height: auto; }
+    .app-workout__img img { position: absolute; left: -11px; top: -5px; width: 68px; max-width: none; height: auto; }
     .app-row .app-play { width: 36px; height: 36px; border-radius: 50%; background: var(--green); color: var(--black); display: grid; place-items: center; flex: none; }
     .app-row .app-play .ico { width: 14px; height: 14px; fill: currentColor; stroke: none; margin-left: 2px; }
     .app-row .chev { width: 16px; height: 16px; color: var(--faint); }
@@ -394,8 +406,9 @@
     .ask span { flex: 1; }
     .ask i { width: 32px; height: 32px; border-radius: 50%; background: var(--green); color: var(--black); display: grid; place-items: center; }
     .ask .ico { width: 16px; height: 16px; }
+    /* pinned like the real tab bar, so the screen's content can scroll beneath it */
     .app-tabs {
-      margin-top: auto; margin-inline: -14px; display: grid; grid-template-columns: repeat(4, 1fr);
+      position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
       padding: 10px 8px 22px; background: var(--carbon);
     }
     .app-tabs span { display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--faint); }
@@ -457,8 +470,8 @@
     .spark { display: flex; align-items: flex-end; gap: 6px; height: 96px; margin-top: 16px; }
     .spark i { flex: 1; height: var(--h); min-height: 4px; border-radius: 4px 4px 2px 2px; background: var(--line-strong); transform-origin: 50% 100%; }
     .spark i.peak { background: var(--green); }
-    .js .spark i { transform: scaleY(0); transition: transform 400ms var(--ease-quart); transition-delay: calc(var(--i) * 16ms); }
-    .js .is-visible .spark i { transform: none; }
+    /* the bars grow with the scroll (the scroll system writes each one); without it they stand */
+    .fx .spark i { transform: scaleY(0); }
     .kv { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
     .kv b { font-weight: 600; }
     .kv span { font-size: 0.875rem; color: var(--muted); }
@@ -606,13 +619,14 @@
       .nav__burger { display: block; }
 
       .hero { display: block; min-height: 0; padding-top: var(--nav-h); }
-      /* Photo first, but short enough that the headline sits on its dark fade and the
+      /* Dumbbell first, but short enough that the headline sits under it and the
          primary button lands on the first screen at 360x640. */
-      .hero__media { position: relative; width: auto; height: min(92vw, 44vh); height: min(92vw, 44svh); }
-      .hero__media img {
-        object-position: 50% 12%;
-        -webkit-mask-image: linear-gradient(180deg, #000 52%, transparent 94%);
-        mask-image: linear-gradient(180deg, #000 52%, transparent 94%);
+      .hero__media {
+        --ax: 0.5; --ay: 0.5;
+        --m-left: 0; --m-bottom: 0.3;
+        position: relative; width: auto; height: min(84vw, 40vh); height: min(84vw, 40svh);
+        -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+        mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
       }
       .hero__inner { margin-top: -56px; }
       .hero__copy { max-width: 620px; }
@@ -678,6 +692,14 @@
       .ex { padding: 12px; gap: 12px; }
     }
 
+    /* The narrowest phones (320): the switcher bar and the phone mockup fit inside the gutters */
+    @media (max-width: 339px) {
+      .switcher__bar { gap: 6px; }
+      .tab { padding: 0 9px; }
+      .switcher .icon-btn { width: 44px; height: 44px; }
+      .phone { width: min(288px, 100%); }
+    }
+
     @media (hover: none) {
       .btn:hover .ico--arrow, .link-arrow:hover .ico, .shortcut:hover .chev { transform: none; }
     }
@@ -688,7 +710,148 @@
       .js .roadmap__card { opacity: 1; transform: none; }
     }
 
+    /* ---------- 3D slots ----------
+       One canvas (.stage3d, added by assets/js/site-3d.min.js) sits above the section bands and
+       draws each [data-3d] slot inside that slot's own box, so it never covers copy. Each slot
+       holds a still poster that shows until the live drawing has faded in over it, and stays
+       for good without WebGL, with Save-Data or with reduced motion. */
+    .stage3d { position: absolute; top: 0; left: 0; z-index: 1; width: 100%; pointer-events: none; }
+    .slot3d { --ax: 0.5; --ay: 0.5; position: relative; pointer-events: none; }
+    .slot3d img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
+    .slot3d.is-3d-live img { visibility: hidden; }
+
+    /* How it works: a small object rides in the corner of each step card */
+    .slot3d--step { float: right; width: 116px; height: 116px; margin: -14px -14px 6px 12px; }
+    @media (min-width: 1200px) { .slot3d--step { width: 148px; height: 148px; } }
+
+    /* A head with its object beside it (features, progress) */
+    .head-3d {
+      display: grid; grid-template-columns: minmax(0, 1fr) clamp(220px, 26vw, 340px); align-items: center;
+      gap: 24px clamp(32px, 5vw, 72px); margin-bottom: clamp(40px, 5vw, 64px);
+    }
+    .head-3d > .section-head { margin-bottom: 0; }
+    .head-3d > .slot3d { aspect-ratio: 1; }
+    .head-3d > .slot3d--wide { aspect-ratio: 1.15; }
+
+    /* Split showcases gain a narrow middle column for their object */
+    .split--3d {
+      grid-template-areas: 'body slot media';
+      grid-template-columns: minmax(0, 1fr) clamp(160px, 15vw, 210px) minmax(0, 1fr);
+      column-gap: clamp(24px, 3vw, 48px);
+    }
+    .split--3d.split--reverse { grid-template-areas: 'media slot body'; }
+    .split--3d > .split__body { grid-area: body; }
+    .split--3d > .split__media { grid-area: media; }
+    .split--3d > .slot3d { grid-area: slot; align-self: center; height: clamp(320px, 34vw, 460px); }
+
+    /* Pricing: the medal above the heading */
+    .slot3d--medal { width: 200px; height: 200px; margin: 0 auto 8px; }
+
+    /* Final call: the three objects orbit in the side margins, behind the copy */
+    .final { position: relative; }
+    .final > .container { position: relative; z-index: 2; }
+    .slot3d--orbit { position: absolute; inset: 0; }
+
+    @media (max-width: 1099px) {
+      .split--3d { grid-template-areas: 'slot media' 'body media'; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(40px, 6vw, 88px); row-gap: 8px; }
+      .split--3d.split--reverse { grid-template-areas: 'media slot' 'media body'; }
+      .split--3d > .slot3d { align-self: end; height: 180px; }
+      .split--3d > .split__body { align-self: start; }
+    }
+
+    /* Phones and tablets: every object sits above its heading, centred */
+    @media (max-width: 940px) {
+      .head-3d { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+      .head-3d > .slot3d, .head-3d > .slot3d--wide { order: -1; aspect-ratio: auto; height: 180px; }
+      .split--3d, .split--3d.split--reverse { grid-template-areas: 'slot' 'body' 'media'; grid-template-columns: minmax(0, 1fr); }
+      .split--3d > .slot3d { align-self: auto; height: 180px; margin-bottom: calc(8px - clamp(40px, 6vw, 88px)); }
+      .slot3d--medal { width: auto; height: 180px; }
+      .final { padding-top: 40px; }
+      .slot3d--orbit { position: relative; inset: auto; height: 200px; margin-bottom: 8px; }
+    }
+
+    @media (max-width: 620px) {
+      .slot3d--step { float: none; width: auto; height: 136px; margin: -8px 0 8px; }
+    }
+
+    /* ---------- Scroll motion ----------
+       One scroll loop at the end of the page writes every value below from the scroll position,
+       so scrolling back plays each effect backwards. Every rule here hangs off .fx, which the
+       script sets only when motion is allowed: without it (reduced motion, no script) the page
+       is the still page, fully visible. Transform, opacity, clip-path and stroke only. */
+
+    /* Scroll progress: a 2px line under the nav, Stone for the page so far, green for the
+       part of the current section already read. */
+    .scrollbar { display: none; }
+    .fx .scrollbar { display: block; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; pointer-events: none; }
+    .scrollbar i { position: absolute; inset: 0; transform-origin: 0 50%; transform: scaleX(0); }
+    .scrollbar__all { background: var(--stone); opacity: 0.35; }
+    .scrollbar__now { background: var(--green); }
+
+    /* Hero: the headline's lines part and fade as it leaves; the pillars come up from below */
+    .fx .hero__tag > span, .fx .hw { display: inline-block; }
+
+    /* Key headings: each word rises out of its own mask */
+    .fx .wm { display: inline-block; clip-path: inset(-0.12em -0.3em -0.22em -0.3em); }
+    .fx .wm__i { display: inline-block; transform-origin: 0 100%; transform: translate3d(0, 115%, 0); }
+
+    /* Roadmap: a ring charges round each step number as the line arrives */
+    /* the ring paints 5px outside the marker (ink overflow), so the marker's own box never grows */
+    .roadmap__ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); pointer-events: none; }
+    .roadmap__ring circle { fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+    .roadmap__step.is-reached .roadmap__ring circle { stroke-dashoffset: 0; }
+
+    /* Features: each card stands up from lying back, column by column */
+    .fx .feature { transform-origin: 50% 100%; }
+
+    /* Kinetic band: the brand line, in two rows that slide against each other with the scroll */
+    .kinetic {
+      position: relative; overflow: hidden; overflow: clip;
+      padding-block: clamp(44px, 7vw, 104px); border-top: 1px solid var(--line);
+      font-family: var(--font-display); font-weight: 700; text-transform: uppercase;
+      font-size: clamp(3.25rem, 1.5rem + 8vw, 9.5rem); line-height: 1; letter-spacing: -0.02em;
+      user-select: none;
+    }
+    .kinetic__row { display: flex; width: max-content; white-space: nowrap; }
+    .kinetic__row + .kinetic__row { margin-top: 0.1em; }
+    .kinetic__row span { padding-inline: 0.16em; }
+    .kinetic .ks { color: var(--white); }
+    .kinetic .ko { color: transparent; -webkit-text-stroke: 1.5px var(--stone); }
+    .kinetic .kg { color: var(--green); }
+    .kinetic .kd { color: var(--faint); padding-inline: 0.04em; }
+    .fx .kinetic.is-live .kinetic__row { will-change: transform; }
+
+    /* Progress: counters keep the final number's width, so counting never shifts the layout */
+    .cnt { position: relative; display: inline-block; font-variant-numeric: tabular-nums; }
+    .cnt__ghost { color: transparent; }
+    .cnt__live { position: absolute; top: 0; right: 0; }
+
+    /* Pricing: the price rolls up like an odometer; the "about $1 a day" line underlines itself */
+    .odo { display: inline-flex; }
+    .odo__col { position: relative; display: inline-block; clip-path: inset(0 -0.08em); }
+    .odo__ghost { color: transparent; }
+    .odo__strip { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+    .odo__strip span { display: block; }
+    .draw-ul { position: relative; display: inline-block; white-space: nowrap; }
+    .draw-ul > i { position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; border-radius: 2px; background: var(--green); transform-origin: 0 50%; }
+    .fx .draw-ul > i { transform: scaleX(0); }
+
+    /* Phone mockup: drifts a little slower than the page while its screen scrolls on its own */
+    .fx .screen > :not(.app-tabs) { transform: translate3d(0, var(--app-y, 0px), 0); }
+    .fx .switcher.is-live, .fx .final__panel.is-live { will-change: transform; }
+
+    /* Final call: a black panel opens out to full bleed from a rounded card as it arrives */
+    .final__panel { display: none; }
+    .fx .final { background: var(--band); }
+    .fx .final__panel { display: block; position: absolute; inset: 0; background: var(--black); pointer-events: none; transform: scale(0.96); clip-path: inset(0 round 24px); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scrollbar, .final__panel { display: none !important; }
+      .wm__i, .hw, .feature, .kinetic__row, .switcher, .screen > *, .odo__strip, .draw-ul > i, .spark i, .hero__tag > span, .pillar { transform: none !important; opacity: 1 !important; }
+    }
+
     @media print {
+      .stage3d { display: none !important; }
       .nav, .mobile-menu, .hero__media, .switcher__bar { display: none !important; }
       body { background: #fff; color: #000; }
     }
@@ -774,6 +937,7 @@
       </button>
     </div>
   </div>
+  <div class="scrollbar" aria-hidden="true"><i class="scrollbar__all"></i><i class="scrollbar__now"></i></div>
 </header>
 
 <div class="mobile-menu" id="mobile-menu" aria-hidden="true" inert>
@@ -797,13 +961,12 @@
 
   <!-- ===== Hero (deck page 5) ===== -->
   <section class="hero" id="home" aria-labelledby="hero-title">
-    <picture class="hero__media">
-      <source type="image/webp" srcset="assets/img/athlete-640.webp?v=2 640w, assets/img/athlete.webp?v=2 1200w" sizes="(max-width: 940px) 100vw, 58vw">
-      <img src="assets/img/athlete.jpg?v=2" width="1200" height="1200" alt="A lean, muscular athlete standing in a dark gym, looking ahead" fetchpriority="high">
-    </picture>
+    <div class="hero__media" data-3d="hero" data-3d-track="#home">
+      <img class="hero__poster" src="assets/img/dumbbell-hero.webp?v=2" srcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" sizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" width="1200" height="1200" alt="A black hex dumbbell with green collars and the green BUILT B on its end, floating in a dark studio" fetchpriority="high">
+    </div>
     <div class="container hero__inner">
       <div class="hero__copy">
-        <p class="tagline hero__tag" style="--d:0">Build your best.</p>
+        <p class="tagline hero__tag" style="--d:0"><span>Build your best.</span></p>
         <h1 class="display" id="hero-title" style="--d:0">Train. Fuel. <span class="hl">Become.</span></h1>
         <p class="lead" style="--d:1">An all-in-one fitness and nutrition platform powered by AI coaching. Built to help you <b>train, fuel, and become</b> a stronger, healthier, better you.</p>
         <div class="actions" style="--d:2">
@@ -824,14 +987,15 @@
   <section class="section band" id="how">
     <div class="container">
       <div class="section-head">
-        <h2 class="h-1">Your Goals. Our AI. Real Results.</h2>
+        <h2 class="h-1" data-words>Your Goals. Our AI. Real Results.</h2>
         <p class="lead">Four steps from signing up to a plan that keeps adjusting to you.</p>
       </div>
       <div class="roadmap" data-roadmap>
         <div class="roadmap__rail" aria-hidden="true"><span class="roadmap__fill"></span></div>
         <article class="roadmap__step is-left">
-          <div class="roadmap__marker" aria-hidden="true">1</div>
+          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>1</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Tell us about you</h3>
             <p>A short setup that captures what actually matters for your plan.</p>
             <ul class="step-list">
@@ -843,8 +1007,9 @@
           </div>
         </article>
         <article class="roadmap__step is-right">
-          <div class="roadmap__marker" aria-hidden="true">2</div>
+          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>2</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-tape" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-tape.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">AI builds your plan</h3>
             <p>Your nutrition targets and training approach are generated around your goal, not a template.</p>
             <ul class="step-list">
@@ -856,8 +1021,9 @@
           </div>
         </article>
         <article class="roadmap__step is-left">
-          <div class="roadmap__marker" aria-hidden="true">3</div>
+          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>3</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Follow your daily plan</h3>
             <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
             <ul class="step-list">
@@ -869,8 +1035,9 @@
           </div>
         </article>
         <article class="roadmap__step is-right">
-          <div class="roadmap__marker" aria-hidden="true">4</div>
+          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>4</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-ring" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-ring.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Track. Improve. Repeat.</h3>
             <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
             <ul class="step-list">
@@ -888,9 +1055,12 @@
   <!-- ===== Features, grouped by pillar ===== -->
   <section class="section" id="features">
     <div class="container">
-      <div class="section-head">
-        <h2 class="h-1">Everything You Need to Build You.</h2>
-        <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
+      <div class="head-3d">
+        <div class="section-head">
+          <h2 class="h-1" data-words>Everything You Need to Build You.</h2>
+          <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
+        </div>
+        <div class="slot3d" data-3d="features" aria-hidden="true"><img src="assets/img/3d/features.webp?v=2" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="feature-group">
@@ -935,10 +1105,16 @@
     </div>
   </section>
 
+  <!-- ===== Kinetic band: the brand line, moving with the scroll (decorative) ===== -->
+  <div class="kinetic" data-kinetic aria-hidden="true">
+    <div class="kinetic__row"><span class="ks">Train</span><span class="kd">&middot;</span><span class="ko">Fuel</span><span class="kd">&middot;</span><span class="kg">Become</span><span class="kd">&middot;</span><span class="ko">Train</span><span class="kd">&middot;</span><span class="ks">Fuel</span><span class="kd">&middot;</span><span class="ko">Become</span><span class="kd">&middot;</span><span class="ks">Train</span><span class="kd">&middot;</span><span class="ko">Fuel</span><span class="kd">&middot;</span><span class="ks">Become</span><span class="kd">&middot;</span></div>
+    <div class="kinetic__row"><span class="ko">Train</span><span class="kd">&middot;</span><span class="ks">Fuel</span><span class="kd">&middot;</span><span class="ko">Become</span><span class="kd">&middot;</span><span class="ks">Train</span><span class="kd">&middot;</span><span class="ko">Fuel</span><span class="kd">&middot;</span><span class="ks">Become</span><span class="kd">&middot;</span><span class="ko">Train</span><span class="kd">&middot;</span><span class="ks">Fuel</span><span class="kd">&middot;</span><span class="ko">Become</span><span class="kd">&middot;</span></div>
+  </div>
+
   <!-- ===== Nutrition, with the app screen switcher ===== -->
   <section class="section band" id="diet">
-    <div class="container split">
-      <div class="split__body">
+    <div class="container split split--3d">
+      <div class="split__body" data-reveal>
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg>Nutrition</span>
         <h2 class="h-1">A diet plan that adapts to you.</h2>
         <p class="lead" style="margin-top:24px">Your targets are calculated from your body, your goal and your routine, then refined as you log meals and progress. No rigid meal plans, no guesswork.</p>
@@ -948,6 +1124,8 @@
           <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>You can tell the coach about allergies and foods you avoid; always check labels yourself.</span></li>
         </ul>
       </div>
+
+      <div class="slot3d" data-3d="diet" aria-hidden="true"><img src="assets/img/3d/diet.webp?v=2" alt="" width="330" height="600" loading="lazy" decoding="async"></div>
 
       <div class="split__media switcher" data-tabs>
         <div class="switcher__bar">
@@ -962,7 +1140,7 @@
           </button>
         </div>
 
-        <div class="phone" data-activate>
+        <div class="phone" data-activate data-reveal="tilt" data-tilt>
           <div class="phone__screen">
             <div class="phone__island" aria-hidden="true"></div>
             <div class="statusbar" aria-hidden="true">
@@ -973,7 +1151,7 @@
             <div class="screen is-active" role="tabpanel" id="screen-today" aria-labelledby="tab-today">
               <p class="app-greet">Good morning,<br>Let&rsquo;s <b class="hl">build your best.</b></p>
               <div class="app-card app-row app-workout">
-                <span class="app-workout__img"><img src="assets/img/athlete-640.webp?v=2" alt="" width="640" height="640"></span>
+                <span class="app-workout__img"><img src="assets/img/dumbbell-hero-640.webp?v=2" alt="" width="640" height="640"></span>
                 <div><b>Upper body strength</b><span>32 min &middot; Intermediate</span></div>
                 <span class="app-play" aria-hidden="true"><svg class="ico"><use href="#i-play"/></svg></span>
               </div>
@@ -988,6 +1166,10 @@
                 <div class="app-card tile"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg><b>Nutrition</b><span>On track</span></div>
                 <div class="app-card tile"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg><b>AI Coach</b><span>New insights</span></div>
                 <div class="app-card tile"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg><b>Progress</b><span>+12% this month</span></div>
+              </div>
+              <div class="app-card">
+                <div class="kv" style="margin:0"><b style="font-size:13px">Water</b><span style="font-size:11px">6 / 8 glasses</span></div>
+                <div class="app-bar"><i style="--v:.75"></i></div>
               </div>
               <div class="app-tabs" aria-hidden="true">
                 <span class="on"><svg class="ico"><use href="#i-home"/></svg>Home</span>
@@ -1054,7 +1236,7 @@
 
   <!-- ===== Train ===== -->
   <section class="section" id="training">
-    <div class="container split split--reverse">
+    <div class="container split split--reverse split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg>Train</span>
         <h2 class="h-1">Your personal trainer. Always with you.</h2>
@@ -1069,6 +1251,8 @@
           <a class="link-arrow" href="#features">Explore all features <svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
       </div>
+
+      <div class="slot3d" data-3d="training" aria-hidden="true"><img src="assets/img/3d/training.webp?v=2" alt="" width="310" height="500" loading="lazy" decoding="async"></div>
 
       <div class="split__media">
         <div class="workout">
@@ -1100,11 +1284,17 @@
 
   <!-- ===== Daily rhythm (AI Coach) ===== -->
   <section class="section band" id="accountability">
-    <div class="container split">
+    <div class="container split split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg>AI Coach</span>
         <h2 class="h-1">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
+      </div>
+      <div class="slot3d" data-3d="accountability" aria-hidden="true">
+        <picture>
+          <source media="(max-width: 1099px)" srcset="assets/img/3d/accountability-wide.webp?v=3" width="756" height="360">
+          <img src="assets/img/3d/accountability.webp?v=3" alt="" width="300" height="500" loading="lazy" decoding="async">
+        </picture>
       </div>
       <div class="split__media">
         <div class="timeline-card">
@@ -1127,10 +1317,13 @@
   <!-- ===== Progress ===== -->
   <section class="section" id="progress">
     <div class="container">
-      <div class="section-head">
-        <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
-        <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
-        <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
+      <div class="head-3d">
+        <div class="section-head">
+          <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
+          <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
+          <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
+        </div>
+        <div class="slot3d slot3d--wide" data-3d="progress" aria-hidden="true"><img src="assets/img/3d/progress.webp?v=2" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="dash">
@@ -1144,7 +1337,7 @@
           </div>
           <div class="big"><span data-count="7.2" data-decimals="1">7.2</span><small>kg lost</small></div>
           <div class="bar" style="margin-top:24px"><i style="--v:.72"></i></div>
-          <div class="legend"><span>Start 92 kg</span><span>72% complete</span><span>Goal 82 kg</span></div>
+          <div class="legend"><span>Start 92 kg</span><span><span data-count="72">72</span>% complete</span><span>Goal 82 kg</span></div>
           <span class="label" style="margin-top:32px">Weekly progress</span>
           <div class="spark" aria-hidden="true">
             <i style="--h:34%;--i:0"></i><i style="--h:46%;--i:1"></i><i style="--h:41%;--i:2"></i><i style="--h:58%;--i:3"></i>
@@ -1163,11 +1356,11 @@
             </div>
           </div>
           <div class="panel" data-activate>
-            <div class="kv"><b>Calories</b><span>1,842 / 2,100</span></div>
+            <div class="kv"><b>Calories</b><span><span data-count="1842">1,842</span> / 2,100</span></div>
             <div class="bar"><i style="--v:.88"></i></div>
-            <div class="kv"><b>Workout completion</b><span>92%</span></div>
+            <div class="kv"><b>Workout completion</b><span><span data-count="92">92</span>%</span></div>
             <div class="bar"><i style="--v:.92"></i></div>
-            <div class="kv"><b>Water</b><span>6 / 8 glasses</span></div>
+            <div class="kv"><b>Water</b><span><span data-count="6">6</span> / 8 glasses</span></div>
             <div class="bar"><i style="--v:.75"></i></div>
           </div>
         </div>
@@ -1178,8 +1371,9 @@
   <!-- ===== Pricing ===== -->
   <section class="section band" id="pricing">
     <div class="container">
+      <div class="slot3d slot3d--medal" data-3d="pricing" aria-hidden="true"><img src="assets/img/3d/pricing.webp" alt="" width="440" height="440" loading="lazy" decoding="async"></div>
       <div class="section-head section-head--center">
-        <h2 class="h-1">Your health, for about $1 a day.</h2>
+        <h2 class="h-1" data-words>Your health, for about $1 a day.</h2>
         <p class="lead">One subscription. Everything included. No tiers to compare, no upsells.</p>
       </div>
 
@@ -1192,13 +1386,13 @@
           </div>
         </div>
 
-        <div class="price-card">
+        <div class="price-card" data-reveal="tilt" data-tilt="3">
           <div class="price-card__top">
             <span class="fine">Full access</span>
             <span class="chip">All included</span>
           </div>
-          <div class="price"><span class="cur">$</span><span class="num">30</span><span class="per">/ month</span></div>
-          <p class="price-aday">That&rsquo;s about $1 a day.</p>
+          <div class="price"><span class="cur">$</span><span class="num" data-odometer>30</span><span class="per">/ month</span></div>
+          <p class="price-aday">That&rsquo;s <span class="draw-ul" data-draw>about $1 a day<i aria-hidden="true"></i></span>.</p>
           <ul class="price-list">
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Personalized AI diet guidance</span></li>
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>AI personal training</span></li>
@@ -1250,7 +1444,7 @@
   <section class="section band" id="about">
     <div class="container">
       <div class="about-grid">
-        <h2 class="h-1">More Than Fitness.</h2>
+        <h2 class="h-1" data-words>More Than Fitness.</h2>
         <div>
           <p class="lead">We believe a healthier life should be simpler, more personal and easier to keep up.</p>
           <p class="muted">Most people do not fail because they lack discipline. They fail because the plan was never theirs, the advice contradicted itself, and staying on track took more attention than a normal life allows.</p>
@@ -1378,9 +1572,16 @@
   </section>
 
   <!-- ===== Final CTA ===== -->
-  <section class="final" id="start">
+  <section class="final" id="start" data-final>
+    <div class="final__panel" aria-hidden="true"></div>
+    <div class="slot3d slot3d--orbit" data-3d="final" data-3d-avoid="#start h2, #start .lead, #start .btn, #start .soon" aria-hidden="true">
+      <picture>
+        <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
+        <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
+      </picture>
+    </div>
     <div class="container">
-      <h2 class="display">Train. Fuel. <span class="hl">Become.</span></h2>
+      <h2 class="display" data-words>Train. Fuel. <span class="hl">Become.</span></h2>
       <p class="lead">One app. One plan. One day at a time.</p>
       <a class="btn btn-primary btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
       <div class="soon">
@@ -1438,11 +1639,7 @@
     var $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
     var $$ = function (sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
 
-    /* ---------- Nav: solid once the page scrolls ---------- */
     var nav = $('.nav');
-    var onScroll = function () { nav.classList.toggle('is-scrolled', window.scrollY > 16); };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
 
     /* ---------- Mobile menu ---------- */
     var burger = $('.nav__burger');
@@ -1462,26 +1659,21 @@
     });
     window.addEventListener('resize', function () { if (window.innerWidth > 940 && menu.classList.contains('is-open')) setMenu(false); });
 
-    /* ---------- Fill-once visuals: rings, bars, spark, timeline, counters ---------- */
-    function countUp(el) {
-      var target = parseFloat(el.dataset.count);
-      var decimals = parseInt(el.dataset.decimals || '0', 10);
-      if (reduceMotion) return;
-      var start = null;
-      var step = function (ts) {
-        if (start === null) start = ts;
-        var p = Math.min((ts - start) / 600, 1);
-        el.textContent = (target * (1 - Math.pow(1 - p, 4))).toFixed(decimals);
-        if (p < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }
+    /* ---------- Fill-once visuals: rings, bars, timeline (counters run in the scroll system) ---------- */
     function activate(el) {
       el.classList.add('is-visible');
-      $$('[data-count]', el).forEach(countUp);
+      if (el.classList.contains('is-pending')) { el.classList.remove('is-pending'); el.classList.add('is-revealed'); }
     }
-    var fillTargets = $$('[data-activate]');
+    /* The same observer runs the scroll reveal: anything marked data-reveal that starts below
+       the fold is held back (.is-pending) and rises in when it arrives. */
+    var revealTargets = $$('[data-reveal]');
+    var fillTargets = $$('[data-activate]').concat(revealTargets.filter(function (el) { return !el.hasAttribute('data-activate'); }));
     if ('IntersectionObserver' in window && !reduceMotion) {
+      revealTargets.forEach(function (el) {
+        if (el.getBoundingClientRect().top < window.innerHeight * 0.92) return;
+        el.classList.add('is-pending');
+        Array.prototype.forEach.call(el.children, function (child, i) { child.style.setProperty('--d', String(i)); });
+      });
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
           if (!entry.isIntersecting) return;
@@ -1564,13 +1756,121 @@
       sync();
     });
 
-    /* ---------- Roadmap: rail fills against a playhead 62% down the viewport ---------- */
+    /* ---------- Scroll system ----------
+       One rAF-throttled loop serves everything that follows the scroll: the solid nav, the
+       progress line, scroll-spy, the roadmap and, when motion is allowed, the scroll motion.
+       Positions are measured in one pass (on load, on resize, when fonts land and whenever the
+       page changes height) as document offsets, which transforms never change. Each frame then
+       reads scrollY once and only writes, and only what changed: no layout reads while scrolling.
+       Every effect is a function of the scroll position, so scrolling back plays it backwards. */
+    var docEl = document.documentElement;
+    var V = { y: 0, h: window.innerHeight, w: docEl.clientWidth, max: 1 };
+    var fx = []; // { measure(), update(now) -> true while it needs another frame }
+    var motion = !reduceMotion;
+    if (motion) docEl.classList.add('fx');
+    var clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+    var outCubic = function (t) { return 1 - Math.pow(1 - t, 3); };
+    var docTop = function (el) { var y = 0; while (el) { y += el.offsetTop; el = el.offsetParent; } return y; };
+    var put = function (el, prop, val) { var k = '_fx' + prop; if (el[k] !== val) { el[k] = val; el.style[prop] = val; } };
+    var px = function (v) { return 'translate3d(0,' + v.toFixed(1) + 'px,0)'; };
+    // 0 while an element's top sits at or below line a (a share of the screen height), 1 once it
+    // reaches line b; if the page ends before it can reach b, it completes where the page ends
+    var prog = function (top, a, b) {
+      var B = Math.max(V.h * b, top - V.max);
+      var A = Math.max(V.h * a, B + V.h * 0.1);
+      return clamp01((A - (top - V.y)) / (A - B));
+    };
+    var fxRaf = 0, needMeasure = true;
+    var frame = function (now) {
+      fxRaf = 0;
+      if (needMeasure) {
+        needMeasure = false;
+        V.h = window.innerHeight;
+        V.w = docEl.clientWidth;
+        V.max = Math.max(1, docEl.scrollHeight - V.h);
+        for (var m = 0; m < fx.length; m++) if (fx[m].measure) fx[m].measure();
+      }
+      V.y = window.scrollY;
+      var more = false;
+      for (var i = 0; i < fx.length; i++) if (fx[i].update(now)) more = true;
+      if (more) tick();
+    };
+    var tick = function () { if (!fxRaf) fxRaf = requestAnimationFrame(frame); };
+    var remeasure = function () { needMeasure = true; tick(); };
+
+    // Split a heading into word spans; the heading keeps its full text as its accessible name.
+    var splitWords = function (el, cls) {
+      var words = [];
+      el.setAttribute('aria-label', el.textContent.replace(/\s+/g, ' ').trim());
+      (function walk(node) {
+        Array.prototype.slice.call(node.childNodes).forEach(function (n) {
+          if (n.nodeType === 1) { walk(n); return; }
+          if (n.nodeType !== 3) return;
+          var frag = document.createDocumentFragment();
+          n.textContent.split(/(\s+)/).forEach(function (part) {
+            if (!part) return;
+            if (!part.trim()) { frag.appendChild(document.createTextNode(' ')); return; }
+            var w = document.createElement('span');
+            w.className = cls;
+            w.setAttribute('aria-hidden', 'true');
+            if (cls === 'wm') {
+              var inner = document.createElement('span');
+              inner.className = 'wm__i';
+              inner.textContent = part;
+              w.appendChild(inner);
+              words.push(inner);
+            } else {
+              w.textContent = part;
+              words.push(w);
+            }
+            frag.appendChild(w);
+          });
+          node.replaceChild(frag, n);
+        });
+      })(el);
+      return words;
+    };
+
+    /* Nav: solid once the page scrolls */
+    fx.push({ update: function () {
+      var on = V.y > 16;
+      if (on !== nav._fxOn) { nav._fxOn = on; nav.classList.toggle('is-scrolled', on); }
+    } });
+
+    /* Scroll-spy: a section is current once its top passes the middle of the screen */
+    var spy = $$('[data-spy]').map(function (a) { return { link: a, section: document.getElementById(a.dataset.spy) }; })
+      .filter(function (t) { return t.section; });
+    if (spy.length) {
+      var spyTops = [], navH = 0, spyCur = null;
+      fx.push({
+        measure: function () { spyTops = spy.map(function (t) { return docTop(t.section); }); navH = nav.offsetHeight; },
+        update: function () {
+          var line = V.y + Math.max(navH + 150, V.h * 0.5);
+          var current = spy[0];
+          spy.forEach(function (t, i) { if (spyTops[i] <= line) current = t; });
+          if (V.y >= V.max - 4) current = spy[spy.length - 1];
+          if (current === spyCur) return;
+          spyCur = current;
+          spy.forEach(function (t) {
+            var on = t === current;
+            t.link.classList.toggle('is-active', on);
+            if (on) t.link.setAttribute('aria-current', 'true'); else t.link.removeAttribute('aria-current');
+          });
+        }
+      });
+    }
+
+    /* Roadmap: the green line draws down the steps against a playhead 62% down the screen; a ring
+       charges round each step number as the line comes, and the number lights green as it lands */
     var rm = $('[data-roadmap]');
     if (rm) {
-      var fill = $('.roadmap__fill', rm);
+      var rFill = $('.roadmap__fill', rm);
       var rail = $('.roadmap__rail', rm);
-      var steps = $$('.roadmap__step', rm).map(function (s) { return { el: s, marker: $('.roadmap__marker', s) }; });
-      // The rail runs from the first marker to the last, whatever the card heights.
+      var steps = $$('.roadmap__step', rm).map(function (s) {
+        var m = $('.roadmap__marker', s);
+        return { el: s, marker: m, ring: $('.roadmap__ring circle', m), c: 0, reached: null, seen: false };
+      });
+      // the rail runs from the first marker to the last, whatever the card heights
       var fitRail = function () {
         var base = rm.getBoundingClientRect().top;
         var a = steps[0].marker.getBoundingClientRect();
@@ -1578,57 +1878,307 @@
         rail.style.top = Math.round(a.top - base + a.height / 2) + 'px';
         rail.style.bottom = Math.round(rm.offsetHeight - (z.top - base + z.height / 2)) + 'px';
       };
-      fitRail();
-      window.addEventListener('resize', fitRail);
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitRail);
       if (reduceMotion) {
-        fill.style.transform = 'none';
+        rFill.style.transform = 'none';
         steps.forEach(function (s) { s.el.classList.add('is-reached', 'is-seen'); });
+        fx.push({ measure: fitRail, update: function () {} });
       } else {
-        var ticking = false;
-        var draw = function () {
-          ticking = false;
-          var playhead = window.innerHeight * 0.62;
-          var r = rail.getBoundingClientRect();
-          if (r.bottom < -200 || r.top > window.innerHeight + 200) return;
-          var p = r.height ? Math.max(0, Math.min(1, (playhead - r.top) / r.height)) : 0;
-          fill.style.transform = 'scaleY(' + p.toFixed(4) + ')';
-          steps.forEach(function (s) {
-            var m = s.marker.getBoundingClientRect();
-            var reached = m.top + m.height / 2 <= playhead;
-            s.el.classList.toggle('is-reached', reached);
-            if (reached || m.top < window.innerHeight * 0.9) s.el.classList.add('is-seen');
-          });
-        };
-        var queue = function () { if (!ticking) { ticking = true; requestAnimationFrame(draw); } };
-        draw();
-        window.addEventListener('scroll', queue, { passive: true });
-        window.addEventListener('resize', queue);
-        window.addEventListener('load', function () { fitRail(); draw(); });
+        var railTop = 0, railH = 0;
+        fx.push({
+          measure: function () {
+            fitRail();
+            railTop = docTop(rail);
+            railH = rail.offsetHeight;
+            steps.forEach(function (s) { s.c = docTop(s.marker) + s.marker.offsetHeight / 2; });
+          },
+          update: function () {
+            var head = V.y + V.h * 0.62;
+            put(rFill, 'transform', 'scaleY(' + (railH ? clamp01((head - railTop) / railH) : 0).toFixed(4) + ')');
+            steps.forEach(function (s, i) {
+              var span = Math.max(60, Math.min(220, i ? s.c - steps[i - 1].c : 160));
+              var charge = clamp01((head - (s.c - span)) / span);
+              put(s.ring, 'strokeDashoffset', (100 - 100 * charge).toFixed(1));
+              var reached = s.c <= head;
+              if (reached !== s.reached) { s.reached = reached; s.el.classList.toggle('is-reached', reached); }
+              if (!s.seen && (reached || s.c - 24 < V.y + V.h * 0.9)) { s.seen = true; s.el.classList.add('is-seen'); }
+            });
+          }
+        });
       }
     }
 
-    /* ---------- Scroll-spy ---------- */
-    var spy = $$('[data-spy]').map(function (a) { return { link: a, section: document.getElementById(a.dataset.spy) }; })
-      .filter(function (t) { return t.section; });
-    if (spy.length) {
-      var sTicking = false;
-      var drawSpy = function () {
-        sTicking = false;
-        var line = window.scrollY + Math.max(nav.offsetHeight + 150, window.innerHeight * 0.3);
-        var current = spy[0];
-        spy.forEach(function (t) { if (t.section.offsetTop <= line) current = t; });
-        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = spy[spy.length - 1];
-        spy.forEach(function (t) {
-          var on = t === current;
-          t.link.classList.toggle('is-active', on);
-          if (on) t.link.setAttribute('aria-current', 'true'); else t.link.removeAttribute('aria-current');
+    if (motion) {
+      /* Scroll progress: Stone for the page so far, green for what is read of the current section */
+      var sBar = $('.scrollbar');
+      if (sBar) {
+        var barAll = $('.scrollbar__all', sBar), barNow = $('.scrollbar__now', sBar);
+        var secEls = $$('main > section'), secTops = [];
+        fx.push({
+          measure: function () { secTops = secEls.map(docTop); },
+          update: function () {
+            var p = clamp01(V.y / V.max), a = 0, line = V.y + V.h * 0.4;
+            for (var i = 0; i < secTops.length; i++) if (secTops[i] <= line) a = clamp01((secTops[i] - V.h * 0.4) / V.max);
+            if (a > p) a = p;
+            put(barAll, 'transform', 'scaleX(' + p.toFixed(4) + ')');
+            put(barNow, 'transform', 'translateX(' + (a * 100).toFixed(3) + '%) scaleX(' + (p - a).toFixed(4) + ')');
+          }
         });
-      };
-      drawSpy();
-      window.addEventListener('scroll', function () { if (!sTicking) { sTicking = true; requestAnimationFrame(drawSpy); } }, { passive: true });
-      window.addEventListener('resize', drawSpy);
+      }
+
+      /* Hero: as it scrolls away the headline's lines part (the top line fastest) and fade; the
+         pillars, when they start below the fold, come up from below faster than the copy, then
+         lead it off the top */
+      var hero = $('#home'), h1 = $('#hero-title'), heroTag = $('.hero__tag > span');
+      if (hero && h1) {
+        var hWords = splitWords(h1, 'hw');
+        var pillars = $$('.pillar', hero).map(function (el) { return { el: el, top: 0 }; });
+        var hGroups = [], hTop = 0, hH = 0, heroEnd = 0, pilEnter = false, hNav = 0;
+        fx.push({
+          measure: function () {
+            hTop = docTop(h1); hH = h1.offsetHeight; heroEnd = docTop(hero) + hero.offsetHeight;
+            // words sharing a line move together; lines are read from the layout, so any wrap works
+            var lines = [], lastTop = null;
+            hWords.forEach(function (w) {
+              if (lastTop === null || Math.abs(w.offsetTop - lastTop) > 4) { lines.push([]); lastTop = w.offsetTop; }
+              lines[lines.length - 1].push(w);
+            });
+            hGroups = (heroTag ? [[heroTag]] : []).concat(lines);
+            hGroups.forEach(function (g) { g.top = docTop(g[0]); });
+            hNav = nav.offsetHeight;
+            var bottom = 0;
+            pillars.forEach(function (p) { p.top = docTop(p.el); bottom = Math.max(bottom, p.top + p.el.offsetHeight); });
+            pilEnter = bottom > V.h; // only what starts below the fold is held back
+          },
+          update: function () {
+            if (V.y > heroEnd + V.h && hero._fxDone) return;
+            hero._fxDone = V.y > heroEnd + V.h;
+            var T0 = Math.min(hTop, V.h * 0.55);
+            var s = clamp01((T0 - (hTop - V.y)) / (T0 + hH * 0.6));
+            var N = hGroups.length;
+            hGroups.forEach(function (g, gi) {
+              var dy = -s * (20 + 34 * (N - 1 - gi)), tf = s ? px(dy) : '';
+              // a line stays fully readable until it nears the nav, then fades as it slides under
+              var o = clamp01((g.top + dy - V.y - hNav * 0.5) / (V.h * 0.14));
+              g.forEach(function (el) { put(el, 'transform', tf); put(el, 'opacity', o < 1 ? o.toFixed(3) : ''); });
+            });
+            pillars.forEach(function (p, i) {
+              var vt = p.top - V.y;
+              var e = pilEnter ? outCubic(clamp01((V.h * 0.98 - vt) / (V.h * 0.3) - i * 0.12)) : 1;
+              var x = clamp01((Math.min(p.top, V.h * 0.6) - vt) / (V.h * 0.6));
+              var dy = (1 - e) * 44 - x * 36;
+              put(p.el, 'transform', Math.abs(dy) > 0.05 ? px(dy) : '');
+              put(p.el, 'opacity', e < 1 ? (0.15 + 0.85 * e).toFixed(3) : '');
+            });
+          }
+        });
+      }
+
+      /* Key headings: word by word, each rises out of its mask as the heading crosses the lower third */
+      var heads = $$('[data-words]').map(function (el) { return { el: el, top: 0, words: splitWords(el, 'wm') }; });
+      fx.push({
+        measure: function () { heads.forEach(function (h) { h.top = docTop(h.el); }); },
+        update: function () {
+          heads.forEach(function (h) {
+            var P = prog(h.top, 0.98, 0.66), n = h.words.length;
+            h.words.forEach(function (w, i) {
+              var k = outCubic(clamp01((P - (i / n) * 0.5) / 0.5));
+              put(w, 'transform', k >= 1 ? 'none' : 'translate3d(0,' + ((1 - k) * 115).toFixed(1) + '%,0) rotate(' + ((1 - k) * 4).toFixed(2) + 'deg)');
+            });
+          });
+        }
+      });
+
+      /* Features: each card stands up from lying back as it rises; the right column a beat later */
+      var feats = $$('.feature').map(function (el) { return { el: el, top: null, col: 0 }; });
+      fx.push({
+        measure: function () {
+          feats.forEach(function (f) {
+            if (!f.el.offsetParent) { f.top = null; return; } // folded away inside "More" on phones
+            f.top = docTop(f.el);
+            f.col = f.el.offsetLeft > f.el.parentNode.firstElementChild.offsetLeft + 8 ? 1 : 0;
+          });
+        },
+        update: function () {
+          feats.forEach(function (f) {
+            var k = f.top === null ? 1 : outCubic(clamp01(prog(f.top, 0.98, 0.7) * 1.3 - f.col * 0.3));
+            put(f.el, 'transform', k >= 1 ? '' : 'perspective(900px) ' + px((1 - k) * 40) + ' rotateX(' + ((1 - k) * 24).toFixed(2) + 'deg)');
+            put(f.el, 'opacity', k >= 1 ? '' : k.toFixed(3));
+          });
+        }
+      });
+
+      /* Kinetic band: two rows of the brand line slide against each other with the scroll and lean
+         into its direction a little while it moves */
+      var kin = $('[data-kinetic]');
+      if (kin) {
+        var kRows = $$('.kinetic__row', kin), kTop = 0, kH = 0, kW = [], kSkew = 0, kLastY = null, kLastT = 0;
+        fx.push({
+          measure: function () { kTop = docTop(kin); kH = kin.offsetHeight; kW = kRows.map(function (r) { return r.offsetWidth; }); },
+          update: function (now) {
+            var vt = kTop - V.y, live = vt < V.h + 40 && vt + kH > -40;
+            if (live !== kin._fxLive) { kin._fxLive = live; kin.classList.toggle('is-live', live); }
+            if (!live) { kSkew = 0; kLastY = null; return false; }
+            var dt = kLastY === null ? 16 : Math.max(8, now - kLastT);
+            var vel = kLastY === null ? 0 : (V.y - kLastY) / dt; // px per ms, positive scrolling down
+            kLastY = V.y; kLastT = now;
+            var target = Math.max(-6, Math.min(6, vel * 2.4));
+            kSkew += (target - kSkew) * (1 - Math.exp(-dt / 110));
+            if (Math.abs(kSkew) < 0.05) kSkew = 0;
+            var travel = V.h + kH, p = clamp01((V.h - vt) / travel);
+            kRows.forEach(function (r, i) {
+              var R = Math.max(0, Math.min(travel * 0.5, kW[i] - V.w - 8));
+              var x = i ? -R + p * R : -p * R;
+              var sk = (i ? -kSkew : kSkew);
+              put(r, 'transform', 'translate3d(' + x.toFixed(1) + 'px,0,0)' + (sk ? ' skewX(' + sk.toFixed(2) + 'deg)' : ''));
+            });
+            return kSkew !== 0;
+          }
+        });
+      }
+
+      /* Phone mockup: drifts a little slower than the page; its screen scrolls on its own, as if in use */
+      var sw = $('.switcher'), scr = $('.phone__screen');
+      if (sw && scr) {
+        var swTop = 0, swH = 0;
+        fx.push({
+          measure: function () { swTop = docTop(sw); swH = sw.offsetHeight; },
+          update: function () {
+            var c = swTop + swH / 2 - V.y, live = c > -swH && c < V.h + swH;
+            if (live !== sw._fxLive) { sw._fxLive = live; sw.classList.toggle('is-live', live); }
+            if (!live) return;
+            var cap = V.w < 941 ? 22 : 40;
+            put(sw, 'transform', px(Math.max(-cap, Math.min(cap, (c - V.h / 2) * 0.1))));
+            var a = -44 * clamp01((clamp01((V.h - c) / V.h) - 0.3) / 0.7);
+            if (a !== scr._fxA) { scr._fxA = a; scr.style.setProperty('--app-y', a.toFixed(1) + 'px'); }
+          }
+        });
+      }
+
+      /* Progress: counters count up each time they come on screen; the weekly bars grow with the scroll */
+      var fmt = function (v, d) { return v.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+      var counters = $$('[data-count]').map(function (el) {
+        var ghost = document.createElement('span');
+        ghost.className = 'cnt__ghost';
+        ghost.textContent = el.textContent;
+        var live = document.createElement('span');
+        live.className = 'cnt__live';
+        live.setAttribute('aria-hidden', 'true');
+        live.textContent = el.textContent;
+        el.textContent = '';
+        el.classList.add('cnt');
+        el.appendChild(ghost);
+        el.appendChild(live);
+        return { el: el, live: live, target: parseFloat(el.dataset.count), dec: parseInt(el.dataset.decimals || '0', 10), top: 0, h: 0, state: null, t0: 0 };
+      });
+      var spark = $('.spark'), sparkBars = spark ? $$('i', spark) : [], sparkTop = 0;
+      fx.push({
+        measure: function () {
+          counters.forEach(function (c) { c.top = docTop(c.el); c.h = c.el.offsetHeight; });
+          if (spark) sparkTop = docTop(spark);
+        },
+        update: function (now) {
+          var more = false;
+          counters.forEach(function (c) {
+            var vt = c.top - V.y, inside = vt < V.h - 4 && vt + c.h > 0;
+            if (c.state === null) { c.state = inside ? 'done' : 'out'; if (!inside) c.live.textContent = fmt(0, c.dec); return; }
+            if (!inside) { if (c.state !== 'out') { c.state = 'out'; c.live.textContent = fmt(0, c.dec); } return; }
+            if (c.state === 'out') { c.state = 'run'; c.t0 = now; }
+            if (c.state === 'run') {
+              var k = clamp01((now - c.t0) / 900);
+              c.live.textContent = fmt(c.target * (1 - Math.pow(1 - k, 4)), c.dec);
+              if (k >= 1) c.state = 'done'; else more = true;
+            }
+          });
+          if (spark) {
+            var p = prog(sparkTop, 0.95, 0.5), n = sparkBars.length;
+            sparkBars.forEach(function (b, i) {
+              var k = outCubic(clamp01(p * 1.6 - (i / (n - 1)) * 0.6));
+              put(b, 'transform', k >= 1 ? 'none' : 'scaleY(' + k.toFixed(3) + ')');
+            });
+          }
+          return more;
+        }
+      });
+
+      /* Pricing: the price rolls up like an odometer as the card arrives; the daily line underlines itself */
+      var odo = $('[data-odometer]');
+      var odoCols = [], odoTop = 0;
+      if (odo) {
+        var digits = odo.textContent.trim();
+        odo.textContent = '';
+        var sr = document.createElement('span');
+        sr.className = 'sr-only';
+        sr.textContent = digits;
+        var wrap = document.createElement('span');
+        wrap.className = 'odo';
+        wrap.setAttribute('aria-hidden', 'true');
+        digits.split('').forEach(function (ch, ci) {
+          var col = document.createElement('span');
+          col.className = 'odo__col';
+          var ghost = document.createElement('span');
+          ghost.className = 'odo__ghost';
+          ghost.textContent = ch;
+          col.appendChild(ghost);
+          if (/\d/.test(ch)) {
+            var seq = [], j, d = +ch;
+            if (ci === digits.length - 1) for (j = 0; j < 10; j++) seq.push(j); // the last digit goes once round first
+            for (j = 0; j <= d; j++) seq.push(j);
+            var strip = document.createElement('span');
+            strip.className = 'odo__strip';
+            seq.forEach(function (n) { var e = document.createElement('span'); e.textContent = String(n); strip.appendChild(e); });
+            col.appendChild(strip);
+            odoCols.push({ strip: strip, n: seq.length, ci: ci });
+          } else {
+            ghost.className = '';
+          }
+          wrap.appendChild(col);
+        });
+        odo.appendChild(sr);
+        odo.appendChild(wrap);
+      }
+      var ul = $('[data-draw] > i'), ulTop = 0;
+      if (odoCols.length || ul) {
+        fx.push({
+          measure: function () { if (odo) odoTop = docTop(odo); if (ul) ulTop = docTop(ul.parentNode); },
+          update: function () {
+            if (odoCols.length) {
+              var p = prog(odoTop, 1, 0.72), m = odoCols.length;
+              odoCols.forEach(function (c, i) {
+                var lag = 0.12 * (m - 1 - i); // the right-hand digit lands first
+                var k = outCubic(clamp01((p - (0.12 * (m - 1) - lag)) / (1 - 0.12 * (m - 1))));
+                var pos = k * (c.n - 1);
+                put(c.strip, 'transform', 'translate3d(0,' + (-pos / c.n * 100).toFixed(3) + '%,0)');
+              });
+            }
+            if (ul) {
+              var u = outCubic(prog(ulTop, 0.85, 0.6));
+              put(ul, 'transform', u >= 1 ? 'none' : 'scaleX(' + u.toFixed(3) + ')');
+            }
+          }
+        });
+      }
+
+      /* Final call: a black panel opens from a rounded card to full bleed as the section arrives */
+      var fin = $('[data-final]'), panel = fin && $('.final__panel', fin), finTop = 0;
+      if (panel) {
+        fx.push({
+          measure: function () { finTop = docTop(fin); },
+          update: function () {
+            var k = outCubic(prog(finTop, 1, 0.3)), live = k > 0 && k < 1;
+            if (live !== panel._fxLive) { panel._fxLive = live; panel.classList.toggle('is-live', live); }
+            put(panel, 'transform', k >= 1 ? 'none' : 'scale(' + (0.96 + 0.04 * k).toFixed(4) + ')');
+            put(panel, 'clipPath', k >= 1 ? 'none' : 'inset(0 round ' + (24 * (1 - k)).toFixed(1) + 'px)');
+          }
+        });
+      }
     }
+
+    window.addEventListener('scroll', tick, { passive: true });
+    window.addEventListener('resize', remeasure, { passive: true });
+    window.addEventListener('load', remeasure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+    if ('ResizeObserver' in window) new ResizeObserver(remeasure).observe(document.body); // details opening, late images
+    frame(performance.now());
 
     /* ---------- Contact form: posts to Supabase, honest about failure ---------- */
     var SUPABASE_URL = 'https://kpsoovvsdunbohezbwnc.supabase.co';
@@ -1734,6 +2284,61 @@
     var setMore = function () { $$('[data-more]').forEach(function (d) { d.open = !moreMq.matches; }); };
     setMore();
     if (moreMq.addEventListener) moreMq.addEventListener('change', setMore); else moreMq.addListener(setMore);
+
+    /* ---------- 3D tilt on the phone and the price card (mouse and trackpad only) ---------- */
+    var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    if (!reduceMotion && fine.matches) {
+      $$('[data-tilt]').forEach(function (el) {
+        var MAX = parseFloat(el.getAttribute('data-tilt')) || 6; // degrees; data-tilt="3" caps one element lower
+        var cur = { x: 0, y: 0 }, tgt = { x: 0, y: 0 }, raf = 0, last = 0;
+        var step = function (now) {
+          var dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
+          last = now;
+          var k = 1 - Math.exp(-dt * 9);
+          cur.x += (tgt.x - cur.x) * k;
+          cur.y += (tgt.y - cur.y) * k;
+          var settled = Math.abs(tgt.x - cur.x) < 0.02 && Math.abs(tgt.y - cur.y) < 0.02;
+          if (settled && !tgt.x && !tgt.y) { el.style.transform = ''; raf = 0; last = 0; return; }
+          el.style.transform = 'perspective(900px) rotateX(' + cur.x.toFixed(2) + 'deg) rotateY(' + cur.y.toFixed(2) + 'deg)';
+          raf = settled ? 0 : requestAnimationFrame(step);
+          if (!raf) last = 0;
+        };
+        var kick = function () { if (!raf) raf = requestAnimationFrame(step); };
+        el.addEventListener('pointermove', function (e) {
+          if (e.pointerType !== 'mouse') return;
+          var r = el.getBoundingClientRect();
+          tgt.y = ((e.clientX - r.left) / r.width - 0.5) * 2 * MAX;
+          tgt.x = -((e.clientY - r.top) / r.height - 0.5) * 2 * MAX;
+          kick();
+        });
+        el.addEventListener('pointerleave', function () { tgt.x = 0; tgt.y = 0; kick(); });
+      });
+    }
+
+    /* ---------- 3D: one shared canvas draws every [data-3d] slot once the page has loaded ---------- */
+    // Kept on the still posters: reduced motion, Save-Data, no WebGL2, or any failure loading the
+    // engine. The hero poster stays the LCP image; the engine only loads after the load event.
+    var slots3d = $$('[data-3d]');
+    var saveData = navigator.connection && navigator.connection.saveData;
+    if (slots3d.length && !reduceMotion && !saveData && 'IntersectionObserver' in window) {
+      var start3d = function () {
+        // The capability probe is the context the engine draws with, so the page opens exactly one.
+        var canvas = document.createElement('canvas');
+        var gl = null;
+        try {
+          gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
+        } catch (e) { gl = null; }
+        if (!gl) return;
+        import('./assets/js/site-3d.min.js?v=2').then(function (m) {
+          m.mount({ canvas: canvas, context: gl, slots: slots3d });
+        }).catch(function () { /* the posters stay */ });
+      };
+      var whenIdle = function () {
+        if ('requestIdleCallback' in window) requestIdleCallback(start3d, { timeout: 2000 });
+        else setTimeout(start3d, 200);
+      };
+      if (document.readyState === 'complete') whenIdle(); else window.addEventListener('load', whenIdle);
+    }
 
     /* ---------- Footer year ---------- */
     $$('[data-year]').forEach(function (el) { el.textContent = String(new Date().getFullYear()); });

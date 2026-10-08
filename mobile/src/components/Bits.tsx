@@ -4,6 +4,7 @@ import React from 'react';
 import { Text, View, ViewStyle, useWindowDimensions } from 'react-native';
 
 import { C, FONT, R, T } from '../design';
+import { DrawCheck } from './DrawCheck';
 import { Icon } from './Icon';
 import { useTween } from './motion';
 import type { HeaderStat } from '../lib/headerStats';
@@ -110,7 +111,7 @@ export function ProgressBar({ value, height = 6, style, color = C.green }: { val
 }
 
 /** An inline message: error (danger), warn (amber, for "can't reach
-    BUILT"), success, or a quiet note. An optional action sits under the
+    BUILT"), success (led by a check that draws itself on), or a quiet note. An optional action sits under the
     text (e.g. Try again). */
 export function Notice({
   tone = 'note',
@@ -137,7 +138,14 @@ export function Notice({
       }}
     >
       <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginTop: 7 }} />
+        {tone === 'success' ? (
+          // A success draws its check on as it appears.
+          <View style={{ marginTop: 1 }}>
+            <DrawCheck size={18} color={color} />
+          </View>
+        ) : (
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginTop: 7 }} />
+        )}
         <Text style={{ flex: 1, fontFamily: FONT.bodyMedium, fontSize: 14, lineHeight: 20, color: tone === 'note' ? C.stone : color }}>{children}</Text>
       </View>
       {action ? <View style={{ paddingLeft: 16 }}>{action}</View> : null}

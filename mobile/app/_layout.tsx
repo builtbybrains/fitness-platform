@@ -28,6 +28,7 @@ import { getNotifications } from '../src/lib/notify';
 import { AuthProvider, useAuth } from '../src/auth';
 import { PlanProvider } from '../src/planStore';
 import { CelebrationProvider } from '../src/celebration';
+import { PUSH, SHEET, stackLayout } from '../src/components/ScreenFade';
 import { useReminderScheduler } from '../src/useReminders';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -110,7 +111,8 @@ export default function RootLayout() {
           <PlanProvider>
             <CelebrationProvider>
               <Reminders />
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
+              {/* Pushes slide in from the right, task screens rise like a sheet; on the web, ScreenFade draws both and the edge swipe back. */}
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, ...PUSH }} screenLayout={stackLayout}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
@@ -121,6 +123,9 @@ export default function RootLayout() {
                 <Stack.Screen name="report" />
                 <Stack.Screen name="memory" />
                 <Stack.Screen name="settings" />
+                <Stack.Screen name="food/log" options={SHEET} />
+                <Stack.Screen name="meals/from-home" options={SHEET} />
+                <Stack.Screen name="activity/log" options={SHEET} />
               </Stack>
             </CelebrationProvider>
           </PlanProvider>

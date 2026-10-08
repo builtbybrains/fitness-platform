@@ -1,4 +1,5 @@
-/* Sign in, create an account, or continue without one. */
+/* Sign in, create an account, or continue without one. The BUILT dumbbell
+   floats above the lockup (src/components/three/AuthHero.tsx). */
 
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
@@ -8,6 +9,7 @@ import { router } from 'expo-router';
 import { C, FONT, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { BuiltLogo } from '../../src/components/BuiltLogo';
+import { AuthHero } from '../../src/components/three/AuthHero';
 import { Button, LinkButton } from '../../src/components/Button';
 import { Field } from '../../src/components/Field';
 import { Notice } from '../../src/components/Bits';
@@ -52,7 +54,8 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: 'center', gap: 32, maxWidth: 480, width: '100%', alignSelf: 'center' }}
         >
-          <View style={{ alignItems: 'center', gap: 20, paddingTop: 16 }}>
+          <View style={{ alignItems: 'center', gap: 12, paddingTop: 16 }}>
+            <AuthHero />
             <BuiltLogo height={62} tagline />
           </View>
 
