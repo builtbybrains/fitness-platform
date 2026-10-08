@@ -43,6 +43,27 @@ export function stepSpin(s: Spin, dt: number, damping = 2.6): Spin {
   return { angle: s.angle + s.velocity * dt, velocity: Math.abs(velocity) < 0.001 ? 0 : velocity, dragging: false };
 }
 
+/** One frame of drag-and-spring-back. While dragging, the finger sets the
+    angle; after release a critically damped spring (no overshoot) brings it
+    back to 0, settling in about 400ms at the default stiffness. Sub-steps
+    keep it stable on a slow frame. */
+export function stepSpring(s: Spin, dt: number, stiffness = 120): Spin {
+  if (s.dragging || dt <= 0) return s;
+  const damping = 2 * Math.sqrt(stiffness);
+  let { angle, velocity } = s;
+  const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
+  const h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    velocity += (-stiffness * angle - damping * velocity) * h;
+    angle += velocity * h;
+  }
+  if (Math.abs(angle) < 0.0005 && Math.abs(velocity) < 0.005) return { angle: 0, velocity: 0, dragging: false };
+  return { angle, velocity, dragging: false };
+}
+
+/** True when a spin or spring has nothing left to do. */
+export const spinAtRest = (s: Spin, spring: boolean) => !s.dragging && s.velocity === 0 && (!spring || s.angle === 0);
+
 /** Flick speed from a pan release: gesture vx is px per ms; half the view's
     width is a quarter turn. Capped so a hard flick stays readable. */
 export function flickVelocity(vxPxPerMs: number, width: number, cap = 10): number {

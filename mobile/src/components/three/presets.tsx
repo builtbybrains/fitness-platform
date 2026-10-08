@@ -9,38 +9,21 @@
    - rest:  lies on a face, still, in a three-quarter pose (Today on a rest day).
    Medal: flips in from its back to face-on in 600ms (ease-out quart, no
    overshoot), then sways gently while the celebration is open.
-   Under Reduce Motion each one is drawn once, in its settled pose. */
+   Under Reduce Motion each one is drawn once, in its settled pose.
+
+   ParamScene draws the data-driven scenes in scenes.ts (ring, donut,
+   shelf, plates, questionnaire object). */
 
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import Scene3D, { type BuildScene, type Scene3DProps } from './Scene3D';
-import { addStudioLights, makeDumbbell, makeEnvironment, makeMedal } from './meshes';
+import { makeDumbbell, makeMedal } from './meshes';
 import { bob, dropIn, fitDistance, fitExtent, flipIn } from './pose';
+import { aim, BUILDERS, studio } from './scenes';
+import type { SceneKind } from './sceneTypes';
 
 export type DumbbellMotion = 'float' | 'drop' | 'rest';
-
-/** Lights plus, where the GL context allows it, a soft room for the metal
-    to reflect. Returns whether the room is there. */
-function studio(scene: THREE.Scene, renderer: THREE.WebGLRenderer): boolean {
-  addStudioLights(scene);
-  const room = new RoomEnvironment();
-  const env = makeEnvironment(renderer, room);
-  room.dispose();
-  if (!env) return false;
-  scene.environment = env;
-  scene.environmentIntensity = 0.55;
-  return true;
-}
-
-/** Point the camera at the origin from `elevation` radians above the
-    horizon, `d` units away. */
-function aim(camera: THREE.PerspectiveCamera, elevation: number, d: number) {
-  camera.position.set(0, Math.sin(elevation) * d, Math.cos(elevation) * d);
-  camera.lookAt(0, 0, 0);
-  camera.updateProjectionMatrix();
-}
 
 // Three-quarter view: the side of the dumbbell and one B face both show.
 const POSE_Y = -0.62;
@@ -133,4 +116,8 @@ export function DumbbellScene({ motion, ...rest }: SceneProps & { motion: Dumbbe
 
 export function MedalScene(props: SceneProps) {
   return <Scene3D build={buildMedal} {...props} />;
+}
+
+export function ParamScene({ kind, ...rest }: SceneProps & { kind: SceneKind }) {
+  return <Scene3D build={BUILDERS[kind]} {...rest} />;
 }

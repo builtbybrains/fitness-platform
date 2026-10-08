@@ -5,7 +5,9 @@
    A milestone earned since the last visit is shown once: the newest one
    gets the celebration overlay and every new one carries a "New" tag on
    its ring for this visit. Seen ids are kept per person on this device.
-   A badge tilts toward the finger while it is held (components/Tilt). */
+   A badge tilts toward the finger while it is held (components/Tilt).
+   Above the grid, the earned ones stand as 3D medals on a shelf
+   (TrophyShelf), when 3D is available. */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -18,6 +20,7 @@ import { newlyEarned, nextMilestone, type Milestone, type MilestoneId } from '..
 import { Icon, type IconName } from '../Icon';
 import { TiltPressable } from '../Tilt';
 import { useTween } from '../motion';
+import { TrophyShelf } from './TrophyShelf';
 
 const ICON: Record<MilestoneId, IconName> = {
   first_workout: 'dumbbell',
@@ -137,6 +140,7 @@ export function Milestones({ items, userId, ready }: { items: Milestone[]; userI
           {earned} of {items.length} earned
         </Text>
       </View>
+      <TrophyShelf items={items} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -2 }}>
         {items.map((m) => (
           <Badge key={m.id} m={m} fresh={fresh.has(m.id)} />

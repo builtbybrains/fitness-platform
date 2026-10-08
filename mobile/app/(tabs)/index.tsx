@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused, useRouter } from 'expo-router';
 
 import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
-import { Ring } from '../../src/components/Ring';
+import { TodayRing } from '../../src/components/today/TodayRing';
 import { BuiltMark } from '../../src/components/BuiltLogo';
 import { FadeIn } from '../../src/components/FadeIn';
 import { useReduceMotion, useTween } from '../../src/components/motion';
@@ -23,6 +23,7 @@ import { usePop } from '../../src/components/usePop';
 import { TiltPressable } from '../../src/components/Tilt';
 import { Bone, Skeleton } from '../../src/components/Skeleton';
 import { usePullRefresh } from '../../src/components/usePullRefresh';
+import { SwipeRow } from '../../src/components/SwipeRow';
 import { CoachNote } from '../../src/components/today/CoachNote';
 import { WeekStrip } from '../../src/components/today/WeekStrip';
 import { Icon, IconName } from '../../src/components/Icon';
@@ -369,6 +370,11 @@ function FoodCard({ day, offPlanKcal, offPlanCount }: { day: WeekDay; offPlanKca
   const { toggleMeal } = usePlan();
   const next = day.meals.find((m) => !day.done.meals.includes(m.slot));
   const eaten = day.meals.filter((m) => day.done.meals.includes(m.slot)).length;
+  const eat = () => {
+    if (!next) return;
+    haptic.tap();
+    void toggleMeal(day.id, next.slot);
+  };
   return (
     <View style={[cardStyle, { gap: 8 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
@@ -381,25 +387,25 @@ function FoodCard({ day, offPlanKcal, offPlanCount }: { day: WeekDay; offPlanKca
         </Text>
       </View>
       {next ? (
-        <Pressable
-          onPress={() => {
-            haptic.tap();
-            void toggleMeal(day.id, next.slot);
-          }}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: false }}
-          accessibilityLabel={`Next: ${next.slot}, ${next.label}, ${next.kcal} kcal. Tick it when eaten.`}
-          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingVertical: 8, opacity: pressed ? 0.75 : 1 })}
-        >
-          <MealImage label={next.label} items={next.items} size="thumb" checked={false} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={T.small}>Next: {next.slot}</Text>
-            <Text style={T.bodyStrong}>{next.label}</Text>
-            <Text style={T.small}>
-              {next.kcal} kcal · P {next.protein}g · C {next.carbs}g · F {next.fat}g
-            </Text>
-          </View>
-        </Pressable>
+        // Tap or swipe right to tick it eaten.
+        <SwipeRow label="Eaten" onCommit={eat} background={C.card}>
+          <Pressable
+            onPress={eat}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: false }}
+            accessibilityLabel={`Next: ${next.slot}, ${next.label}, ${next.kcal} kcal. Tick it when eaten.`}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingVertical: 8, opacity: pressed ? 0.75 : 1 })}
+          >
+            <MealImage label={next.label} items={next.items} size="thumb" checked={false} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={T.small}>Next: {next.slot}</Text>
+              <Text style={T.bodyStrong}>{next.label}</Text>
+              <Text style={T.small}>
+                {next.kcal} kcal · P {next.protein}g · C {next.carbs}g · F {next.fat}g
+              </Text>
+            </View>
+          </Pressable>
+        </SwipeRow>
       ) : (
         <Text style={[T.meta, { paddingVertical: 8 }]}>Every planned meal is ticked. Log anything extra in Food.</Text>
       )}
@@ -676,10 +682,10 @@ export default function TodayTab() {
           // the workout card's play button is on the first screen. The
           // workout and water have their own cards right below.
           <FadeIn {...enterAt()} style={[cardStyle, { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 }]}>
-            <Ring size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done. ${ringLine}`}>
+            <TodayRing size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done. ${ringLine}`}>
               <Text style={{ fontFamily: FONT.body, fontSize: ring.label, color: C.stone }}>Today</Text>
               <Text style={{ fontFamily: FONT.displaySemi, fontSize: ring.pct, lineHeight: Math.round(ring.pct * 1.17), letterSpacing: -1.5, color: C.text }}>{pctShown}%</Text>
-            </Ring>
+            </TodayRing>
             <View style={{ flex: 1, gap: 10 }}>
               <Text style={{ fontFamily: FONT.displaySemi, fontSize: 18, lineHeight: 24, color: C.text }} accessibilityLabel={`${summary.eaten.kcal} of ${targets.kcal} calories`}>
                 {Math.round(kcal).toLocaleString()}
@@ -692,10 +698,10 @@ export default function TodayTab() {
           </FadeIn>
         ) : (
           <FadeIn {...enterAt()} style={[cardStyle, { alignItems: 'center', paddingVertical: compact ? 20 : 28, gap: compact ? 12 : 20 }]}>
-            <Ring size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done`}>
+            <TodayRing size={ring.size} stroke={ring.stroke} progress={summary.progress} accessibilityLabel={`Today ${pct} percent done`}>
               <Text style={{ fontFamily: FONT.body, fontSize: ring.label, color: C.stone }}>Today</Text>
               <Text style={{ fontFamily: FONT.displaySemi, fontSize: ring.pct, lineHeight: Math.round(ring.pct * 1.17), letterSpacing: -1.5, color: C.text }}>{pctShown}%</Text>
-            </Ring>
+            </TodayRing>
             <Text style={[T.meta, { textAlign: 'center' }]}>{ringLine}</Text>
             <View style={{ flexDirection: 'row', gap: 16, alignSelf: 'stretch' }}>
               <Meter label="Protein" value={protein} target={targets.protein} unit="g" />
