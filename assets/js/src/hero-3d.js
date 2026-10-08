@@ -142,7 +142,7 @@ function studioEnvironment(renderer) {
 function buildDumbbell() {
   const dumbbell = new Group();
 
-  const rubber = new MeshStandardMaterial({ color: 0x262626, roughness: 0.52, metalness: 0, flatShading: true, envMapIntensity: 1.5 });
+  const rubber = new MeshStandardMaterial({ color: 0x262626, roughness: 0.52, metalness: 0, flatShading: false, envMapIntensity: 1.1 });
   const knurl = knurlTexture();
   const steel = new MeshStandardMaterial({
     color: 0xd4d7db, metalness: 0.9, roughness: 0.38,
@@ -248,7 +248,7 @@ export function mount(host, opts = {}) {
   key.position.set(-3, 5, 6);
   const fill = new DirectionalLight(0xc8d8ff, 1.25);
   fill.position.set(6, -0.5, 4);
-  const rim = new DirectionalLight(GREEN, 0.45);
+  const rim = new DirectionalLight(GREEN, 0.2);
   rim.position.set(1.5, 3, -6);
   const sky = new HemisphereLight(0xffffff, 0x080808, 0.22);
   scene.add(key, fill, rim, sky);
@@ -269,11 +269,11 @@ export function mount(host, opts = {}) {
   scene.add(drift);
 
   const shadow = new Mesh(
-    new PlaneGeometry(3.6, 1.15),
+    new PlaneGeometry(2.8, 0.8),
     new MeshBasicMaterial({ map: shadowTexture(), transparent: true, depthWrite: false, toneMapped: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
-  shadow.position.set(0.05, -1.25, 0.2);
+  shadow.position.set(0.05, -1.05, 0.2);
   scene.add(shadow);
 
   /* ----- sizing: object-fit: contain against a square composition ----- */

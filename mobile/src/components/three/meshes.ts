@@ -44,7 +44,7 @@ export function addStudioLights(scene: THREE.Scene): void {
   key.position.set(3, 4.5, 5);
   const fill = new THREE.DirectionalLight('#c4d2ff', 0.7);
   fill.position.set(-5, 1, 2.5);
-  const rim = new THREE.DirectionalLight(GREEN, 0.55);
+  const rim = new THREE.DirectionalLight(GREEN, 0.2);
   rim.position.set(-2, 2.5, -5);
   const under = new THREE.DirectionalLight('#ffffff', 0.35);
   under.position.set(1, -4, 2);
@@ -59,8 +59,39 @@ export function steelMaterial(hasEnv: boolean, color = '#cfd2d4'): THREE.MeshSta
   return new THREE.MeshStandardMaterial({
     color,
     metalness: hasEnv ? 0.9 : 0.55,
-    roughness: 0.35,
+    roughness: 0.45,
   });
+}
+
+/** Diamond knurl as a 64px tile: two sets of diagonal grooves, dark in the
+    grooves. Built as raw pixels rather than on a canvas, so it uploads the
+    same way on native expo-gl (no DOM canvas there) and on web. Used as
+    the grip's bump and roughness map, like the web hero's grip. */
+function knurlTexture(): THREE.DataTexture {
+  const N = 64;
+  const P = 16; // groove spacing: four diamonds across a tile
+  const data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      // Distance to the nearest groove of each diagonal set, in pixels.
+      const a = (((x - y) % P) + P) % P;
+      const b = (x + y) % P;
+      const d = Math.min(Math.min(a, P - a), Math.min(b, P - b)) / Math.SQRT2;
+      // 2.5px half-width groove with a 1px soft edge.
+      const k = Math.max(0, Math.min(1, d - 1.5));
+      const v = Math.round(0x6a + (0xd8 - 0x6a) * k);
+      const i = (y * N + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+  }
+  const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat, THREE.UnsignedByteType);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.needsUpdate = true;
+  return t;
 }
 
 /**
@@ -74,8 +105,13 @@ export function makeDumbbell({ hasEnv = true }: { hasEnv?: boolean } = {}): THRE
   const rubber = new THREE.MeshStandardMaterial({ color: '#161616', roughness: 0.82, metalness: 0, flatShading: true });
   const rubberEdge = new THREE.MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.7, metalness: 0, flatShading: true });
   const steel = steelMaterial(hasEnv);
-  const knurl = steelMaterial(hasEnv, '#a9adb0');
-  knurl.roughness = 0.6;
+  const knurl = steelMaterial(hasEnv);
+  const knurlMap = knurlTexture();
+  // Around the grip by along it, so the diamonds come out near square.
+  knurlMap.repeat.set(6, 7);
+  knurl.bumpMap = knurlMap;
+  knurl.bumpScale = 1.6;
+  knurl.roughnessMap = knurlMap;
   const collar = brandGreen();
 
   const R = 0.6; // hex point radius
@@ -108,28 +144,29 @@ export function makeDumbbell({ hasEnv = true }: { hasEnv?: boolean } = {}): THRE
     head.add(mark);
     g.add(head);
 
-    // Thin green collar where the handle meets the head, then a steel sleeve.
+    // Thin green collar where the handle meets the head, then a steel sleeve
+    // narrow enough that the collar reads as a solid green ring around it.
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.045, 28, 1), collar);
     ring.rotation.z = Math.PI / 2;
     ring.position.x = side * (handleLen / 2 - 0.0225);
-    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 24, 1), steel);
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 24, 1), steel);
     sleeve.rotation.z = Math.PI / 2;
     sleeve.position.x = side * (handleLen / 2 - 0.095);
     g.add(ring, sleeve);
   }
 
-  // Handle, with two bands of fine knurl rings.
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, handleLen - 0.2, 24, 1), steel);
-  handle.rotation.z = Math.PI / 2;
-  g.add(handle);
-  const knurlGeo = new THREE.CylinderGeometry(0.114, 0.114, 0.014, 24, 1, true);
-  for (const band of [-0.24, 0.24]) {
-    for (let i = -3; i <= 3; i++) {
-      const k = new THREE.Mesh(knurlGeo, knurl);
-      k.rotation.z = Math.PI / 2;
-      k.position.x = band + i * 0.032;
-      g.add(k);
-    }
+  // Handle: a knurled grip with a short smooth shoulder at each end.
+  const gripLen = handleLen - 0.44;
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, gripLen, 32, 1, true), knurl);
+  grip.rotation.z = Math.PI / 2;
+  g.add(grip);
+  const shoulderLen = (handleLen - 0.2 - gripLen) / 2;
+  const shoulderGeo = new THREE.CylinderGeometry(0.11, 0.11, shoulderLen, 24, 1, true);
+  for (const side of [1, -1]) {
+    const shoulder = new THREE.Mesh(shoulderGeo, steel);
+    shoulder.rotation.z = Math.PI / 2;
+    shoulder.position.x = side * (gripLen / 2 + shoulderLen / 2);
+    g.add(shoulder);
   }
   return g;
 }
@@ -156,7 +193,10 @@ export function makeMedal({ hasEnv = true }: { hasEnv?: boolean } = {}): THREE.G
     [0.9, -t],
     [0, -t],
   ].map(([r, y]) => new THREE.Vector2(r, y));
-  const disc = new THREE.LatheGeometry(profile, 64);
+  // The profile is listed top to bottom; the lathe needs it bottom to top
+  // for its faces to point outward (otherwise the disc is inside out and
+  // the far face, with its ring and a mirrored B, shows through).
+  const disc = new THREE.LatheGeometry(profile.slice().reverse(), 64);
   disc.rotateX(Math.PI / 2);
   const metal = new THREE.MeshStandardMaterial({ color: CARBON, metalness: hasEnv ? 0.8 : 0.5, roughness: 0.5, envMapIntensity: 0.5 });
   g.add(new THREE.Mesh(disc, metal));
@@ -190,7 +230,7 @@ export function makeEnvironment(renderer: THREE.WebGLRenderer, room: THREE.Scene
   }
 }
 
-/** Free every geometry and material under `root`. */
+/** Free every geometry, material and texture map under `root`. */
 export function disposeTree(root: THREE.Object3D): void {
   const seen = new Set<unknown>();
   root.traverse((o) => {
@@ -203,6 +243,13 @@ export function disposeTree(root: THREE.Object3D): void {
     for (const mat of mats) {
       if (!seen.has(mat)) {
         seen.add(mat);
+        const std = mat as THREE.MeshStandardMaterial;
+        for (const tex of [std.map, std.bumpMap, std.roughnessMap]) {
+          if (tex && !seen.has(tex)) {
+            seen.add(tex);
+            tex.dispose();
+          }
+        }
         mat.dispose();
       }
     }

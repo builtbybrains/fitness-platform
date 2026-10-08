@@ -142,8 +142,12 @@ One object, the BUILT hex dumbbell, drawn live with three.js in the web hero
   frame. Without WebGL, with Save-Data, or with reduced motion, the poster stays and nothing
   animates.
 - Elsewhere on the page, 3D is a touch, not an object: the phone mockup and the price card
-  tilt toward a mouse pointer (perspective 900px, 6 degrees at most, eased, reset on leave;
-  mouse and trackpad only) and settle in from a slight tilt the first time they scroll in.
+  tilt toward a mouse pointer (perspective 900px, 6 degrees at most on the phone and 3 on the
+  price card, eased, reset on leave; mouse and trackpad only) and settle in from a slight tilt
+  the first time they scroll in.
+- App exception: the floating dumbbell above the app's sign-in and sign-up forms is the app's
+  one ambient loop (slow float and spin); it stops while the keyboard is open, while the
+  screen is out of focus, and under Reduce Motion.
 
 ## Motion
 

@@ -2,11 +2,13 @@
    so three.js stays out of the first download on web.
 
    Dumbbell motions:
-   - float: hovers with a slow bob and a slow Y spin (sign-in, sign-up).
-   - drop:  drops in with a spin and settles in 700ms, then idles (workout done).
-   - rest:  lies on a face, turning very slowly (Today on a rest day).
-   Medal: flips in from its back to face-on with a small overshoot in
-   800ms, then sways gently (milestone earned).
+   - float: hovers with a slow bob and a slow Y spin (sign-in, sign-up; the
+            app's one ambient loop, see DESIGN.md 3D).
+   - drop:  drops in with a spin and settles in 500ms, then idles while the
+            celebration is open (workout done).
+   - rest:  lies on a face, still, in a three-quarter pose (Today on a rest day).
+   Medal: flips in from its back to face-on in 600ms (ease-out quart, no
+   overshoot), then sways gently while the celebration is open.
    Under Reduce Motion each one is drawn once, in its settled pose. */
 
 import React, { useMemo } from 'react';
@@ -43,8 +45,7 @@ function aim(camera: THREE.PerspectiveCamera, elevation: number, d: number) {
 // Three-quarter view: the side of the dumbbell and one B face both show.
 const POSE_Y = -0.62;
 const IDLE_SPIN = 0.45; // rad/s, about 14s a turn
-const REST_SPIN = 0.16; // rad/s, about 40s a turn
-const DROP = 0.7;
+const DROP = 0.5;
 
 export function buildDumbbell(motion: DumbbellMotion): BuildScene {
   return (scene, camera, renderer) => {
@@ -75,7 +76,7 @@ export function buildDumbbell(motion: DumbbellMotion): BuildScene {
       },
       update(t, _dt, input) {
         if (resting) {
-          spin.rotation.y = POSE_Y + t * REST_SPIN + input.spin;
+          spin.rotation.y = POSE_Y + input.spin;
           return;
         }
         if (motion === 'drop' && t < DROP) {
@@ -94,7 +95,7 @@ export function buildDumbbell(motion: DumbbellMotion): BuildScene {
   };
 }
 
-const FLIP = 0.8;
+const FLIP = 0.6;
 
 export const buildMedal: BuildScene = (scene, camera, renderer) => {
   const model = makeMedal({ hasEnv: studio(scene, renderer) });

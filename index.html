@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <link rel="icon" href="assets/img/favicon.svg?v=built1" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png?v=built1">
-  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/dumbbell-hero-640.webp?v=1 640w, assets/img/dumbbell-hero.webp?v=1 1200w" imagesizes="(max-width: 940px) min(92vw, 44vh), min(58vw, 900px)" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" imagesizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap">
@@ -257,13 +257,13 @@
     .js .hero__copy > * { animation: rise var(--t-slow) var(--ease-quart) both; animation-delay: calc(var(--d, 0) * 70ms + 80ms); }
     /* No entrance on the hero media: the poster is the LCP image and must paint at once. */
     @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-    @keyframes tilt-in { from { opacity: 0; transform: perspective(900px) rotateX(9deg) translateY(28px); } to { opacity: 1; transform: perspective(900px); } }
+    @keyframes tilt-in { from { opacity: 0; transform: perspective(900px) rotateX(6deg) translateY(16px); } to { opacity: 1; transform: perspective(900px); } }
 
     /* Scroll reveal: headings and copy rise in order; the phone and the price card settle in
        from a slight 3D tilt. Only what starts below the fold is held back. */
     .js .is-pending > *, .js .is-pending[data-reveal='tilt'] { opacity: 0; }
     .js .is-revealed > * { animation: rise var(--t-slow) var(--ease-quart) backwards; animation-delay: calc(var(--d, 0) * 80ms); }
-    .js .is-revealed[data-reveal='tilt'] { animation: tilt-in 600ms var(--ease-expo) backwards; }
+    .js .is-revealed[data-reveal='tilt'] { animation: tilt-in 400ms var(--ease-expo) backwards; }
     .js .is-revealed[data-reveal='tilt'] > * { animation: none; }
 
     /* ---------- How it works: scroll-scrubbed roadmap ---------- */
@@ -624,7 +624,7 @@
          primary button lands on the first screen at 360x640. */
       .hero__media {
         --ax: 0.5; --ay: 0.5;
-        position: relative; width: auto; height: min(92vw, 44vh); height: min(92vw, 44svh);
+        position: relative; width: auto; height: min(84vw, 40vh); height: min(84vw, 40svh);
         -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
         mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
       }
@@ -812,7 +812,7 @@
   <!-- ===== Hero (deck page 5) ===== -->
   <section class="hero" id="home" aria-labelledby="hero-title">
     <div class="hero__media">
-      <img class="hero__poster" src="assets/img/dumbbell-hero.webp?v=1" srcset="assets/img/dumbbell-hero-640.webp?v=1 640w, assets/img/dumbbell-hero.webp?v=1 1200w" sizes="(max-width: 940px) min(92vw, 44vh), min(58vw, 900px)" width="1200" height="1200" alt="A black hex dumbbell with green collars and the green BUILT B on its end, floating in a dark studio" fetchpriority="high">
+      <img class="hero__poster" src="assets/img/dumbbell-hero.webp?v=2" srcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" sizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" width="1200" height="1200" alt="A black hex dumbbell with green collars and the green BUILT B on its end, floating in a dark studio" fetchpriority="high">
     </div>
     <div class="container hero__inner">
       <div class="hero__copy">
@@ -901,7 +901,7 @@
   <!-- ===== Features, grouped by pillar ===== -->
   <section class="section" id="features">
     <div class="container">
-      <div class="section-head" data-reveal>
+      <div class="section-head">
         <h2 class="h-1">Everything You Need to Build You.</h2>
         <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
       </div>
@@ -986,7 +986,7 @@
             <div class="screen is-active" role="tabpanel" id="screen-today" aria-labelledby="tab-today">
               <p class="app-greet">Good morning,<br>Let&rsquo;s <b class="hl">build your best.</b></p>
               <div class="app-card app-row app-workout">
-                <span class="app-workout__img"><img src="assets/img/dumbbell-hero-640.webp?v=1" alt="" width="640" height="640"></span>
+                <span class="app-workout__img"><img src="assets/img/dumbbell-hero-640.webp?v=2" alt="" width="640" height="640"></span>
                 <div><b>Upper body strength</b><span>32 min &middot; Intermediate</span></div>
                 <span class="app-play" aria-hidden="true"><svg class="ico"><use href="#i-play"/></svg></span>
               </div>
@@ -1068,7 +1068,7 @@
   <!-- ===== Train ===== -->
   <section class="section" id="training">
     <div class="container split split--reverse">
-      <div class="split__body" data-reveal>
+      <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg>Train</span>
         <h2 class="h-1">Your personal trainer. Always with you.</h2>
         <p class="lead" style="margin-top:24px">Every session is matched to your goal, your experience and the time you actually have. Finish a workout and the next one is already adjusted.</p>
@@ -1114,7 +1114,7 @@
   <!-- ===== Daily rhythm (AI Coach) ===== -->
   <section class="section band" id="accountability">
     <div class="container split">
-      <div class="split__body" data-reveal>
+      <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg>AI Coach</span>
         <h2 class="h-1">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
@@ -1140,7 +1140,7 @@
   <!-- ===== Progress ===== -->
   <section class="section" id="progress">
     <div class="container">
-      <div class="section-head" data-reveal>
+      <div class="section-head">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
         <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
         <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
@@ -1205,7 +1205,7 @@
           </div>
         </div>
 
-        <div class="price-card" data-reveal="tilt" data-tilt>
+        <div class="price-card" data-reveal="tilt" data-tilt="3">
           <div class="price-card__top">
             <span class="fine">Full access</span>
             <span class="chip">All included</span>
@@ -1231,7 +1231,7 @@
   <!-- ===== FAQ ===== -->
   <section class="section" id="faq">
     <div class="container">
-      <div class="section-head section-head--center" data-reveal>
+      <div class="section-head section-head--center">
         <h2 class="h-1">Good to know.</h2>
       </div>
       <div class="faq">
@@ -1262,7 +1262,7 @@
   <!-- ===== About ===== -->
   <section class="section band" id="about">
     <div class="container">
-      <div class="about-grid" data-reveal>
+      <div class="about-grid">
         <h2 class="h-1">More Than Fitness.</h2>
         <div>
           <p class="lead">We believe a healthier life should be simpler, more personal and easier to keep up.</p>
@@ -1351,7 +1351,7 @@
   <!-- ===== Legal ===== -->
   <section class="section band" id="legal">
     <div class="container">
-      <div class="section-head section-head--center" data-reveal>
+      <div class="section-head section-head--center">
         <h2 class="h-1">Privacy and terms.</h2>
         <p class="lead">Last updated: October 2026.</p>
       </div>
@@ -1761,7 +1761,7 @@
     var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
     if (!reduceMotion && fine.matches) {
       $$('[data-tilt]').forEach(function (el) {
-        var MAX = 6; // degrees
+        var MAX = parseFloat(el.getAttribute('data-tilt')) || 6; // degrees; data-tilt="3" caps one element lower
         var cur = { x: 0, y: 0 }, tgt = { x: 0, y: 0 }, raf = 0, last = 0;
         var step = function (now) {
           var dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
@@ -1804,7 +1804,7 @@
     if (heroMedia && !reduceMotion && !saveData && 'IntersectionObserver' in window && 'ResizeObserver' in window) {
       var start3d = function () {
         if (!hasWebGL()) return;
-        import('./assets/js/hero-3d.min.js?v=1').then(function (m) {
+        import('./assets/js/hero-3d.min.js?v=2').then(function (m) {
           m.mount(heroMedia, { watch: $('.hero') });
         }).catch(function () { /* the poster stays */ });
       };

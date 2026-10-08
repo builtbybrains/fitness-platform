@@ -7,16 +7,10 @@ export const clamp01 = (p: number) => (p < 0 ? 0 : p > 1 ? 1 : p);
 
 export const easeOutQuart = (p: number) => 1 - Math.pow(1 - clamp01(p), 4);
 
-/** Ease-out with a small overshoot past 1 before settling. `s` sets the
-    overshoot: 0.9 peaks about 3% past the target. */
-export function easeOutBack(p: number, s = 0.9): number {
-  const x = clamp01(p) - 1;
-  return 1 + (s + 1) * x * x * x + s * x * x;
-}
-
 /** The dumbbell dropping in: height above its rest point, extra spin on
-    top of the idle spin, and a tilt that levels out as it lands. */
-export function dropIn(t: number, duration = 0.7, from = 1.0, turns = 0.75) {
+    top of the idle spin, and a tilt that levels out as it lands. Starts
+    half a unit up so the top of the canvas never clips it. */
+export function dropIn(t: number, duration = 0.5, from = 0.5, turns = 0.75) {
   const e = easeOutQuart(t / duration);
   return {
     y: from * (1 - e),
@@ -26,10 +20,10 @@ export function dropIn(t: number, duration = 0.7, from = 1.0, turns = 0.75) {
   };
 }
 
-/** The medal flipping in: Y rotation from half a turn to face-on, with a
-    small overshoot, then held. */
-export function flipIn(t: number, duration = 0.8): number {
-  return Math.PI * (1 - easeOutBack(t / duration));
+/** The medal flipping in: Y rotation from half a turn to face-on,
+    ease-out quart with no overshoot, then held. */
+export function flipIn(t: number, duration = 0.6): number {
+  return Math.PI * (1 - easeOutQuart(t / duration));
 }
 
 /** A slow float, zero at t = 0 so it can start from a resting pose without

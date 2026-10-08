@@ -57,31 +57,47 @@ let enteredOn: string | null = null;
 const NATIVE = Platform.OS !== 'web';
 const COUNT_LINE = 20;
 
-/** The streak's flame, alive while the streak is: a slow 1.6s flicker,
-    growing 6% from its base and swaying 2 degrees a quarter-beat behind.
-    Reduce Motion, or no streak: still. */
-function Flame({ hot }: { hot: boolean }) {
+/** The streak's flame. It flickers twice (two 1.6s beats, growing 6% from
+    its base and swaying 2 degrees a quarter-beat behind) when Today first
+    shows a live streak and again each time the count goes up, then rests.
+    A rise while Today is out of view plays once Today is back. Reduce
+    Motion, or no streak: still. */
+function Flame({ count, live }: { count: number; live: boolean }) {
   const reduce = useReduceMotion();
   const grow = useRef(new Animated.Value(0)).current;
   const sway = useRef(new Animated.Value(0)).current;
+  // The count the flame last flickered for; null until the first one.
+  const playedFor = useRef<number | null>(null);
+  const hot = count > 0;
 
   useEffect(() => {
-    grow.setValue(0);
-    sway.setValue(0);
-    if (!hot || reduce) return;
+    if (!hot || reduce) {
+      playedFor.current = hot ? count : null;
+      return;
+    }
+    if (!live) return;
+    if (playedFor.current !== null && count <= playedFor.current) {
+      playedFor.current = count;
+      return;
+    }
+    playedFor.current = count;
     const step = (v: Animated.Value, toValue: number, duration: number, easing: (t: number) => number) =>
       Animated.timing(v, { toValue, duration, easing, useNativeDriver: NATIVE });
-    const loop = Animated.parallel([
-      Animated.loop(Animated.sequence([step(grow, 1, 800, Easing.inOut(Easing.sin)), step(grow, 0, 800, Easing.inOut(Easing.sin))])),
-      Animated.loop(Animated.sequence([step(sway, 1, 400, Easing.out(Easing.sin)), step(sway, -1, 800, Easing.inOut(Easing.sin)), step(sway, 0, 400, Easing.in(Easing.sin))])),
+    const burst = Animated.parallel([
+      Animated.loop(Animated.sequence([step(grow, 1, 800, Easing.inOut(Easing.sin)), step(grow, 0, 800, Easing.inOut(Easing.sin))]), { iterations: 2 }),
+      Animated.loop(Animated.sequence([step(sway, 1, 400, Easing.out(Easing.sin)), step(sway, -1, 800, Easing.inOut(Easing.sin)), step(sway, 0, 400, Easing.in(Easing.sin))]), {
+        iterations: 2,
+      }),
     ]);
-    loop.start();
+    grow.setValue(0);
+    sway.setValue(0);
+    burst.start();
     return () => {
-      loop.stop();
+      burst.stop();
       grow.setValue(0);
       sway.setValue(0);
     };
-  }, [hot, reduce, grow, sway]);
+  }, [count, hot, live, reduce, grow, sway]);
 
   const scaleY = grow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
   // Half the 6% of 18px, so the flame grows up from its base.
@@ -165,7 +181,7 @@ function StreakChip({ count, onPress }: { count: number; onPress: () => void }) 
         backgroundColor: pressed ? C.raised : hot ? C.greenTint : C.card,
       })}
     >
-      <Flame hot={hot && live} />
+      <Flame count={count} live={live} />
       <RollingCount value={count} color={hot ? C.green : C.muted} live={live} />
     </Pressable>
   );
@@ -252,7 +268,8 @@ function WorkoutCard({ day }: { day: WeekDay }) {
           <Text style={T.h2}>Rest day</Text>
           <Text style={T.meta}>{day.session.note}</Text>
         </View>
-        <Lazy3D kind="dumbbell" motion="rest" width={72} height={72} />
+        {/* Still: drawn once, no loop. The extra margin opens 8 more before the chevron. */}
+        <Lazy3D kind="dumbbell" motion="rest" width={88} height={88} paused style={{ marginRight: 8 }} />
         <Icon name="chevronRight" size={22} color={C.muted} />
       </Pressable>
     );

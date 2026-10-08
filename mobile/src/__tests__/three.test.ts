@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { centredOutline, pathOutline } from '../components/three/outline';
-import { bob, dropIn, easeOutBack, fitDistance, fitExtent, flickVelocity, flipIn, heroSize, stepSpin } from '../components/three/pose';
+import { bob, dropIn, fitDistance, fitExtent, flickVelocity, flipIn, heroSize, stepSpin } from '../components/three/pose';
 
 // The B mark, as in src/components/BuiltLogo.tsx and assets/img/mark.svg.
 const MARK =
@@ -45,10 +45,10 @@ describe('B mark outline', () => {
 });
 
 describe('3D motion curves', () => {
-  it('drops in from above and settles at rest by 700ms', () => {
-    expect(dropIn(0).y).toBeCloseTo(1.0);
-    expect(dropIn(0.35).y).toBeLessThan(0.1);
-    const end = dropIn(0.7);
+  it('drops in from half a unit above and settles at rest by 500ms', () => {
+    expect(dropIn(0).y).toBeCloseTo(0.5);
+    expect(dropIn(0.25).y).toBeLessThan(0.05);
+    const end = dropIn(0.5);
     expect(end.y).toBe(0);
     expect(end.spin).toBe(0);
     expect(end.tilt).toBe(0);
@@ -56,15 +56,17 @@ describe('3D motion curves', () => {
     expect(dropIn(2).y).toBe(0);
   });
 
-  it('flips the medal from the back to face-on with a small overshoot', () => {
+  it('flips the medal from the back to face-on in 600ms with no overshoot', () => {
     expect(flipIn(0)).toBeCloseTo(Math.PI);
-    expect(flipIn(0.8)).toBeCloseTo(0);
-    let min = Infinity;
-    for (let t = 0; t <= 0.8; t += 0.005) min = Math.min(min, flipIn(t));
-    // Overshoot past face-on, but only by a few degrees.
-    expect(min).toBeLessThan(0);
-    expect(min).toBeGreaterThan(-0.12);
-    expect(easeOutBack(1)).toBe(1);
+    expect(flipIn(0.6)).toBe(0);
+    let prev = Infinity;
+    for (let t = 0; t <= 0.6; t += 0.005) {
+      const a = flipIn(t);
+      // Turns one way only and never passes face-on.
+      expect(a).toBeLessThanOrEqual(prev);
+      expect(a).toBeGreaterThanOrEqual(0);
+      prev = a;
+    }
   });
 
   it('floats from zero so a still pose has no jump', () => {

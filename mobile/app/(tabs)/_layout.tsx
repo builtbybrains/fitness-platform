@@ -4,7 +4,7 @@
    from Today's Progress tile and streak (and Profile) instead of taking a
    tab; it keeps the tab bar, and Back returns to where it was opened from.
 
-   Motion: a short Built Green bar under the active tab springs across to
+   Motion: a short Stone bar under the active tab springs across to
    the new tab (about 250ms), and the new tab's icon pops (scale 0.9 to 1,
    180ms, ease-out quart), with a selection tick on phones. On Progress no
    tab is active, so the bar fades out. Reduce Motion: the bar jumps, no pop. */
@@ -147,7 +147,7 @@ function TabBar({ state, descriptors, navigation, insets }: TabBarProps) {
             width: INDICATOR_WIDTH,
             height: INDICATOR_HEIGHT,
             borderRadius: INDICATOR_HEIGHT / 2,
-            backgroundColor: C.green,
+            backgroundColor: C.stone,
             opacity: shown,
             transform: [{ translateX: x }],
           }}
