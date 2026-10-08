@@ -2,14 +2,15 @@
    for one with similar calories and protein. The second option is to log
    what you actually have: type it or snap it, answer a quick question or
    two, check the numbers, save. Or ask for a meal made from what's at home.
-   Off-plan food counts toward the day. */
+   Off-plan food counts toward the day. Pull down to re-read the plan and
+   what was logged; while they load, the screen's shape stands in. */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
+import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { usePlan } from '../../src/planStore';
 import { useFoodLogs } from '../../src/foodLogs';
 import { daySummary } from '../../src/stats';
@@ -20,6 +21,8 @@ import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
 import { MealImage } from '../../src/components/food/MealImage';
+import { Bone, Skeleton } from '../../src/components/Skeleton';
+import { usePullRefresh } from '../../src/components/usePullRefresh';
 import { dateEyebrow, foodHeaderStats } from '../../src/lib/headerStats';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
@@ -29,7 +32,7 @@ import type { DayMeal } from '../../src/planData';
 const SOURCE_LABEL: Record<string, string> = { photo: 'From a photo', text: 'Typed', generated: 'Made from what you had', plan: 'Plan meal' };
 
 export default function FoodTab() {
-  const { days, todayIdx, todayId, targets, activities, profile, plan, planLoaded, swapMeal, toggleMeal } = usePlan();
+  const { days, todayIdx, todayId, targets, activities, profile, plan, planLoaded, swapMeal, toggleMeal, reload } = usePlan();
   const { session, profileLoaded, profileError } = useAuth();
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
@@ -37,6 +40,8 @@ export default function FoodTab() {
   // The meal ticked last: its row re-mounts as eaten, and its tick pops in.
   const [justAte, setJustAte] = useState<string | null>(null);
   const day = days[todayIdx];
+  const refreshFood = food.refresh;
+  const refreshControl = usePullRefresh(useCallback(() => Promise.all([reload(), refreshFood()]), [reload, refreshFood]));
 
   const activityToday = useMemo(() => activities.filter((a) => a.day === todayId), [activities, todayId]);
   const summary = useMemo(
@@ -69,9 +74,7 @@ export default function FoodTab() {
           {unreachable ? (
             <OfflineBlock body="Your meals and what you logged show here as soon as BUILT answers again." />
           ) : (
-            <View style={cardStyle}>
-              <StateBlock kind="loading" title="Loading today's meals" />
-            </View>
+            <FoodSkeleton />
           )}
         </View>
       </SafeAreaView>
@@ -95,7 +98,7 @@ export default function FoodTab() {
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <ScrollView refreshControl={refreshControl} contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <ScreenHeader
           eyebrow={dateEyebrow(day.index, day.id, true)}
           title="Time to"
@@ -208,6 +211,48 @@ export default function FoodTab() {
         onPick={(meal) => (swapping ? swapMeal(day.id, swapping.slot, meal) : Promise.resolve())}
       />
     </SafeAreaView>
+  );
+}
+
+/** Food while it loads: header stats, the day's totals, then the next meal's photo and the rest as rows. */
+function FoodSkeleton() {
+  return (
+    <Skeleton label="Loading today's meals" style={{ gap: 24 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[96, 80, 72].map((w) => (
+          <Bone key={w} width={w} height={32} radius={R.pill} />
+        ))}
+      </View>
+      <Bone radius={R.card} style={{ padding: 20, gap: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Bone width="40%" height={28} radius={8} tone="raised" />
+          <Bone width="25%" height={14} radius={6} tone="raised" />
+        </View>
+        <Bone height={8} radius={4} tone="raised" />
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <Bone key={i} height={40} radius={8} tone="raised" style={{ flex: 1 }} />
+          ))}
+        </View>
+      </Bone>
+      <Bone radius={R.card} style={{ padding: 20, gap: 12 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Bone width="40%" height={18} radius={6} tone="raised" />
+          <Bone width="20%" height={14} radius={6} tone="raised" />
+        </View>
+        <Bone height={180} radius={R.card} tone="raised" />
+        <Bone width="70%" height={22} radius={6} tone="raised" />
+        {[0, 1].map((i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 8 }}>
+            <Bone height={52} width={52} tone="raised" />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Bone width="60%" height={16} radius={6} tone="raised" />
+              <Bone width="40%" height={12} radius={6} tone="raised" />
+            </View>
+          </View>
+        ))}
+      </Bone>
+    </Skeleton>
   );
 }
 

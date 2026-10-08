@@ -3,7 +3,8 @@
    exercise with one of three that fit your kit and injuries; switch
    between home and gym for the week; ask for a change in your own words
    and read what changed. Check-offs save to the account, or to this
-   device without one. */
+   device without one. Day chips tilt under the finger; pull down to
+   re-read the plan; while it loads, the week's shape stands in. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -22,6 +23,9 @@ import { ReplaceExerciseSheet } from '../../src/components/training/ReplaceExerc
 import { ChangePlanCard } from '../../src/components/training/PlanChange';
 import { MealImage } from '../../src/components/food/MealImage';
 import { Ring } from '../../src/components/Ring';
+import { TiltPressable } from '../../src/components/Tilt';
+import { Bone, Skeleton } from '../../src/components/Skeleton';
+import { usePullRefresh } from '../../src/components/usePullRefresh';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { useAuth } from '../../src/auth';
 import { DAY_FULL, DAY_SHORT, plural, timeLabel } from '../../src/components/training/labels';
@@ -33,10 +37,11 @@ function DayChip({ day, today, selected, onPress }: { day: WeekDay; today: boole
   const workoutDone = day.session.kind === 'workout' && day.done.workout;
   const rest = day.session.kind === 'rest';
   return (
-    <Pressable
+    <TiltPressable
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityState={{ selected }}
+      aria-selected={selected}
       accessibilityLabel={`${DAY_FULL[day.index]}${today ? ', today' : ''}. ${rest ? 'Rest day' : day.session.focus}${workoutDone ? ', done' : ''}${day.moved ? ', moved this week' : ''}`}
       style={({ pressed }) => ({
         flex: 1,
@@ -63,7 +68,57 @@ function DayChip({ day, today, selected, onPress }: { day: WeekDay; today: boole
           borderColor: selected ? C.bg : C.muted,
         }}
       />
-    </Pressable>
+    </TiltPressable>
+  );
+}
+
+/** Plan while it loads: header stats, the seven day chips, the workout and the meals. */
+function PlanSkeleton() {
+  return (
+    <Skeleton label="Loading your plan" style={{ gap: 24 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[88, 72, 96].map((w) => (
+          <Bone key={w} width={w} height={32} radius={R.pill} />
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 4, marginHorizontal: -6 }}>
+        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+          <Bone key={i} height={72} style={{ flex: 1, minWidth: 44 }} />
+        ))}
+      </View>
+      <Bone radius={R.card} style={{ padding: 20, gap: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <View style={{ flex: 1, gap: 8 }}>
+            <Bone width="30%" height={14} radius={6} tone="raised" />
+            <Bone width="70%" height={22} radius={6} tone="raised" />
+            <Bone width="50%" height={14} radius={6} tone="raised" />
+          </View>
+          <Bone circle height={56} tone="raised" />
+        </View>
+        <Bone height={4} radius={2} tone="raised" />
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 44 }}>
+            <Bone circle height={24} tone="raised" />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Bone width="60%" height={16} radius={6} tone="raised" />
+              <Bone width="35%" height={12} radius={6} tone="raised" />
+            </View>
+          </View>
+        ))}
+      </Bone>
+      <Bone radius={R.card} style={{ padding: 20, gap: 12 }}>
+        <Bone width="45%" height={18} radius={6} tone="raised" />
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Bone height={52} width={52} tone="raised" />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Bone width="65%" height={16} radius={6} tone="raised" />
+              <Bone width="45%" height={12} radius={6} tone="raised" />
+            </View>
+          </View>
+        ))}
+      </Bone>
+    </Skeleton>
   );
 }
 
@@ -87,6 +142,7 @@ export default function PlanTab() {
     optionsFor,
     replaceExercise,
     regenerate,
+    reload,
   } = usePlan();
   const { session, profileLoaded, profile, profileError } = useAuth();
   const celebration = useCelebration();
@@ -110,6 +166,7 @@ export default function PlanTab() {
   const options = useMemo(() => (day && replaceIdx != null ? optionsFor(day.id, replaceIdx) : []), [day, replaceIdx, optionsFor]);
   // The same done/planned count as Today's week strip.
   const week = useMemo(() => weekCounts(weekStrip(days, todayId)), [days, todayId]);
+  const refreshControl = usePullRefresh(reload);
 
   const waiting = !planLoaded || (!!session && !profileLoaded);
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
@@ -121,9 +178,7 @@ export default function PlanTab() {
           {unreachable ? (
             <OfflineBlock body="Your plan shows here as soon as BUILT answers again. Nothing you saved is lost." />
           ) : (
-            <View style={cardStyle}>
-              <StateBlock kind="loading" title="Loading your plan" />
-            </View>
+            <PlanSkeleton />
           )}
         </View>
       </SafeAreaView>
@@ -169,7 +224,7 @@ export default function PlanTab() {
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <ScrollView refreshControl={refreshControl} contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <ScreenHeader
           eyebrow={dateEyebrow(day.index, day.id, selected === todayIdx)}
           title="Time to"

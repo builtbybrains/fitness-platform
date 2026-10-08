@@ -9,17 +9,20 @@
    The greeting, the note and the ring fade in on the first open of the day
    only; everything else is simply there. */
 
-import { useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 
 import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { Ring } from '../../src/components/Ring';
 import { BuiltMark } from '../../src/components/BuiltLogo';
 import { FadeIn } from '../../src/components/FadeIn';
-import { useTween } from '../../src/components/motion';
+import { useReduceMotion, useTween } from '../../src/components/motion';
 import { usePop } from '../../src/components/usePop';
+import { TiltPressable } from '../../src/components/Tilt';
+import { Bone, Skeleton } from '../../src/components/Skeleton';
+import { usePullRefresh } from '../../src/components/usePullRefresh';
 import { CoachNote } from '../../src/components/today/CoachNote';
 import { WeekStrip } from '../../src/components/today/WeekStrip';
 import { Icon, IconName } from '../../src/components/Icon';
@@ -29,6 +32,7 @@ import { MealImage } from '../../src/components/food/MealImage';
 import { greetingWord } from '../../src/components/copy';
 import { Meter } from '../../src/components/training/Controls';
 import { MuscleMap } from '../../src/components/training/MuscleMap';
+import { Lazy3D } from '../../src/components/three/Lazy3D';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
@@ -50,8 +54,102 @@ import type { Activity, HealthDaily } from '../../src/types';
 // later the same day show the screen in place.
 let enteredOn: string | null = null;
 
+const NATIVE = Platform.OS !== 'web';
+const COUNT_LINE = 20;
+
+/** The streak's flame, alive while the streak is: a slow 1.6s flicker,
+    growing 6% from its base and swaying 2 degrees a quarter-beat behind.
+    Reduce Motion, or no streak: still. */
+function Flame({ hot }: { hot: boolean }) {
+  const reduce = useReduceMotion();
+  const grow = useRef(new Animated.Value(0)).current;
+  const sway = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    grow.setValue(0);
+    sway.setValue(0);
+    if (!hot || reduce) return;
+    const step = (v: Animated.Value, toValue: number, duration: number, easing: (t: number) => number) =>
+      Animated.timing(v, { toValue, duration, easing, useNativeDriver: NATIVE });
+    const loop = Animated.parallel([
+      Animated.loop(Animated.sequence([step(grow, 1, 800, Easing.inOut(Easing.sin)), step(grow, 0, 800, Easing.inOut(Easing.sin))])),
+      Animated.loop(Animated.sequence([step(sway, 1, 400, Easing.out(Easing.sin)), step(sway, -1, 800, Easing.inOut(Easing.sin)), step(sway, 0, 400, Easing.in(Easing.sin))])),
+    ]);
+    loop.start();
+    return () => {
+      loop.stop();
+      grow.setValue(0);
+      sway.setValue(0);
+    };
+  }, [hot, reduce, grow, sway]);
+
+  const scaleY = grow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+  // Half the 6% of 18px, so the flame grows up from its base.
+  const translateY = grow.interpolate({ inputRange: [0, 1], outputRange: [0, -0.54] });
+  const rotate = sway.interpolate({ inputRange: [-1, 1], outputRange: ['-2deg', '2deg'] });
+  return (
+    <Animated.View style={{ transform: [{ translateY }, { rotate }, { scaleY }] }}>
+      <Icon name="flame" size={18} color={hot ? C.green : C.faint} />
+    </Animated.View>
+  );
+}
+
+/** The streak number. When it goes up it rolls like an odometer: the old
+    number slides up and out as the new one slides in from below (300ms,
+    ease-out quart). A rise that happens while Today is out of view (a
+    workout finished on its own screen) waits and rolls once Today is back.
+    Down or Reduce Motion: it simply changes. */
+function RollingCount({ value, color, live }: { value: number; color: string; live: boolean }) {
+  const reduce = useReduceMotion();
+  const [shown, setShown] = useState(value);
+  const [from, setFrom] = useState<number | null>(null);
+  const t = useRef(new Animated.Value(1)).current;
+  const waited = useRef(false);
+
+  // Before paint, so the new number never flashes in place first.
+  useLayoutEffect(() => {
+    if (value === shown) return;
+    if (!live && !reduce && value > shown) {
+      waited.current = true;
+      return;
+    }
+    if (value < shown || reduce) {
+      setFrom(null);
+      setShown(value);
+      t.setValue(1);
+      return;
+    }
+    setFrom(shown);
+    setShown(value);
+    t.setValue(0);
+    // After a wait, let the screen settle into view first.
+    const delay = waited.current ? 250 : 0;
+    waited.current = false;
+    Animated.timing(t, { toValue: 1, duration: 300, delay, easing: Easing.out(Easing.poly(4)), useNativeDriver: NATIVE }).start(({ finished }) => finished && setFrom(null));
+  }, [value, shown, live, reduce, t]);
+
+  const text = { fontFamily: FONT.displaySemi, fontSize: 15, lineHeight: COUNT_LINE, color };
+  return (
+    <View style={{ height: COUNT_LINE, overflow: 'hidden' }}>
+      <Animated.Text style={[text, { transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [COUNT_LINE, 0] }) }] }]}>{shown}</Animated.Text>
+      {from != null ? (
+        <Animated.Text
+          style={[
+            text,
+            { position: 'absolute', left: 0, top: 0, opacity: t.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [0, -COUNT_LINE] }) }] },
+          ]}
+        >
+          {from}
+        </Animated.Text>
+      ) : null}
+    </View>
+  );
+}
+
 function StreakChip({ count, onPress }: { count: number; onPress: () => void }) {
   const hot = count > 0;
+  // Motion only while Today is on screen.
+  const live = useIsFocused();
   return (
     <Pressable
       onPress={onPress}
@@ -67,8 +165,8 @@ function StreakChip({ count, onPress }: { count: number; onPress: () => void }) 
         backgroundColor: pressed ? C.raised : hot ? C.greenTint : C.card,
       })}
     >
-      <Icon name="flame" size={18} color={hot ? C.green : C.faint} />
-      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: hot ? C.green : C.muted }}>{count}</Text>
+      <Flame hot={hot && live} />
+      <RollingCount value={count} color={hot ? C.green : C.muted} live={live} />
     </Pressable>
   );
 }
@@ -93,7 +191,7 @@ function Greeting() {
 
 function PillarTile({ icon, title, detail, onPress }: { icon: IconName; title: string; detail: string; onPress: () => void }) {
   return (
-    <Pressable
+    <TiltPressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${detail}`}
@@ -112,7 +210,7 @@ function PillarTile({ icon, title, detail, onPress }: { icon: IconName; title: s
         <Text style={T.h3}>{title}</Text>
         <Text style={T.meta}>{detail}</Text>
       </View>
-    </Pressable>
+    </TiltPressable>
   );
 }
 
@@ -154,6 +252,7 @@ function WorkoutCard({ day }: { day: WeekDay }) {
           <Text style={T.h2}>Rest day</Text>
           <Text style={T.meta}>{day.session.note}</Text>
         </View>
+        <Lazy3D kind="dumbbell" motion="rest" width={72} height={72} />
         <Icon name="chevronRight" size={22} color={C.muted} />
       </Pressable>
     );
@@ -172,8 +271,10 @@ function WorkoutCard({ day }: { day: WeekDay }) {
   const title = split ? head : w.focus;
   const meta = [split ? rest.join(' · ') : null, `${w.minutes} min`, plural(w.exercises.length, 'exercise')].filter(Boolean).join(' · ');
   const status = done ? 'Done today. Nice work.' : s.done > 0 ? `${s.done} of ${s.total} sets logged` : `${s.total} sets to go`;
+  // The whole card opens the workout on touch and tilts under the finger;
+  // screen readers get the play button, which says the same thing.
   return (
-    <View style={[cardStyle, { gap: 16 }]}>
+    <TiltPressable onPress={() => router.push(`/workout/${day.id}`)} accessible={false} focusable={false} style={[cardStyle, { gap: 16 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={T.small}>Today&apos;s workout{day.moved ? ', moved here' : ''}</Text>
@@ -195,7 +296,7 @@ function WorkoutCard({ day }: { day: WeekDay }) {
           <Text style={T.small}>{status}</Text>
         </View>
       </View>
-    </View>
+    </TiltPressable>
   );
 }
 
@@ -346,6 +447,76 @@ function WaterCard({ water }: { water: ReturnType<typeof useWater> }) {
   );
 }
 
+/** Today while the day loads: the same blocks in the same places. */
+function TodaySkeleton({ ringSize, compact, tight }: { ringSize: number; compact: boolean; tight: boolean }) {
+  const { width } = useWindowDimensions();
+  const line = Math.round((width < 380 ? 24 : 27) * 1.25);
+  return (
+    <Skeleton label="Loading your day" style={{ padding: 20, paddingTop: tight ? 8 : 20, gap: tight ? 16 : 24, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <BuiltMark size={24} />
+        <Bone width={64} height={44} radius={R.pill} />
+      </View>
+      <View style={{ gap: 2 }}>
+        {(['62%', '84%'] as const).map((w) => (
+          <View key={w} style={{ height: line, justifyContent: 'center' }}>
+            <Bone width={w} height={Math.round(line * 0.7)} radius={8} />
+          </View>
+        ))}
+      </View>
+      <Bone height={88} radius={R.card} />
+      {tight ? (
+        <Bone radius={R.card} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 }}>
+          <Bone circle height={ringSize} tone="raised" />
+          <View style={{ flex: 1, gap: 14 }}>
+            <Bone width="60%" height={18} radius={6} tone="raised" />
+            <Bone height={22} radius={6} tone="raised" />
+            <Bone height={22} radius={6} tone="raised" />
+            <Bone height={22} radius={6} tone="raised" />
+          </View>
+        </Bone>
+      ) : (
+        <Bone radius={R.card} style={{ alignItems: 'center', paddingVertical: compact ? 20 : 28, paddingHorizontal: 20, gap: compact ? 12 : 20 }}>
+          <Bone circle height={ringSize} tone="raised" />
+          <Bone width="70%" height={14} radius={6} tone="raised" />
+          <View style={{ flexDirection: 'row', gap: 16, alignSelf: 'stretch' }}>
+            {[0, 1, 2].map((i) => (
+              <Bone key={i} height={44} radius={8} tone="raised" style={{ flex: 1 }} />
+            ))}
+          </View>
+        </Bone>
+      )}
+      <Bone radius={R.card} style={{ padding: 20, gap: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <View style={{ flex: 1, gap: 8 }}>
+            <Bone width="40%" height={14} radius={6} tone="raised" />
+            <Bone width="75%" height={22} radius={6} tone="raised" />
+            <Bone width="55%" height={14} radius={6} tone="raised" />
+          </View>
+          <Bone circle height={56} tone="raised" />
+        </View>
+        <Bone height={4} radius={2} tone="raised" />
+      </Bone>
+      <View style={{ gap: 12 }}>
+        <Bone width={96} height={18} radius={6} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            <Bone key={i} circle height={34} />
+          ))}
+        </View>
+      </View>
+      <View style={{ gap: 12 }}>
+        {[0, 1].map((r) => (
+          <View key={r} style={{ flexDirection: 'row', gap: 12 }}>
+            <Bone height={128} style={{ flex: 1 }} />
+            <Bone height={128} style={{ flex: 1 }} />
+          </View>
+        ))}
+      </View>
+    </Skeleton>
+  );
+}
+
 function syncLine(state: 'local' | 'offline' | 'synced'): string {
   if (state === 'local') return 'Saved on this device';
   if (state === 'offline') return "Offline. Changes are saved here and upload when you're back online.";
@@ -384,7 +555,7 @@ export default function TodayTab() {
   const compact = height < 900;
   const tight = height < 700;
   const ring = compact ? { size: 140, stroke: 12, label: 14, pct: 34 } : { size: 208, stroke: 16, label: 16, pct: 48 };
-  const { days, todayIdx, todayId, syncState, streak, targets, activities, removeActivity, profile, history, historyLoaded, planLoaded, schedule } = usePlan();
+  const { days, todayIdx, todayId, syncState, streak, targets, activities, removeActivity, profile, history, historyLoaded, planLoaded, schedule, reload } = usePlan();
   const { userId } = useAuth();
   const water = useWater();
   const food = useFoodLogs(todayId);
@@ -437,7 +608,19 @@ export default function TodayTab() {
   const fat = useTween(summary?.eaten.fat ?? 0);
   const kcal = useTween(summary?.eaten.kcal ?? 0);
 
-  if (!day || !summary || !note) return <SafeAreaView style={screen} edges={['top']} />;
+  // Pull to refresh: the plan, history and activities, today's food and water.
+  const refreshFood = food.refresh;
+  const refreshWater = water.refresh;
+  const refreshControl = usePullRefresh(useCallback(() => Promise.all([reload(), refreshFood(), refreshWater()]), [reload, refreshFood, refreshWater]));
+
+  // Never flash the starter plan: the day's shape holds until the stored plan is in.
+  if (!day || !summary || !note || !planLoaded) {
+    return (
+      <SafeAreaView style={screen} edges={['top']}>
+        <TodaySkeleton ringSize={ring.size} compact={compact} tight={tight} />
+      </SafeAreaView>
+    );
+  }
 
   const isWorkout = day.session.kind === 'workout';
   const pct = Math.round(summary.progress * 100);
@@ -457,7 +640,7 @@ export default function TodayTab() {
 
   return (
     <SafeAreaView style={screen} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: tight ? 8 : 20, gap, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
+      <ScrollView refreshControl={refreshControl} contentContainerStyle={{ padding: 20, paddingTop: tight ? 8 : 20, gap, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <BuiltMark size={24} />
           <StreakChip count={streak} onPress={() => router.push('/(tabs)/progress')} />

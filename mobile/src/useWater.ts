@@ -1,6 +1,7 @@
 /* Daily water counter, saved through the data layer (server for accounts,
    device for device-only identities). Rows are keyed by local day, and the
-   hook reloads when the day rolls over at midnight or on app resume.
+   hook reloads when the day rolls over at midnight or on app resume, and
+   on `refresh()` (pull to refresh).
 
    Nothing is written until the day's saved count has loaded: taps (and
    notification actions) that arrive earlier are queued and applied on top
@@ -67,7 +68,9 @@ export function useWater() {
   const userRef = useRef(userId);
   userRef.current = userId;
 
+  const writes = useRef(0); // bumps on every change, so a refresh never undoes a tap
   const commit = useCallback((next: number) => {
+    writes.current += 1;
     const clamped = Math.max(0, Math.min(MAX_GLASSES, next));
     countRef.current = clamped;
     setCount(clamped);
@@ -110,6 +113,19 @@ export function useWater() {
     };
   }, [userId, today, commit]);
 
+  // Pull to refresh: read the day's count again (another device may have
+  // logged a glass). A tap while the read is out wins over what it returns.
+  const refresh = useCallback(async () => {
+    const uid = userRef.current;
+    const day = dayRef.current;
+    if (!uid || !loadedRef.current) return;
+    const seen = writes.current;
+    const { count: c } = await fetchWater(uid, day);
+    if (userRef.current !== uid || dayRef.current !== day || writes.current !== seen) return;
+    countRef.current = c;
+    setCount(c);
+  }, []);
+
   // "+1 glass" from the reminder notification, including cold starts.
   const addRef = useRef(addGlasses);
   addRef.current = addGlasses;
@@ -143,6 +159,7 @@ export function useWater() {
     count,
     target: profile?.water_target ?? 8,
     loaded,
+    refresh,
     add: () => addGlasses(1),
     sub: () => {
       if (loadedRef.current) commit(countRef.current - 1);

@@ -248,6 +248,11 @@ export function useFoodLogs(dayId = todayId()) {
     [userId, dayId],
   );
 
+  /** Pull to refresh: read the day's logs again (uploads anything pending). */
+  const refresh = useCallback(async () => {
+    if (userId) await refreshFoodLogs(userId, dayId);
+  }, [userId, dayId]);
+
   const logs = state.key === key ? state.logs : [];
   return {
     logs,
@@ -258,5 +263,6 @@ export function useFoodLogs(dayId = todayId()) {
     fat: logs.reduce((a, l) => a + (l.fat || 0), 0),
     add,
     remove,
+    refresh,
   };
 }

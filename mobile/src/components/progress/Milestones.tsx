@@ -4,7 +4,8 @@
    long enough to read as one) and "6/10".
    A milestone earned since the last visit is shown once: the newest one
    gets the celebration overlay and every new one carries a "New" tag on
-   its ring for this visit. Seen ids are kept per person on this device. */
+   its ring for this visit. Seen ids are kept per person on this device.
+   A badge tilts toward the finger while it is held (components/Tilt). */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -15,6 +16,7 @@ import { useCelebration } from '../../celebration';
 import { loadLocal, saveLocal } from '../../lib/localFallback';
 import { newlyEarned, nextMilestone, type Milestone, type MilestoneId } from '../../lib/milestones';
 import { Icon, type IconName } from '../Icon';
+import { TiltPressable } from '../Tilt';
 import { useTween } from '../motion';
 
 const ICON: Record<MilestoneId, IconName> = {
@@ -52,7 +54,8 @@ function Badge({ m, fresh }: { m: Milestone; fresh: boolean }) {
     : `${m.title}. ${m.progress ? `${m.progress.value} of ${m.progress.target}. ` : ''}Not earned yet. ${m.description}`;
 
   return (
-    <View accessible accessibilityLabel={spoken} style={{ width: '25%', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 2 }}>
+    // Held, not tapped: no action, so it stays out of the keyboard's tab order.
+    <TiltPressable accessible focusable={false} accessibilityLabel={spoken} style={{ width: '25%', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 2 }}>
       <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={RING} height={RING} style={{ position: 'absolute', left: 0, top: 0 }} pointerEvents="none">
           <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={m.earned ? C.green : C.pressed} strokeWidth={STROKE} fill="none" />
@@ -86,7 +89,7 @@ function Badge({ m, fresh }: { m: Milestone; fresh: boolean }) {
         </Text>
         <Text style={[T.small, { fontSize: 11, lineHeight: 14, color: C.faint }]}>{caption}</Text>
       </View>
-    </View>
+    </TiltPressable>
   );
 }
 
