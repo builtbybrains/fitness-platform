@@ -26,6 +26,8 @@
  * the bottom of the viewport, 1 when it reaches the top), plus a tiny bob while in view. Scrolling back plays it backwards.
  * Pinned slots (data-3d-scrub, the scroll story) take their progress across their chapter's pinned
  * scroll instead, and a slot with data-3d-anchors gets leader lines aimed at points on its object.
+ * A pinned slot with data-3d-step="k/n" is step k of a sequence that shares one stage (how it works):
+ * it grows in, plays and shrinks away during its own share of the chapter.
  * The hero slot (retired from the page, kept for its posters) has its own slow ambient loop.
  */
 import {
@@ -687,6 +689,11 @@ function heroSlot(rt) {
 /* ---------- how it works: four small objects, each with its own entrance as its step arrives ----------
    The phone flips up from flat, the tape turns in on its coil, the dumbbell and shaker slide
    together from either side, the progress ring fills. `e` is the eased entrance (0 to 1). */
+/* In the pinned step sequence (data-3d-step="k/n", how it works with motion) the four objects share
+   one stage and are scrubbed by the sequence's progress p: step k owns x = p * n in [k, k + 1] and
+   hands over to the next across 2 * STEP_HAND. Its object grows in turning one way, plays its entrance
+   while it holds, and shrinks away turning the other, as the page's card and step word swap. */
+const STEP_HAND = 0.16;
 function stepSlot(rt, build, phase) {
   const root = new Group();
   const holder = new Group();
@@ -694,12 +701,28 @@ function stepSlot(rt, build, phase) {
   holder.add(inner.group);
   root.add(holder);
   const camera = cam(5.7, 1.0);
+  let staged = false;
   return {
     root, camera, aspect: 1,
     update(c) {
+      holder.position.y = bob(c, 0.035, 5, phase);
+      if (c.step) {
+        // on the stage the camera comes in closer: the object fills its box rather than a card's corner
+        if (!staged) { staged = true; camera.position.set(0, 0.85, 4.6); camera.lookAt(0, -0.02, 0); }
+        const [k, n] = c.step, H = STEP_HAND, x = c.p * n;
+        const vin = k ? easeInOut(win(k - H, k + H, x)) : 1;
+        const vout = k < n - 1 ? easeInOut(win(k + 1 - H, k + 1 + H, x)) : 0;
+        const v = vin * (1 - vout);
+        holder.visible = v > 0.002;
+        holder.scale.setScalar(outCubic(v));
+        const own = clamp01((x - k + H) / (1 + 2 * H)); // through its own turn, hand-overs included
+        holder.rotation.y = (own - 0.5) * 0.6 + (1 - vin) * 1.3 - vout * 1.3;
+        // the first step is on screen as the stage arrives: it starts part way into its entrance
+        inner.update(c, k ? outCubic(win(k - H, k + 0.5, x)) : 0.35 + 0.65 * outCubic(win(0, 0.45, x)));
+        return;
+      }
       const e = outCubic(win(0.06, 0.42, c.p));
       holder.rotation.y = (c.p - 0.5) * 0.5;
-      holder.position.y = bob(c, 0.035, 5, phase);
       inner.update(c, e);
     },
   };
@@ -1217,19 +1240,38 @@ function storyWorldSlot(rt) {
   pose.rotation.x = 0.12;
   const shadow = contactShadow(rt, 3.1, 0.95, -1.45, 0.5);
   root.add(shadow);
-  return {
-    root, camera, aspect: 1,
+  // the zoom-through: over the last 15% the camera flies in low over the dumbbell, so it swells
+  // toward the viewer and sweeps out under the frame, while the page fades the green to Deep Black
+  const CAM0 = new Vector3(0, 0.7, 8.25), LOOK0 = new Vector3(0, 0.05, 0);
+  const aim = new Vector3(0, 1.2, 0), dir = new Vector3(), look = new Vector3();
+  const slot = {
+    root, camera, aspect: 1, mBottom: 0,
     update(c) {
       const p = c.p;
       turn.rotation.y = -0.62 + p * 1.25 * TAU;
       pose.rotation.z = 0.46 - 0.14 * Math.sin(p * Math.PI);
       roll.rotation.x = p * 0.9;
-      const b = bob(c, 0.045, 6);
+      const z = easeInOut(win(0.85, 1, p));
+      const b = bob(c, 0.045, 6) * (1 - z);
       float.position.y = b;
       shadow.scale.set(1 - b * 1.5, 1, 1 - b * 1.5);
-      shadow.material.opacity = 0.5 - b * 2;
+      shadow.material.opacity = (0.5 - b * 2) * (1 - z);
+      if (z > 0) {
+        // end 1.6 units past the aim point, on the line from the start through it
+        dir.copy(aim).sub(CAM0).normalize();
+        const zl = win(0.85, 1, p), f = zl * zl; // slow, then rushing at the camera
+        camera.position.copy(CAM0).lerp(aim.clone().addScaledVector(dir, 1.6), f);
+        look.copy(LOOK0).lerp(aim.clone().addScaledVector(dir, 4), Math.min(1, z * 1.4));
+        camera.lookAt(look);
+      } else {
+        camera.position.copy(CAM0);
+        camera.lookAt(LOOK0);
+      }
+      // the slot's lower edge fades while the object outgrows it, so its bottom is never a hard cut
+      slot.mBottom = 0.22 * Math.min(1, z * 3);
     },
   };
+  return slot;
 }
 
 /* ---------- chapter 2, the exploded view: the dumbbell comes apart along its bar ----------
@@ -1300,7 +1342,7 @@ function storyExplodedSlot(rt) {
         camera.position.set(0, 2.2, 10.6);
         camera.lookAt(0.3, 0.12, 0);
         pose.rotation.set(0, 0, 0.08);
-        float = { x: -1.0, y: 1.22, z: 0.9 };
+        float = { x: -1.0, y: 1.36, z: 0.9 }; // high enough that the right column's flat leader passes under it
       } else {
         slot.aspect = 1;
         camera.position.set(0, 1.2, 12);
@@ -1539,6 +1581,9 @@ export function mount(opts = {}) {
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   // phones list the exploded view's labels under the object, without leader lines
   const phone = window.matchMedia('(max-width: 620px)');
+  // on wide screens with room beside the object (1200px at 17:10, 1400px at 8:5) the labels stand in
+  // a column either side of it, otherwise in rows above and below; the page's CSS uses the same test
+  const cols = window.matchMedia('(min-width: 1200px) and (min-aspect-ratio: 17/10), (min-width: 1400px) and (min-aspect-ratio: 8/5)');
   const els = Array.from(opts.slots || document.querySelectorAll('[data-3d]'));
   const entries = els.map((el) => {
     const trackSel = el.getAttribute('data-3d-track');
@@ -1550,6 +1595,8 @@ export function mount(opts = {}) {
       avoid: el.getAttribute('data-3d-avoid') ? Array.from(document.querySelectorAll(el.getAttribute('data-3d-avoid'))) : null,
       // pinned chapters: progress runs across the chapter's pinned scroll, not its pass over the screen
       scrub: el.hasAttribute('data-3d-scrub'),
+      // a place in a pinned step sequence, "k/n" (how it works): the slot plays its step's share of it
+      step: /^\d+\/\d+$/.test(el.getAttribute('data-3d-step') || '') ? el.getAttribute('data-3d-step').split('/').map(Number) : null,
       // labels whose leader lines run to a point on the object: { el, name, leader, rect, w }
       labels: anchorSel ? Array.from(document.querySelectorAll(anchorSel)).map((a) => ({
         el: a, name: a.getAttribute('data-anchor'), leader: a.querySelector('.leader'), rect: null, w: '',
@@ -1600,24 +1647,32 @@ export function mount(opts = {}) {
   };
 
   // project each label's anchor through the slot camera (the matrices the draw just used) into
-  // screen px, and aim a line at it from the label's nearest edge, in the label's own box
+  // screen px and run an elbowed line to it: flat first, then straight down (or up) onto the part, so
+  // a line never cuts across the plates between. Side columns (from 1200px) start at the label's
+  // first line; rows above and below the object start just past the whole row of labels. The line is
+  // two borders of one box, in the label's own box; the dot sits on the part.
   const pt = new Vector3();
   const leaders = (e) => {
-    const r = e.rect, out = [];
+    const r = e.rect, out = [], side = cols.matches;
     for (const l of e.labels) {
       const o = e.slot.anchors[l.name], lr = l.rect;
       if (!o || !lr || !lr.width) continue;
       o.getWorldPosition(pt).project(e.slot.camera);
       const sx = r.left + ((pt.x + 1) / 2) * r.width;
       const sy = r.top + ((1 - pt.y) / 2) * r.height;
-      let ox, oy;
-      if (sx > lr.right + 12) { ox = lr.width + 12; oy = 12; }
-      else if (sx < lr.left - 12) { ox = -12; oy = 12; }
-      else { ox = Math.min(lr.width, Math.max(0, sx - lr.left)); oy = sy > lr.bottom ? lr.height + 10 : -10; }
-      const dx = sx - (lr.left + ox), dy = sy - (lr.top + oy);
-      const len = Math.max(0, Math.hypot(dx, dy));
-      const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
-      out.push([l, `--lx:${ox.toFixed(0)}px;--ly:${oy.toFixed(0)}px;--len:${len.toFixed(0)}px;--ang:${ang.toFixed(1)}deg`]);
+      let x0, y0;
+      if (side) { x0 = sx > lr.left + lr.width / 2 ? lr.right + 12 : lr.left - 12; y0 = lr.top + 12; }
+      else {
+        let top = lr.top, bottom = lr.bottom;
+        for (const m of e.labels) if (m.rect && Math.abs(m.rect.top - lr.top) < 24) { top = Math.min(top, m.rect.top); bottom = Math.max(bottom, m.rect.bottom); }
+        x0 = Math.min(lr.right - 8, Math.max(lr.left + 8, sx));
+        y0 = sy > bottom ? bottom + 10 : top - 10;
+      }
+      const right = sx >= x0, down = sy >= y0;
+      const v = `--lx:${(Math.min(x0, sx) - lr.left).toFixed(0)}px;--ly:${(Math.min(y0, sy) - lr.top).toFixed(0)}px;` +
+        `--lw:${Math.abs(sx - x0).toFixed(0)}px;--lh:${Math.abs(sy - y0).toFixed(0)}px;` +
+        `--lb:${down ? 1 : 0}px ${right ? 1 : 0}px ${down ? 0 : 1}px ${right ? 0 : 1}px;--dx:${right ? 100 : 0}%;--dy:${down ? 100 : 0}%`;
+      out.push([l, v]);
     }
     return out;
   };
@@ -1700,7 +1755,7 @@ export function mount(opts = {}) {
       e.t += dt;
       const ctx = {
         still: false, dt, t: e.t, p: e.p, track: tr, rect: r, avoid: e.avoidRect, vw, vh,
-        pointer, fine: fine.matches, started: e.live,
+        pointer, fine: fine.matches, started: e.live, step: e.step,
       };
       e.slot.update(ctx);
       showOnly(rt, e.slot);
@@ -1718,10 +1773,11 @@ export function mount(opts = {}) {
       calls += renderer.info.render.calls;
       if (e.labels && e.slot.anchors && !phone.matches) leaderWrites.push(...leaders(e));
       const f = e.fade * e.gateFade;
-      if (f < 1 || e.mLeft > 0 || e.mBottom > 0) {
+      const mB = Math.max(e.mBottom, e.slot.mBottom || 0); // a slot can fade its own lower edge (the world's zoom)
+      if (f < 1 || e.mLeft > 0 || mB > 0) {
         rt.maskMat.uniforms.uFade.value = f;
         rt.maskMat.uniforms.uLeft.value = e.mLeft;
-        rt.maskMat.uniforms.uBottom.value = e.mBottom;
+        rt.maskMat.uniforms.uBottom.value = mB;
         renderer.render(rt.maskScene, rt.maskCam);
       }
       e.drawn++;

@@ -6,7 +6,8 @@
  *   assets/img/dumbbell-hero.webp       1200x1200  transparent, hero poster and LCP image
  *   assets/img/dumbbell-hero-640.webp    640x640   transparent, phones and the app tile
  *   assets/img/3d/<slot>.webp           small, transparent, one per [data-3d] slot, at a
- *                                       representative scroll pose (see POSTERS below)
+ *                                       representative scroll pose (see POSTERS below);
+ *                                       the how-* steps also at 640 for the step sequence's stage
  *   assets/img/story/*.webp             the scroll story's three chapters; story/world*.webp is
  *                                       the page's first paint and LCP image
  *
@@ -45,6 +46,11 @@ const POSTERS = [
   ['3d/how-tape.webp', 'how-tape', 256, 256, 0.5],
   ['3d/how-pair.webp', 'how-pair', 256, 256, 0.5],
   ['3d/how-ring.webp', 'how-ring', 256, 256, 0.5],
+  // the same four at stage size, for the pinned step sequence (the page swaps them in with srcset)
+  ['3d/how-phone-640.webp', 'how-phone', 640, 640, 0.5],
+  ['3d/how-tape-640.webp', 'how-tape', 640, 640, 0.5],
+  ['3d/how-pair-640.webp', 'how-pair', 640, 640, 0.5],
+  ['3d/how-ring-640.webp', 'how-ring', 640, 640, 0.5],
   ['3d/features.webp', 'features', 600, 600, 0.5],
   ['3d/diet.webp', 'diet', 330, 600, 0.75],
   ['3d/training.webp', 'training', 310, 500, 0.75],

@@ -833,10 +833,11 @@
     .explode__title { font-weight: 300; font-size: clamp(2.25rem, 1.4rem + 3vw, 3.75rem); line-height: 1.04; }
     .explode__copy p { margin-top: 14px; max-width: 36ch; color: var(--stone); }
     .explode__copy .btn { margin-top: 28px; }
-    /* a 1px Stone line from the label to its part, a small green dot on the part; drawn only over the
-       live 3D (the engine writes --lx, --ly, --len and --ang every frame) */
-    .leader { display: none; position: absolute; left: var(--lx, 0); top: var(--ly, 0); width: var(--len, 0); height: 1px; background: rgba(233, 233, 233, 0.55); transform-origin: 0 50%; transform: rotate(var(--ang, 0deg)); pointer-events: none; }
-    .leader::after { content: ''; position: absolute; right: -4px; top: -3.5px; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--black); }
+    /* an elbowed 1px Stone line from the label to its part, a small green dot on the part; drawn only
+       over the live 3D. The engine writes the box (--lx, --ly, --lw, --lh), which two of its borders
+       draw the line (--lb), and the corner the dot sits on (--dx, --dy) every frame */
+    .leader { display: none; position: absolute; left: var(--lx, 0); top: var(--ly, 0); width: var(--lw, 0); height: var(--lh, 0); border: 0 solid rgba(233, 233, 233, 0.55); border-width: var(--lb, 0); pointer-events: none; }
+    .leader::after { content: ''; position: absolute; left: calc(var(--dx, 100%) - 4px); top: calc(var(--dy, 100%) - 4px); width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--black); }
 
     /* Chapter 3: more than an app. Deep Black to Carbon with a faint green glow (DESIGN.md exception). */
     .ch--more { background: var(--black); }
@@ -871,17 +872,19 @@
 
     .fx .ch--explode .ch__pin { z-index: 2; display: block; max-width: none; margin: 0; padding: 0; } /* labels and leaders sit over the live drawing */
     .fx .explode__slot { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: 0; height: auto; }
-    /* wide screens: a column of labels either side of the object, stacked from the nav down so the
-       left column always clears the title block under it */
+    /* wide screens (1200px and 17:10, or 1400px and 8:5): a column of labels either side of the object,
+       stacked from the nav down so the left column always clears the title block under it. The left column runs from the innermost
+       part (the grip) at the top to the outer plates at the bottom, so its leaders fan out without
+       crossing and land on each part from above. */
     .fx .parts {
       position: absolute; top: calc(var(--nav-h) + 3svh); left: var(--gutter); right: var(--gutter);
       display: grid; grid-template-columns: clamp(220px, 19vw, 280px) minmax(0, 1fr) clamp(220px, 19vw, 280px);
       align-items: start; gap: 18px 24px;
     }
     .fx .part { opacity: 0; }
-    .fx .part[data-anchor='head-l'] { grid-area: 1 / 1; }
+    .fx .part[data-anchor='grip'] { grid-area: 1 / 1; }
     .fx .part[data-anchor='collar-l'] { grid-area: 2 / 1; }
-    .fx .part[data-anchor='grip'] { grid-area: 3 / 1; }
+    .fx .part[data-anchor='head-l'] { grid-area: 3 / 1; }
     .fx .part[data-anchor='mark'] { grid-area: 1 / 3; }
     .fx .part[data-anchor='head-r'] { grid-area: 3 / 3; }
     .fx .explode__slot.is-3d-live ~ .parts .leader { display: block; }
@@ -898,20 +901,25 @@
     .fx .more__word .lt { opacity: 0; }
     .fx .more__slot { position: absolute; left: 50%; top: 50%; width: var(--plate); height: var(--plate); transform: translate(-50%, -44%); }
 
-    @media (max-width: 1199px) {
-      /* tablets and small laptops: labels in a row above the object and a row below it */
+    @media (max-width: 1199px), (max-width: 1399px) and (max-aspect-ratio: 1699/1000), (max-aspect-ratio: 1599/1000) {
+      /* tablets, small laptops and screens too narrow for their height (where the object would reach
+         the side columns): labels in a row above the object and a row below it */
       .fx .ch--explode .ch__pin { display: flex; flex-direction: column; padding: calc(var(--nav-h) + 20px) var(--gutter) 28px; }
       .fx .parts {
         position: relative; inset: auto; flex: 1 1 auto; display: grid; gap: 16px 24px;
         grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr) auto;
-        grid-template-areas: 'a b c' '. . .' 'd e .';
+        grid-template-areas: 'a . c' '. . .' 'd e f';
       }
       .fx .explode__slot { top: calc(var(--nav-h) + 120px); bottom: 340px; } /* between the two label rows */
-      .fx .part[data-anchor='head-l'] { grid-area: a; }
-      .fx .part[data-anchor='head-r'] { grid-area: b; }
+      /* each row runs left to right in the order of its parts, so the leaders never cross, and the
+         plates under the floating B are reached from below; the numbers would then read out of
+         order, so this layout drops them */
+      .fx .part[data-anchor='grip'] { grid-area: a; }
       .fx .part[data-anchor='mark'] { grid-area: c; }
-      .fx .part[data-anchor='collar-l'] { grid-area: d; }
-      .fx .part[data-anchor='grip'] { grid-area: e; }
+      .fx .part[data-anchor='head-l'] { grid-area: d; }
+      .fx .part[data-anchor='collar-l'] { grid-area: e; }
+      .fx .part[data-anchor='head-r'] { grid-area: f; } /* from below, clear of the floating B */
+      .fx .part::before { content: none; }
       .fx .explode__copy { order: 0; position: relative; left: auto; bottom: auto; margin-top: 24px; }
     }
 
@@ -940,6 +948,7 @@
       .fx .explode__slot { position: relative; inset: auto; flex: 1 1 0; min-height: 150px; }
       .fx .parts { flex: none; display: block; margin-top: 4px; padding-bottom: 60px; }
       .fx .parts .part { position: static; display: flex; align-items: baseline; gap: 12px; min-height: 32px; opacity: 0.45; }
+      .fx .part::before { content: counter(part, decimal-leading-zero); }
       .fx .part b { font-size: 1rem; }
       .fx .part span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 1rem; color: var(--stone); opacity: 0; }
       .fx .explode__slot.is-3d-live ~ .parts .leader { display: none; }
@@ -947,6 +956,74 @@
       .part span { font-size: 1rem; }
       .explode__title, .fx .explode__title { font-size: 1.75rem; }
       .explode__copy .btn { width: 100%; margin-top: 20px; }
+    }
+
+    /* Goal rolodex (#goals): the five goals in Sora 800. With motion they roll past a fixed line as the
+       page scrolls: the goal on the line is white and full size, the rest sit at 18% and a little
+       smaller, and that goal's line of copy crossfades in the left column (under the words on phones).
+       Green is only the small bar on the line. Without motion: a plain list, every line shown. */
+    .ch--goals { background: var(--band); }
+    .ch--goals .ch__pin { max-width: var(--container); margin-inline: auto; padding: var(--section-y) var(--gutter); }
+    .goals__kicker { margin-bottom: 28px; font-size: clamp(1.125rem, 1rem + 0.4vw, 1.375rem); font-weight: 600; letter-spacing: -0.01em; color: var(--stone); }
+    .goals__list { display: grid; gap: 32px; }
+    .goal__w { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(2.5rem, 1.6rem + 4vw, 4.5rem); line-height: 1; letter-spacing: -0.03em; }
+    .goal__d { margin-top: 10px; max-width: 40ch; color: var(--stone); text-wrap: pretty; }
+    .goals__line { display: none; }
+
+    .fx .ch--goals { height: 300vh; }
+    /* --edge lines the left column up with the page's container; the words run on to the gutter */
+    .fx .ch--goals .ch__pin {
+      --lc: clamp(260px, 24vw, 340px); --gap: clamp(48px, 5vw, 88px); --cy: 50%;
+      --edge: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter)));
+      --gw: min(15svh, 10rem, calc((100vw - var(--edge) - var(--lc) - var(--gap) - var(--gutter)) / 10.2));
+      max-width: none; margin: 0; padding: 0;
+    }
+    .fx .goals__kicker { position: absolute; left: var(--edge); width: var(--lc); top: calc(var(--cy) - 3.4rem); margin: 0; }
+    .fx .goals__list { position: absolute; top: 0; bottom: 0; left: calc(var(--edge) + var(--lc) + var(--gap)); right: var(--gutter); display: flex; flex-direction: column; justify-content: center; gap: 0.08em; font-size: var(--gw); }
+    .fx .goal__w { font-size: 1em; opacity: 0.18; transform-origin: 0 50%; }
+    .fx .ch--goals.is-live .goal__w { will-change: transform, opacity; }
+    .fx .goal__d { position: absolute; top: calc(var(--cy) - 0.6rem); left: calc(-1 * (var(--lc) + var(--gap))); width: var(--lc); margin: 0; font-size: 1.0625rem; line-height: 1.55; opacity: 0; }
+    .fx .goals__line { display: block; position: absolute; top: var(--cy); left: calc(var(--edge) + var(--lc) + var(--gap) - 28px); width: 4px; height: 0; }
+    .goals__line i { position: absolute; left: 0; top: calc(var(--gw) * -0.3); width: 4px; height: calc(var(--gw) * 0.6); border-radius: 2px; background: var(--green); }
+
+    /* How it works (#how): with motion, the steps play as a pinned sequence under the section head.
+       Each step's card, its object and a big light step word take the screen in turn; a soft green glow
+       behind the object deepens step by step and never rests above 12% alpha. The engine scrubs the
+       objects (data-3d-step, set by the scroll loop). Without motion the roadmap stands as before. */
+    .how__stage, .how__words { display: none; }
+    .fx #how { padding-bottom: 0; }
+    .fx #how .section-head { margin-bottom: 0; }
+    .fx .ch--how { height: 340vh; }
+    .fx .how__wrap {
+      height: 100%; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: minmax(0, 1fr) auto;
+      column-gap: clamp(32px, 5vw, 80px); padding-top: calc(var(--nav-h) + clamp(16px, 4svh, 40px)); padding-bottom: clamp(24px, 5svh, 56px);
+    }
+    .fx .ch--how .roadmap { grid-area: 1 / 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: 0; }
+    .fx .ch--how .roadmap__rail, .fx .ch--how .roadmap__marker { display: none; }
+    .fx .ch--how .roadmap__step { grid-area: 1 / 1; padding: 0; }
+    .fx .ch--how .roadmap__card { opacity: 0; transform: none; transition: none; }
+    .fx .how__words { grid-area: 2 / 1; display: grid; font-family: var(--font-display); font-weight: 300; font-size: clamp(3.5rem, min(9vw, 16svh), 9rem); line-height: 1; letter-spacing: -0.04em; }
+    .fx .how__w { grid-area: 1 / 1; opacity: 0; transform-origin: 0 100%; }
+    .fx .ch--how.is-live .how__w { will-change: transform, opacity, filter; }
+    .fx .how__stage { display: block; grid-area: 1 / 2 / 3 / 3; position: relative; }
+    .how__glow { position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(163, 255, 61, 0.12), rgba(163, 255, 61, 0.04) 55%, rgba(163, 255, 61, 0)); opacity: 0; }
+    .fx .how__stage .slot3d--step { position: absolute; inset: 0; width: auto; height: auto; margin: 0; float: none; }
+
+    /* Section headlines below the story: word by word out of a soft blur, line after line */
+    .fx .wb { display: inline-block; opacity: 0; }
+    .js .is-pending > [data-words], .js .is-revealed > [data-words] { opacity: 1; animation: none; }
+
+    @media (max-width: 940px) {
+      .fx .ch--goals .ch__pin { --cy: 50%; --edge: var(--gutter); --gw: min(12vw, 9svh); } /* "performance" fits 320px even in the fallback face */
+      .fx .goals__kicker { top: calc(var(--nav-h) + 24px); right: var(--gutter); width: auto; }
+      .fx .goals__list { left: calc(var(--gutter) + 10px); }
+      .fx .goal__d { top: auto; bottom: max(28px, env(safe-area-inset-bottom)); left: -10px; right: 0; width: auto; max-width: 36ch; }
+      .fx .goals__line { left: calc(var(--gutter) - 2px); }
+
+      /* the object on top, the step word under it, the card at the bottom */
+      .fx .how__wrap { display: flex; flex-direction: column; padding-top: calc(var(--nav-h) + 12px); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      .fx .how__stage { flex: 1 1 0; min-height: 120px; }
+      .fx .how__words { margin: 4px 0 12px; font-size: min(16vw, 9svh); }
     }
 
     @media print {
@@ -1088,15 +1165,15 @@
       <div class="slot3d explode__slot" data-3d="story-exploded" data-3d-track="#inside" data-3d-scrub data-3d-anchors="#inside [data-anchor]" aria-hidden="true">
         <picture>
           <source media="(max-width: 620px)" srcset="assets/img/story/exploded-sm.webp" width="720" height="720">
-          <img src="assets/img/story/exploded.webp" alt="" width="1600" height="900" loading="lazy" decoding="async">
+          <img src="assets/img/story/exploded.webp?v=2" alt="" width="1600" height="900" loading="lazy" decoding="async">
         </picture>
       </div>
       <ol class="parts" aria-label="What each part of BUILT does">
-        <li class="part" data-anchor="head-l" data-at="0.18"><b>AI training plan</b> <span>A weekly plan from your goal, your days and your equipment.</span><i class="leader" aria-hidden="true"></i></li>
+        <li class="part" data-anchor="grip" data-at="0.18"><b>AI training plan</b> <span>A weekly plan from your goal, your days and your equipment.</span><i class="leader" aria-hidden="true"></i></li>
         <li class="part" data-anchor="head-r" data-at="0.26"><b>AI meal plan</b> <span>Daily meals around your diet and allergies. Swap any of them.</span><i class="leader" aria-hidden="true"></i></li>
         <li class="part" data-anchor="collar-l" data-at="0.34"><b>Food photo scan</b> <span>Snap a plate. Get calories, protein, carbs and fat.</span><i class="leader" aria-hidden="true"></i></li>
         <li class="part" data-anchor="mark" data-at="0.42"><b>AI coach</b> <span>A chat that knows your plan and remembers what you tell it.</span><i class="leader" aria-hidden="true"></i></li>
-        <li class="part" data-anchor="grip" data-at="0.5"><b>Check-ins</b> <span>Weekly weigh-ins and monthly reviews that adjust the plan.</span><i class="leader" aria-hidden="true"></i></li>
+        <li class="part" data-anchor="head-l" data-at="0.5"><b>Check-ins</b> <span>Weekly weigh-ins and monthly reviews that adjust the plan.</span><i class="leader" aria-hidden="true"></i></li>
       </ol>
       <div class="explode__copy">
         <h2 class="explode__title" id="explode-title">Every part, built for you.</h2>
@@ -1118,71 +1195,94 @@
     </div>
   </section>
 
-  <!-- ===== How it works ===== -->
+  <!-- Goal rolodex: the five goals roll past a marker as the page scrolls; each says what BUILT does for it -->
+  <section class="ch ch--goals" id="goals" data-story="goals" aria-labelledby="goals-title">
+    <div class="ch__pin">
+      <h2 class="goals__kicker" id="goals-title">Pick your goal</h2>
+      <ol class="goals__list">
+        <li class="goal"><span class="goal__w">Lose fat</span> <p class="goal__d">Daily meals and a calorie target, at a pace the plan keeps sensible.</p></li>
+        <li class="goal"><span class="goal__w">Build muscle</span> <p class="goal__d">A weekly strength plan for your equipment, with meals built around protein.</p></li>
+        <li class="goal"><span class="goal__w">Tone up</span> <p class="goal__d">Strength and conditioning that fit your days, with meals to match.</p></li>
+        <li class="goal"><span class="goal__w">Stay fit</span> <p class="goal__d">A routine that fits your week. Walks, padel and football count too.</p></li>
+        <li class="goal"><span class="goal__w">Sports performance</span> <p class="goal__d">Training shaped around your sport and your schedule, reviewed every month.</p></li>
+      </ol>
+      <div class="goals__line" aria-hidden="true"><i></i></div>
+    </div>
+  </section>
+
+  <!-- ===== How it works: with motion, a pinned step sequence (DESIGN.md, "Scroll story") ===== -->
   <section class="section band" id="how">
     <div class="container">
       <div class="section-head">
         <h2 class="h-1" data-words>Your Goals. Our AI. Real Results.</h2>
         <p class="lead">Four steps from signing up to a plan that keeps adjusting to you.</p>
       </div>
-      <div class="roadmap" data-roadmap>
-        <div class="roadmap__rail" aria-hidden="true"><span class="roadmap__fill"></span></div>
-        <article class="roadmap__step is-left">
-          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>1</div>
-          <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
-            <h3 class="h-3">Tell us about you</h3>
-            <p>A short setup that captures what actually matters for your plan.</p>
-            <ul class="step-list">
-              <li>Current weight and height</li>
-              <li>Age and activity level</li>
-              <li>Your goal and timeline</li>
-              <li>Food preferences</li>
-            </ul>
+    </div>
+    <div class="ch ch--how" data-story="how">
+      <div class="ch__pin">
+        <div class="container how__wrap">
+          <div class="how__stage" aria-hidden="true"><i class="how__glow"></i></div>
+          <p class="how__words" aria-hidden="true"><span class="how__w">Answer</span><span class="how__w">Plan</span><span class="how__w">Follow</span><span class="how__w">Track</span></p>
+          <div class="roadmap" data-roadmap>
+            <div class="roadmap__rail" aria-hidden="true"><span class="roadmap__fill"></span></div>
+            <article class="roadmap__step is-left">
+              <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>1</div>
+              <div class="roadmap__card">
+                <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <h3 class="h-3">Tell us about you</h3>
+                <p>A short setup that captures what actually matters for your plan.</p>
+                <ul class="step-list">
+                  <li>Current weight and height</li>
+                  <li>Age and activity level</li>
+                  <li>Your goal and timeline</li>
+                  <li>Food preferences</li>
+                </ul>
+              </div>
+            </article>
+            <article class="roadmap__step is-right">
+              <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>2</div>
+              <div class="roadmap__card">
+                <div class="slot3d slot3d--step" data-3d="how-tape" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-tape.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <h3 class="h-3">AI builds your plan</h3>
+                <p>Your nutrition targets and training approach are generated around your goal, not a template.</p>
+                <ul class="step-list">
+                  <li>Calorie and macro targets</li>
+                  <li>Meal recommendations</li>
+                  <li>Weekly training structure</li>
+                  <li>Realistic pacing</li>
+                </ul>
+              </div>
+            </article>
+            <article class="roadmap__step is-left">
+              <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>3</div>
+              <div class="roadmap__card">
+                <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <h3 class="h-3">Follow your daily plan</h3>
+                <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
+                <ul class="step-list">
+                  <li>Meals for the day</li>
+                  <li>Today&rsquo;s workout</li>
+                  <li>Water and step targets</li>
+                  <li>Timely reminders</li>
+                </ul>
+              </div>
+            </article>
+            <article class="roadmap__step is-right">
+              <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>4</div>
+              <div class="roadmap__card">
+                <div class="slot3d slot3d--step" data-3d="how-ring" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-ring.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <h3 class="h-3">Track. Improve. Repeat.</h3>
+                <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
+                <ul class="step-list">
+                  <li>Weight and measurements</li>
+                  <li>Streaks and consistency</li>
+                  <li>Weekly review</li>
+                  <li>Plan adjustments</li>
+                </ul>
+              </div>
+            </article>
           </div>
-        </article>
-        <article class="roadmap__step is-right">
-          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>2</div>
-          <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-tape" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-tape.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
-            <h3 class="h-3">AI builds your plan</h3>
-            <p>Your nutrition targets and training approach are generated around your goal, not a template.</p>
-            <ul class="step-list">
-              <li>Calorie and macro targets</li>
-              <li>Meal recommendations</li>
-              <li>Weekly training structure</li>
-              <li>Realistic pacing</li>
-            </ul>
-          </div>
-        </article>
-        <article class="roadmap__step is-left">
-          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>3</div>
-          <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
-            <h3 class="h-3">Follow your daily plan</h3>
-            <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
-            <ul class="step-list">
-              <li>Meals for the day</li>
-              <li>Today&rsquo;s workout</li>
-              <li>Water and step targets</li>
-              <li>Timely reminders</li>
-            </ul>
-          </div>
-        </article>
-        <article class="roadmap__step is-right">
-          <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>4</div>
-          <div class="roadmap__card">
-            <div class="slot3d slot3d--step" data-3d="how-ring" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-ring.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
-            <h3 class="h-3">Track. Improve. Repeat.</h3>
-            <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
-            <ul class="step-list">
-              <li>Weight and measurements</li>
-              <li>Streaks and consistency</li>
-              <li>Weekly review</li>
-              <li>Plan adjustments</li>
-            </ul>
-          </div>
-        </article>
+        </div>
       </div>
     </div>
   </section>
@@ -1192,7 +1292,7 @@
     <div class="container">
       <div class="head-3d">
         <div class="section-head">
-          <h2 class="h-1" data-words>Everything You Need to Build You.</h2>
+          <h2 class="h-1" data-words="blur">Everything You Need to Build You.</h2>
           <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
         </div>
         <div class="slot3d" data-3d="features" aria-hidden="true"><img src="assets/img/3d/features.webp?v=2" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
@@ -1251,7 +1351,7 @@
     <div class="container split split--3d">
       <div class="split__body" data-reveal>
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg>Nutrition</span>
-        <h2 class="h-1">A diet plan that adapts to you.</h2>
+        <h2 class="h-1" data-words="blur">A diet plan that adapts to you.</h2>
         <p class="lead" style="margin-top:24px">Your targets are calculated from your body, your goal and your routine, then refined as you log meals and progress. No rigid meal plans, no guesswork.</p>
         <ul class="check-list">
           <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Breakfast, lunch, dinner and snacks with calories and macros for each.</span></li>
@@ -1374,7 +1474,7 @@
     <div class="container split split--reverse split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg>Train</span>
-        <h2 class="h-1">Your personal trainer. Always with you.</h2>
+        <h2 class="h-1" data-words="blur">Your personal trainer. Always with you.</h2>
         <p class="lead" style="margin-top:24px">Every session is matched to your goal, your experience and the time you actually have. Finish a workout and the next one is already adjusted.</p>
         <ul class="check-list">
           <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Workout recommendations that fit your week, not the other way round.</span></li>
@@ -1422,7 +1522,7 @@
     <div class="container split split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg>AI Coach</span>
-        <h2 class="h-1">A Stronger You, Everyday.</h2>
+        <h2 class="h-1" data-words="blur">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
       </div>
       <div class="slot3d" data-3d="accountability" aria-hidden="true">
@@ -1455,7 +1555,7 @@
       <div class="head-3d">
         <div class="section-head">
           <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
-          <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
+          <h2 class="h-1" data-words="blur">See exactly how far you&rsquo;ve come.</h2>
           <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
         </div>
         <div class="slot3d slot3d--wide" data-3d="progress" aria-hidden="true"><img src="assets/img/3d/progress.webp?v=2" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
@@ -1508,7 +1608,7 @@
     <div class="container">
       <div class="slot3d slot3d--medal" data-3d="pricing" aria-hidden="true"><img src="assets/img/3d/pricing.webp" alt="" width="440" height="440" loading="lazy" decoding="async"></div>
       <div class="section-head section-head--center">
-        <h2 class="h-1" data-words>Your health, for about $1 a day.</h2>
+        <h2 class="h-1" data-words="blur">Your health, for about $1 a day.</h2>
         <p class="lead">One subscription. Everything included. No tiers to compare, no upsells.</p>
       </div>
 
@@ -1579,7 +1679,7 @@
   <section class="section band" id="about">
     <div class="container">
       <div class="about-grid">
-        <h2 class="h-1" data-words>More Than Fitness.</h2>
+        <h2 class="h-1" data-words="blur">More Than Fitness.</h2>
         <div>
           <p class="lead">We believe a healthier life should be simpler, more personal and easier to keep up.</p>
           <p class="muted">Most people do not fail because they lack discipline. They fail because the plan was never theirs, the advice contradicted itself, and staying on track took more attention than a normal life allows.</p>
@@ -1997,51 +2097,24 @@
       });
     }
 
-    /* Roadmap: the green line draws down the steps against a playhead 62% down the screen; a ring
-       charges round each step number as the line comes, and the number lights green as it lands */
+    /* Roadmap: without motion the steps stand as a roadmap, every step reached and its line drawn.
+       With motion they play as the pinned step sequence in the scroll story below. */
     var rm = $('[data-roadmap]');
-    if (rm) {
+    if (rm && !motion) {
       var rFill = $('.roadmap__fill', rm);
       var rail = $('.roadmap__rail', rm);
-      var steps = $$('.roadmap__step', rm).map(function (s) {
-        var m = $('.roadmap__marker', s);
-        return { el: s, marker: m, ring: $('.roadmap__ring circle', m), c: 0, reached: null, seen: false };
-      });
+      var rMarkers = $$('.roadmap__marker', rm);
       // the rail runs from the first marker to the last, whatever the card heights
       var fitRail = function () {
         var base = rm.getBoundingClientRect().top;
-        var a = steps[0].marker.getBoundingClientRect();
-        var z = steps[steps.length - 1].marker.getBoundingClientRect();
+        var a = rMarkers[0].getBoundingClientRect();
+        var z = rMarkers[rMarkers.length - 1].getBoundingClientRect();
         rail.style.top = Math.round(a.top - base + a.height / 2) + 'px';
         rail.style.bottom = Math.round(rm.offsetHeight - (z.top - base + z.height / 2)) + 'px';
       };
-      if (reduceMotion) {
-        rFill.style.transform = 'none';
-        steps.forEach(function (s) { s.el.classList.add('is-reached', 'is-seen'); });
-        fx.push({ measure: fitRail, update: function () {} });
-      } else {
-        var railTop = 0, railH = 0;
-        fx.push({
-          measure: function () {
-            fitRail();
-            railTop = docTop(rail);
-            railH = rail.offsetHeight;
-            steps.forEach(function (s) { s.c = docTop(s.marker) + s.marker.offsetHeight / 2; });
-          },
-          update: function () {
-            var head = V.y + V.h * 0.62;
-            put(rFill, 'transform', 'scaleY(' + (railH ? clamp01((head - railTop) / railH) : 0).toFixed(4) + ')');
-            steps.forEach(function (s, i) {
-              var span = Math.max(60, Math.min(220, i ? s.c - steps[i - 1].c : 160));
-              var charge = clamp01((head - (s.c - span)) / span);
-              put(s.ring, 'strokeDashoffset', (100 - 100 * charge).toFixed(1));
-              var reached = s.c <= head;
-              if (reached !== s.reached) { s.reached = reached; s.el.classList.toggle('is-reached', reached); }
-              if (!s.seen && (reached || s.c - 24 < V.y + V.h * 0.9)) { s.seen = true; s.el.classList.add('is-seen'); }
-            });
-          }
-        });
-      }
+      rFill.style.transform = 'none';
+      $$('.roadmap__step', rm).forEach(function (s) { s.classList.add('is-reached', 'is-seen'); });
+      fx.push({ measure: fitRail, update: function () {} });
     }
 
     if (motion) {
@@ -2123,15 +2196,28 @@
       chapters.forEach(function (c) {
         var el = c.el, step;
         if (c.kind === 'world') {
-          var lines = $$('.world__line', el), cue = $('.world__cue b', el), wPoster = $('.world__slot img', el);
+          var lines = $$('.world__line', el), cue = $('.world__cue b', el), wPoster = $('.world__slot img', el), foot = $('.world__foot', el);
           step = function () {
             var p = clamp01(c.u);
             // the lines swap at p = 0.33 and 0.66, each over a tenth of the chapter
             swapLine(lines[0], smooth(win(0.28, 0.35, p)), -1);
             swapLine(lines[1], p < 0.5 ? 1 - smooth(win(0.31, 0.38, p)) : smooth(win(0.61, 0.68, p)), p < 0.5 ? 1 : -1);
-            swapLine(lines[2], 1 - smooth(win(0.64, 0.71, p)), 1);
+            // the last 15%: the camera flies into the dumbbell (the engine) while the green fades to the
+            // Deep Black of the exploded view, so the hand-off to it is one continuous move
+            var z = smooth(win(0.85, 1, p));
+            if (z > 0) {
+              put(lines[2], 'opacity', z >= 1 ? '0' : (1 - z).toFixed(3));
+              put(lines[2], 'filter', z < 1 ? blur(10 * z) : '');
+              put(lines[2], 'transform', 'scale(' + (1 + 0.14 * z).toFixed(4) + ')');
+            } else swapLine(lines[2], 1 - smooth(win(0.64, 0.71, p)), 1);
+            var k = 1 - z, f = 1 - smooth(win(0.85, 0.93, p));
+            put(el, 'backgroundColor', z > 0 ? 'rgb(' + Math.round(8 + 155 * k) + ',' + Math.round(8 + 247 * k) + ',' + Math.round(8 + 53 * k) + ')' : '');
+            if (foot) { put(foot, 'opacity', f >= 1 ? '' : f.toFixed(3)); put(foot, 'visibility', f > 0 ? '' : 'hidden'); }
             if (cue) put(cue, 'transform', 'scaleX(' + p.toFixed(4) + ')');
-            if (posterScrub && wPoster) put(wPoster, 'transform', 'rotate(' + (-8 + 16 * p).toFixed(2) + 'deg)');
+            if (posterScrub && wPoster) {
+              put(wPoster, 'transform', 'rotate(' + (-8 + 16 * p).toFixed(2) + 'deg)' + (z > 0 ? ' scale(' + (1 + 2.6 * z * z).toFixed(4) + ')' : ''));
+              put(wPoster, 'opacity', z > 0 ? (1 - z).toFixed(3) : '');
+            }
           };
         } else if (c.kind === 'explode') {
           var parts = $$('.part', el).map(function (li) { return { el: li, at: parseFloat(li.getAttribute('data-at')) || 0, line: $('span', li) }; });
@@ -2184,9 +2270,83 @@
               put(mPoster, 'transform', 'translate3d(0,' + (9 * d).toFixed(2) + '%,0) scale(' + sc.toFixed(4) + ',' + (sc * (0.08 + 0.92 * f)).toFixed(4) + ')');
             }
           };
+        } else if (c.kind === 'goals') {
+          // the rolodex: a continuous index a runs through the goals, holding on each; every word moves
+          // by the same amount so the goal at a sits on the line, the line's copy crossfades beside it
+          var gWords = $$('.goal__w', el), gDescs = $$('.goal__d', el), gLine = $('.goals__line', el), gCen = [], gCy = 0;
+          c.measure = function () {
+            gCy = gLine ? gLine.offsetTop : 0;
+            gCen = gWords.map(function (w) { return w.offsetTop + w.offsetHeight / 2; });
+          };
+          step = function () {
+            var n = gWords.length, q = clamp01((clamp01(c.u) - 0.04) / 0.92) * (n - 1);
+            var i0 = Math.min(n - 1, Math.floor(q)), a = i0 + (i0 < n - 1 ? smooth(win(0.3, 0.7, q - i0)) : 0);
+            var ia = Math.min(n - 1, Math.floor(a)), fa = a - ia;
+            var cen = ia < n - 1 ? gCen[ia] + (gCen[ia + 1] - gCen[ia]) * fa : gCen[ia];
+            var ty = 'translate3d(0,' + (gCy - cen).toFixed(1) + 'px,0)';
+            gWords.forEach(function (w, i) {
+              var k = clamp01(1 - Math.abs(i - a));
+              put(w, 'opacity', (0.18 + 0.82 * k).toFixed(3));
+              put(w, 'transform', ty + ' scale(' + (0.82 + 0.18 * k).toFixed(4) + ')');
+              put(w, 'filter', k > 0 && k < 1 ? blur(16 * k * (1 - k)) : '');
+            });
+            gDescs.forEach(function (d, i) {
+              var o = clamp01(1 - Math.abs(a - i) * 2.2);
+              put(d, 'opacity', o >= 1 ? '1' : o.toFixed(3));
+              put(d, 'pointerEvents', o > 0.5 ? '' : 'none'); // hidden lines stay in the reading order
+              put(d, 'filter', o > 0 && o < 1 ? blur(6 * (1 - o)) : '');
+              put(d, 'transform', o < 1 ? px(14 * Math.max(-1, Math.min(1, i - a)) * (1 - o)) : '');
+            });
+          };
+        } else if (c.kind === 'how') {
+          // the steps in turn: step k owns x in [k, k+1] and hands over to the next across 2H; its card,
+          // its step word and its object come and go together, and the glow behind deepens step by step
+          var hSteps = $$('.roadmap__step', el), hWords = $$('.how__w', el), hGlow = $('.how__glow', el), hStage = $('.how__stage', el);
+          var hSlots = hSteps.map(function (s, k) {
+            var slot = $('.slot3d', s);
+            if (!slot || !hStage) return null;
+            // the step's object moves out of its card onto the shared stage; the engine scrubs it by this
+            // chapter's progress and its place in the sequence instead of by its card being seen
+            hStage.appendChild(slot);
+            slot.removeAttribute('data-3d-gate');
+            slot.setAttribute('data-3d-track', '.ch--how');
+            slot.setAttribute('data-3d-scrub', '');
+            slot.setAttribute('data-3d-step', k + '/' + hSteps.length);
+            var img = $('img', slot);
+            if (img) {
+              img.setAttribute('srcset', img.getAttribute('src') + ' 256w, ' + img.getAttribute('src').replace(/\.webp.*$/, '-640.webp') + ' 640w');
+              img.setAttribute('sizes', '(max-width: 940px) 60vw, 40vw');
+            }
+            return slot;
+          });
+          var GLOW = [0.05, 0.075, 0.1, 0.12], HH = 0.16;
+          step = function () {
+            var n = hSteps.length, x = clamp01(c.u) * n, glow = 0;
+            hSteps.forEach(function (s, k) {
+              var vin = k ? smooth(win(k - HH, k + HH, x)) : 1;
+              var vout = k < n - 1 ? smooth(win(k + 1 - HH, k + 1 + HH, x)) : 0;
+              var v = vin * (1 - vout), dir = vout > 0 ? -1 : 1, mid = v > 0 && v < 1;
+              glow += v * GLOW[k];
+              var card = $('.roadmap__card', s);
+              put(card, 'opacity', v >= 1 ? '1' : v.toFixed(3));
+              put(card, 'pointerEvents', v > 0.5 ? '' : 'none'); // every step stays in the reading order
+              put(card, 'filter', mid ? blur(8 * (1 - v)) : '');
+              put(card, 'transform', mid ? px(dir * 18 * (1 - v)) : '');
+              var w = hWords[k];
+              if (w) {
+                put(w, 'opacity', v >= 1 ? '1' : v.toFixed(3));
+                put(w, 'filter', mid ? blur(14 * (1 - v)) : '');
+                put(w, 'transform', mid ? 'translate3d(0,' + (dir * 10 * (1 - v)).toFixed(2) + '%,0) scale(1,' + (1 + 0.2 * (1 - v)).toFixed(4) + ')' : '');
+              }
+              // the posters crossfade the same way (they show until the live drawing takes over)
+              if (hSlots[k]) put(hSlots[k], 'opacity', v >= 1 ? '' : v.toFixed(3));
+            });
+            if (hGlow) put(hGlow, 'opacity', (glow / 0.12).toFixed(3));
+          };
         }
         fx.push({
-          measure: function () { c.top = docTop(el); c.h = el.offsetHeight; },
+          // a new measure (fonts landing, a resize) re-steps a parked chapter once, with the new positions
+          measure: function () { c.top = docTop(el); c.h = el.offsetHeight; if (c.measure) c.measure(); c.parked = undefined; },
           update: function (now) {
             var more = chapterStep(c, now);
             // far from the screen: settle once at the nearest end, then skip
@@ -2198,13 +2358,40 @@
       });
 
       /* Key headings: word by word, each rises out of its mask as the heading crosses the lower third */
-      var heads = $$('[data-words]').map(function (el) { return { el: el, top: 0, words: splitWords(el, 'wm') }; });
+      /* Section headlines (data-words="blur"): line after line, each word comes out of a soft blur,
+         left to right, as the heading rises through the lower part of the screen. One helper writes a
+         word at k (0 hidden, 1 at rest); at rest the filter is cleared. */
+      var wipe = function (w, k) {
+        put(w, 'opacity', k >= 1 ? '1' : k.toFixed(3));
+        put(w, 'filter', k > 0 && k < 1 ? blur(12 * (1 - k)) : '');
+        put(w, 'transform', k > 0 && k < 1 ? 'translate3d(' + (0.28 * (1 - k)).toFixed(3) + 'em,0,0)' : '');
+      };
+      var heads = $$('[data-words]').map(function (el) {
+        var b = el.getAttribute('data-words') === 'blur';
+        return { el: el, top: 0, blur: b, words: splitWords(el, b ? 'wb' : 'wm'), at: [] };
+      });
       fx.push({
-        measure: function () { heads.forEach(function (h) { h.top = docTop(h.el); }); },
+        measure: function () {
+          heads.forEach(function (h) {
+            h.top = docTop(h.el);
+            if (!h.blur) return;
+            // each word's start: its line first, then its place along the line
+            var lines = [], top = null;
+            h.words.forEach(function (w) {
+              if (top === null || w.offsetTop > top + 4) { lines.push([]); top = w.offsetTop; }
+              lines[lines.length - 1].push(w);
+            });
+            var L = lines.length, at = [];
+            lines.forEach(function (ln, li) { ln.forEach(function (w, wi) { at.push(li / L * 0.5 + wi / ln.length * 0.16); }); });
+            var max = Math.max.apply(null, at) || 1;
+            h.at = at.map(function (s) { return s / max * 0.55; });
+          });
+        },
         update: function () {
           heads.forEach(function (h) {
-            var P = prog(h.top, 0.98, 0.66), n = h.words.length;
+            var P = prog(h.top, 0.98, h.blur ? 0.6 : 0.66), n = h.words.length;
             h.words.forEach(function (w, i) {
+              if (h.blur) { wipe(w, outCubic(clamp01((P - (h.at[i] || 0)) / 0.45))); return; }
               var k = outCubic(clamp01((P - (i / n) * 0.5) / 0.5));
               put(w, 'transform', k >= 1 ? 'none' : 'translate3d(0,' + ((1 - k) * 115).toFixed(1) + '%,0) rotate(' + ((1 - k) * 4).toFixed(2) + 'deg)');
             });
@@ -2555,7 +2742,7 @@
           gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
         } catch (e) { gl = null; }
         if (!gl) { stills(); return; }
-        import('./assets/js/site-3d.min.js?v=3').then(function (m) {
+        import('./assets/js/site-3d.min.js?v=4').then(function (m) {
           m.mount({ canvas: canvas, context: gl, slots: slots3d });
         }).catch(stills); // the posters stay
       };

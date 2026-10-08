@@ -132,7 +132,8 @@ one copy of three.js).
     the builder and its posters stay for the app tile and `og-cover.png`.
   - how it works: one small object per step card: a phone with the green B on a dark screen,
     a coiled measuring tape on a Carbon hub, a dumbbell and shaker pair, the app's progress ring
-    (a Carbon track with a green arc and round ends).
+    (a Carbon track with a green arc and round ends). With motion the four share one stage in the
+    pinned step sequence (see Scroll story), with 640px posters for that size.
   - features: a kettlebell with the B on its bell, matte cast iron (no bowling-ball highlight).
   - diet: the BUILT shaker bottle with a smooth ribbed twist cap (fine ribs, no facets) and a thin
     green collar.
@@ -221,11 +222,13 @@ Each section moves its own way, never the same fade-up twice:
 - Scroll progress: a 2px line under the nav. Stone at 35% for the page so far, green for the part
   of the current section already read.
 - Scroll story: see the section below.
-- Key headings (How it works, Features, Pricing, About, the final call; not every heading): word by
-  word, each word rises out of its own mask with a 4-degree settle as the heading crosses the lower
-  third of the screen.
-- Roadmap: the green line draws down the rail against a playhead 62% down the screen; a green ring
-  charges round each step number as the line approaches and the number lights green as it lands.
+- Key headings (How it works and the final call): word by word, each word rises out of its own mask
+  with a 4-degree settle as the heading crosses the lower third of the screen.
+- Section headlines (Features, Nutrition, Train, AI Coach, Progress, Pricing, About): line after line,
+  each word comes out of a soft blur from a quarter of a letter to the right, as the heading rises
+  from the bottom of the screen to 60% up. The words stay real text; the filter is cleared at rest.
+- How it works: a pinned step sequence (see Scroll story). Without motion the roadmap stands as before:
+  every step reached, the rail drawn green, each number lit.
 - Features: each card stands up from lying back (rotateX 24 degrees to 0, 40px rise, opacity), the
   right-hand column a beat behind the left, rows staggered by their position.
 - Kinetic band (between Features and Nutrition, decorative, hidden from screen readers): "Train ·
@@ -271,14 +274,44 @@ Recorded exceptions to the rules above, scoped to the story only:
 - Motion dial 8/10 here (pinning, blur-stretch swaps, letter reveal); the rest of the page stays at 6.
 - Blur is allowed as a transition state only (headline swaps, label and letter reveals, the caption
   leaving), never at rest: the filter is cleared outside each window.
-- Chapter 3 carries the site's one gradient: Deep Black to Carbon (ending in the band colour so it
-  meets How it works without a seam), with a green glow at 6% alpha at most.
+- Chapter 3 carries a gradient: Deep Black to Carbon (ending in the band colour so it meets the goals
+  without a seam), with a green glow at 6% alpha at most. How it works carries the other: the radial
+  glow behind its object, green at 12% alpha at most. No other gradients on the site.
+- Blur also appears in the section headline reveals and the goal and step swaps, always as a
+  transition state, cleared at rest.
 - Sora 800 for the world headlines only.
 - Full-bleed green for chapter 1 only.
 
+Chapter 1 ends in a zoom-through (owner request, second reference video): over its last 15% the
+camera flies in low over the dumbbell, which swells toward the viewer and sweeps out under the frame,
+while the chapter's green scrubs to Deep Black and the lines and the foot fade, so it hands over to
+the exploded view as one move. The slot's lower edge fades while the object outgrows it.
+
+The exploded view's leaders are elbowed: from 1200px they run flat out of the label's first line, then
+straight down onto the part; in the row layout, down from the label, then across. The left column runs
+from the innermost part at the top (AI training plan, the grip) to the outer plates at the bottom
+(Check-ins), so no two lines cross and none cuts across a plate or the title.
+
+Second wave (owner request, 2026-10-08, two more reference videos), after chapter 3:
+
+4. Pick your goal (`#goals`, `#121212`, 300vh): the five goals from PRODUCT.md in Sora 800, stacked
+   and rolling past a fixed line like a rolodex. The goal on the line is white and full size, the rest
+   sit at 18% and 82% size; blur appears only between goals. A short green bar marks the line (the
+   section's only green). Left column (under the words on phones): the kicker "Pick your goal" and one
+   or two lines on what BUILT does for that goal, crossfading. No medical or result promises. Words are
+   sized so "Sports performance" fits one line from 941px; on phones it wraps, the rest fit 320px.
+5. How it works (`#how`): the section head scrolls in as before, then the four steps play pinned
+   (340vh). Each step's card, its object (moved onto one shared stage) and a big Sora Light step word
+   (Answer, Plan, Follow, Track) take the screen in turn: card and word swap with a blur, the object
+   grows in turning one way and shrinks away turning the other. Behind the object a soft green radial
+   glow deepens step by step: 5, 7.5, 10 and 12% alpha, never more. Desktop: card left, word bottom
+   left, object right. Phones: object on top, word under it, card at the bottom.
+
 Fallbacks: without WebGL2 or with Save-Data the chapters still pin and the posters get a light CSS
-scrub (a rotate, a fake flip). With reduced motion or no script the chapters are plain sections:
-every headline, label and line shown, the posters in place, no engine.
+scrub (a rotate, a fake flip, the world poster swelling and fading at the end, the step posters
+crossfading). With reduced motion or no script the chapters are plain sections: every headline,
+label and line shown, the goals a plain list with every line, the roadmap as before, the posters in
+place, no engine.
 
 ## App screens (deck page 6)
 
