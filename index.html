@@ -227,16 +227,14 @@
        object-fit: contain and aligned by --ax / --ay, so the canvas lands exactly on the poster. */
     .hero__media {
       --ax: 0.5; --ay: 0.46;
+      --m-left: 0.3; --m-bottom: 0.28; /* the same mask, applied to the live drawing by the 3D engine */
       position: absolute; top: 0; right: 0; bottom: 0; width: min(58%, 900px);
       -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%), linear-gradient(180deg, #000 72%, transparent 100%);
       -webkit-mask-composite: source-in;
       mask-image: linear-gradient(90deg, transparent 0%, #000 30%), linear-gradient(180deg, #000 72%, transparent 100%);
       mask-composite: intersect;
     }
-    .hero__poster, .hero__canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .hero__poster { object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
-    .hero__canvas { opacity: 0; transition: opacity 500ms var(--ease-quart); }
-    .hero__media.is-3d .hero__canvas { opacity: 1; }
+    .hero__poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
     .hero__media.is-3d-live .hero__poster { visibility: hidden; }
     .hero__inner { position: relative; z-index: 1; }
     .hero__copy { max-width: min(600px, 54%); }
@@ -624,6 +622,7 @@
          primary button lands on the first screen at 360x640. */
       .hero__media {
         --ax: 0.5; --ay: 0.5;
+        --m-left: 0; --m-bottom: 0.3;
         position: relative; width: auto; height: min(84vw, 40vh); height: min(84vw, 40svh);
         -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
         mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
@@ -702,7 +701,71 @@
       .js .roadmap__card { opacity: 1; transform: none; }
     }
 
+    /* ---------- 3D slots ----------
+       One canvas (.stage3d, added by assets/js/site-3d.min.js) sits above the section bands and
+       draws each [data-3d] slot inside that slot's own box, so it never covers copy. Each slot
+       holds a still poster that shows until the live drawing has faded in over it, and stays
+       for good without WebGL, with Save-Data or with reduced motion. */
+    .stage3d { position: absolute; top: 0; left: 0; z-index: 1; width: 100%; pointer-events: none; }
+    .slot3d { --ax: 0.5; --ay: 0.5; position: relative; pointer-events: none; }
+    .slot3d img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
+    .slot3d.is-3d-live img { visibility: hidden; }
+
+    /* How it works: a small object rides in the corner of each step card */
+    .slot3d--step { float: right; width: 116px; height: 116px; margin: -14px -14px 6px 12px; }
+
+    /* A head with its object beside it (features, progress) */
+    .head-3d {
+      display: grid; grid-template-columns: minmax(0, 1fr) clamp(220px, 26vw, 340px); align-items: center;
+      gap: 24px clamp(32px, 5vw, 72px); margin-bottom: clamp(40px, 5vw, 64px);
+    }
+    .head-3d > .section-head { margin-bottom: 0; }
+    .head-3d > .slot3d { aspect-ratio: 1; }
+    .head-3d > .slot3d--wide { aspect-ratio: 1.15; }
+
+    /* Split showcases gain a narrow middle column for their object */
+    .split--3d {
+      grid-template-areas: 'body slot media';
+      grid-template-columns: minmax(0, 1fr) clamp(160px, 15vw, 210px) minmax(0, 1fr);
+      column-gap: clamp(24px, 3vw, 48px);
+    }
+    .split--3d.split--reverse { grid-template-areas: 'media slot body'; }
+    .split--3d > .split__body { grid-area: body; }
+    .split--3d > .split__media { grid-area: media; }
+    .split--3d > .slot3d { grid-area: slot; align-self: center; height: clamp(320px, 34vw, 460px); }
+
+    /* Pricing: the medal above the heading */
+    .slot3d--medal { width: 200px; height: 200px; margin: 0 auto 8px; }
+
+    /* Final call: the three objects orbit in the side margins, behind the copy */
+    .final { position: relative; }
+    .final > .container { position: relative; z-index: 2; }
+    .slot3d--orbit { position: absolute; inset: 0; }
+
+    @media (max-width: 1099px) {
+      .split--3d { grid-template-areas: 'slot media' 'body media'; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(40px, 6vw, 88px); row-gap: 8px; }
+      .split--3d.split--reverse { grid-template-areas: 'media slot' 'media body'; }
+      .split--3d > .slot3d { align-self: end; height: 180px; }
+      .split--3d > .split__body { align-self: start; }
+    }
+
+    /* Phones and tablets: every object sits above its heading, centred */
+    @media (max-width: 940px) {
+      .head-3d { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+      .head-3d > .slot3d, .head-3d > .slot3d--wide { order: -1; aspect-ratio: auto; height: 180px; }
+      .split--3d, .split--3d.split--reverse { grid-template-areas: 'slot' 'body' 'media'; grid-template-columns: minmax(0, 1fr); }
+      .split--3d > .slot3d { align-self: auto; height: 180px; margin-bottom: calc(8px - clamp(40px, 6vw, 88px)); }
+      .slot3d--medal { width: auto; height: 180px; }
+      .final { padding-top: 40px; }
+      .slot3d--orbit { position: relative; inset: auto; height: 200px; margin-bottom: 8px; }
+    }
+
+    @media (max-width: 620px) {
+      .slot3d--step { float: none; width: auto; height: 136px; margin: -8px 0 8px; }
+    }
+
     @media print {
+      .stage3d { display: none !important; }
       .nav, .mobile-menu, .hero__media, .switcher__bar { display: none !important; }
       body { background: #fff; color: #000; }
     }
@@ -811,7 +874,7 @@
 
   <!-- ===== Hero (deck page 5) ===== -->
   <section class="hero" id="home" aria-labelledby="hero-title">
-    <div class="hero__media">
+    <div class="hero__media" data-3d="hero" data-3d-track="#home">
       <img class="hero__poster" src="assets/img/dumbbell-hero.webp?v=2" srcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" sizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" width="1200" height="1200" alt="A black hex dumbbell with green collars and the green BUILT B on its end, floating in a dark studio" fetchpriority="high">
     </div>
     <div class="container hero__inner">
@@ -845,6 +908,7 @@
         <article class="roadmap__step is-left">
           <div class="roadmap__marker" aria-hidden="true">1</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Tell us about you</h3>
             <p>A short setup that captures what actually matters for your plan.</p>
             <ul class="step-list">
@@ -858,6 +922,7 @@
         <article class="roadmap__step is-right">
           <div class="roadmap__marker" aria-hidden="true">2</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-tape" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-tape.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">AI builds your plan</h3>
             <p>Your nutrition targets and training approach are generated around your goal, not a template.</p>
             <ul class="step-list">
@@ -871,6 +936,7 @@
         <article class="roadmap__step is-left">
           <div class="roadmap__marker" aria-hidden="true">3</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Follow your daily plan</h3>
             <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
             <ul class="step-list">
@@ -884,6 +950,7 @@
         <article class="roadmap__step is-right">
           <div class="roadmap__marker" aria-hidden="true">4</div>
           <div class="roadmap__card">
+            <div class="slot3d slot3d--step" data-3d="how-bars" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-bars.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
             <h3 class="h-3">Track. Improve. Repeat.</h3>
             <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
             <ul class="step-list">
@@ -901,9 +968,12 @@
   <!-- ===== Features, grouped by pillar ===== -->
   <section class="section" id="features">
     <div class="container">
-      <div class="section-head">
-        <h2 class="h-1">Everything You Need to Build You.</h2>
-        <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
+      <div class="head-3d">
+        <div class="section-head">
+          <h2 class="h-1">Everything You Need to Build You.</h2>
+          <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
+        </div>
+        <div class="slot3d" data-3d="features" aria-hidden="true"><img src="assets/img/3d/features.webp" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="feature-group">
@@ -950,7 +1020,7 @@
 
   <!-- ===== Nutrition, with the app screen switcher ===== -->
   <section class="section band" id="diet">
-    <div class="container split">
+    <div class="container split split--3d">
       <div class="split__body" data-reveal>
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg>Nutrition</span>
         <h2 class="h-1">A diet plan that adapts to you.</h2>
@@ -961,6 +1031,8 @@
           <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>You can tell the coach about allergies and foods you avoid; always check labels yourself.</span></li>
         </ul>
       </div>
+
+      <div class="slot3d" data-3d="diet" aria-hidden="true"><img src="assets/img/3d/diet.webp" alt="" width="330" height="600" loading="lazy" decoding="async"></div>
 
       <div class="split__media switcher" data-tabs>
         <div class="switcher__bar">
@@ -1067,7 +1139,7 @@
 
   <!-- ===== Train ===== -->
   <section class="section" id="training">
-    <div class="container split split--reverse">
+    <div class="container split split--reverse split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg>Train</span>
         <h2 class="h-1">Your personal trainer. Always with you.</h2>
@@ -1082,6 +1154,8 @@
           <a class="link-arrow" href="#features">Explore all features <svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </div>
       </div>
+
+      <div class="slot3d" data-3d="training" aria-hidden="true"><img src="assets/img/3d/training.webp" alt="" width="310" height="500" loading="lazy" decoding="async"></div>
 
       <div class="split__media">
         <div class="workout">
@@ -1113,12 +1187,13 @@
 
   <!-- ===== Daily rhythm (AI Coach) ===== -->
   <section class="section band" id="accountability">
-    <div class="container split">
+    <div class="container split split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg>AI Coach</span>
         <h2 class="h-1">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
       </div>
+      <div class="slot3d" data-3d="accountability" aria-hidden="true"><img src="assets/img/3d/accountability.webp" alt="" width="300" height="500" loading="lazy" decoding="async"></div>
       <div class="split__media">
         <div class="timeline-card">
           <div class="timeline" data-activate>
@@ -1140,10 +1215,13 @@
   <!-- ===== Progress ===== -->
   <section class="section" id="progress">
     <div class="container">
-      <div class="section-head">
-        <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
-        <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
-        <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
+      <div class="head-3d">
+        <div class="section-head">
+          <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
+          <h2 class="h-1">See exactly how far you&rsquo;ve come.</h2>
+          <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
+        </div>
+        <div class="slot3d slot3d--wide" data-3d="progress" aria-hidden="true"><img src="assets/img/3d/progress.webp" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="dash">
@@ -1191,6 +1269,7 @@
   <!-- ===== Pricing ===== -->
   <section class="section band" id="pricing">
     <div class="container">
+      <div class="slot3d slot3d--medal" data-3d="pricing" aria-hidden="true"><img src="assets/img/3d/pricing.webp" alt="" width="440" height="440" loading="lazy" decoding="async"></div>
       <div class="section-head section-head--center" data-reveal>
         <h2 class="h-1">Your health, for about $1 a day.</h2>
         <p class="lead">One subscription. Everything included. No tiers to compare, no upsells.</p>
@@ -1392,6 +1471,12 @@
 
   <!-- ===== Final CTA ===== -->
   <section class="final" id="start">
+    <div class="slot3d slot3d--orbit" data-3d="final" data-3d-avoid="#start h2, #start .lead, #start .btn, #start .soon" aria-hidden="true">
+      <picture>
+        <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp" width="720" height="400">
+        <img src="assets/img/3d/final.webp" alt="" width="1520" height="800" loading="lazy" decoding="async">
+      </picture>
+    </div>
     <div class="container">
       <h2 class="display">Train. Fuel. <span class="hl">Become.</span></h2>
       <p class="lead">One app. One plan. One day at a time.</p>
@@ -1787,26 +1872,23 @@
       });
     }
 
-    /* ---------- Hero: the 3D dumbbell replaces its poster once the page has loaded ---------- */
-    // Kept on the poster: reduced motion, Save-Data, no WebGL, or any failure loading the scene.
-    var heroMedia = $('.hero__media');
+    /* ---------- 3D: one shared canvas draws every [data-3d] slot once the page has loaded ---------- */
+    // Kept on the still posters: reduced motion, Save-Data, no WebGL2, or any failure loading the
+    // engine. The hero poster stays the LCP image; the engine only loads after the load event.
+    var slots3d = $$('[data-3d]');
     var saveData = navigator.connection && navigator.connection.saveData;
-    var hasWebGL = function () {
-      try {
-        var c = document.createElement('canvas');
-        var gl = c.getContext('webgl2') || c.getContext('webgl');
-        if (!gl) return false;
-        var lose = gl.getExtension('WEBGL_lose_context');
-        if (lose) lose.loseContext();
-        return true;
-      } catch (e) { return false; }
-    };
-    if (heroMedia && !reduceMotion && !saveData && 'IntersectionObserver' in window && 'ResizeObserver' in window) {
+    if (slots3d.length && !reduceMotion && !saveData && 'IntersectionObserver' in window) {
       var start3d = function () {
-        if (!hasWebGL()) return;
-        import('./assets/js/hero-3d.min.js?v=2').then(function (m) {
-          m.mount(heroMedia, { watch: $('.hero') });
-        }).catch(function () { /* the poster stays */ });
+        // The capability probe is the context the engine draws with, so the page opens exactly one.
+        var canvas = document.createElement('canvas');
+        var gl = null;
+        try {
+          gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
+        } catch (e) { gl = null; }
+        if (!gl) return;
+        import('./assets/js/site-3d.min.js?v=1').then(function (m) {
+          m.mount({ canvas: canvas, context: gl, slots: slots3d });
+        }).catch(function () { /* the posters stay */ });
       };
       var whenIdle = function () {
         if ('requestIdleCallback' in window) requestIdleCallback(start3d, { timeout: 2000 });

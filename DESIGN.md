@@ -11,9 +11,9 @@ disagree, the deck wins; fix this file.
 - Audience: people who train, want a plan and a coach in their pocket, and pay $30/month.
 - Vibe: athletic, strong, premium, direct. Black gym, one electric green.
 - Family: flat ink on deep black. Solid fills, hard edges, no glass, no gradients.
-- Dials: variance 5/10, motion 6/10, density 5/10. Motion sits at 6 because of one exception: the
-  hero dumbbell runs a slow ambient loop (see 3D). Everything else stays at the old 4: short,
-  motivated, once.
+- Dials: variance 5/10, motion 6/10, density 5/10. Motion sits at 6 because of the 3D objects: the
+  hero dumbbell runs a slow ambient loop and the other objects follow the scroll (see 3D).
+  Everything else stays at the old 4: short, motivated, once.
 
 ## Name and voice
 
@@ -121,30 +121,59 @@ Rules:
 
 ## 3D
 
-One object, the BUILT hex dumbbell, drawn live with three.js in the web hero
-(`assets/js/src/hero-3d.js`, built to `assets/js/hero-3d.min.js` by `scripts/build-hero-3d.mjs`).
+The website carries a set of BUILT objects, all drawn live by one engine
+(`assets/js/src/site-3d.js`, built to `assets/js/site-3d.min.js` by `scripts/build-site-3d.mjs`,
+one copy of three.js).
 
-- Materials: matte black rubber hex heads with chamfered edges, brushed and knurled steel grip,
-  thin Built Green collars, the green B on each outer face (emissive 0.15 at most). Green
-  appears only as the collars and the mark; never recolour the rubber or the steel.
-- Light: studio. Soft warm-neutral key from top left, cool fill from the right, a faint green
-  rim from behind, low sky light, reflections from a built-in softbox environment. ACES tone
-  mapping, sRGB output. No neon, no bloom, no glow, no light rays.
-- Ground: a soft contact shadow on an invisible floor. No visible floor, no edge, no plinth.
-  The canvas is transparent over Deep Black.
-- Motion: an ambient loop is allowed in the hero only. Slow float (about 8px, 6s, sine), one
-  turn around the bar every 20s, a slight rock, gentle pointer tilt (up to 8 degrees, damped),
-  and a small drift up and turn as the hero scrolls away.
-- Cost: rendered only while the hero is on screen and the tab is visible, pixel ratio capped
-  at 2, loaded after the page's load event so it never delays the first paint.
-- Poster: a still of the same scene (`assets/img/dumbbell-hero*.webp`, rendered by
-  `scripts/render-hero-poster.mjs`) is the LCP image. The canvas fades in over it on the same
-  frame. Without WebGL, with Save-Data, or with reduced motion, the poster stays and nothing
-  animates.
-- Elsewhere on the page, 3D is a touch, not an object: the phone mockup and the price card
-  tilt toward a mouse pointer (perspective 900px, 6 degrees at most on the phone and 3 on the
-  price card, eased, reset on leave; mouse and trackpad only) and settle in from a slight tilt
-  the first time they scroll in.
+- Objects, one per slot (`<div class="slot3d" data-3d="name">` holding its poster):
+  - hero: the BUILT hex dumbbell.
+  - how it works: one small object per step card: a phone with the green B on a dark screen,
+    a coiled measuring tape on a Carbon hub, a dumbbell and shaker pair, three rising bars.
+  - features: a kettlebell with the B on its bell.
+  - diet: the BUILT shaker bottle with a twist cap and a thin green collar.
+  - training: weight plates stacking onto a steel pin, a green collar on top.
+  - accountability: the streak flame, low-poly forms stacked in green and Stone, matte, flat shaded.
+  - progress: a bar chart on a Carbon base, the bars in green.
+  - pricing: the B medal (Carbon disc, green ring, raised B).
+  - final call: dumbbell, kettlebell and shaker together.
+- Materials: matte black rubber, brushed and knurled steel, Carbon metal, matte Stone, matte black
+  plastic. Built Green only as collars, rings, the progress bars, the flame's green forms and the B
+  (emissive 0.15 at most). Never recolour the rubber or the steel. Brand green skips tone mapping so
+  it lands on `#A3FF3D`; big green faces sit a step under it so the lit face, not a glare, is the
+  brand colour.
+- Light: one studio set shared by every object. Soft warm-neutral key from top left, cool fill from
+  the right, a faint green rim from behind (0.2), low sky light, reflections from a built-in softbox
+  environment. ACES tone mapping, sRGB output. No neon, no bloom, no glow, no light rays.
+- Ground: soft contact shadows on an invisible floor where an object stands. No visible floor,
+  edge or plinth. Everything is transparent over the page.
+- Drawing: one WebGL context, one transparent canvas the size of the viewport, above the section
+  bands and below the nav. Each frame it draws only the slots that intersect the viewport, each
+  inside its own box (viewport and scissor), so an object can never land on copy. The final call's
+  copy sits above the canvas; its objects keep to the free space either side of the lines under the
+  headline (desktop) or orbit above the headline (phones).
+- Motion: every pose is a function of the slot's scroll progress (0 as the slot's centre meets the
+  bottom of the screen, 1 as it reaches the top), eased, so scrolling back plays it backwards.
+  Step objects spin and scale in as their card arrives; the kettlebell turns; the shaker cap screws
+  down; plates drop on one by one; the flame builds up from its base; the bars rise; the medal flips
+  face up as the pricing head arrives, then leans toward a mouse pointer (up to 17 degrees,
+  damped; mouse and trackpad only); the final three swing round each other. A bob of a few pixels
+  runs only while a slot is on screen. The hero keeps its own loop: slow float (about 8px, 6s,
+  sine), one turn around the bar every 20s, a slight rock, pointer tilt up to 8 degrees, and a
+  drift up and turn as the hero scrolls away.
+- Layout: desktop objects sit beside the copy (a column beside the features and progress heads, a
+  narrow middle column in the diet, training and accountability splits from 1100px, above the copy
+  in that column from 941px). Phones and tablets: the object sits above its heading, 180px tall,
+  centred (136px inside the step cards).
+- Cost: nothing draws while the tab is hidden or when no slot is near the screen; pixel ratio capped
+  at 2; scenes build as their slot comes within half a screen; the engine loads after the page's load
+  event, when the browser is idle, so it never delays the first paint.
+- Posters: a still of each slot (`assets/img/dumbbell-hero*.webp` for the hero, `assets/img/3d/*.webp`
+  for the rest, rendered by `scripts/render-hero-poster.mjs` from the same scenes). The hero poster is
+  the LCP image. Live drawing fades in over each poster in 500ms, then the poster hides. Without WebGL2,
+  with Save-Data, or with reduced motion, the engine never loads and the posters stay.
+- Elsewhere on the page, 3D is a touch: the phone mockup and the price card tilt toward a mouse
+  pointer (perspective 900px, 6 degrees at most on the phone and 3 on the price card, eased, reset on
+  leave; mouse and trackpad only) and settle in from a slight tilt the first time they scroll in.
 - App exception: the floating dumbbell above the app's sign-in and sign-up forms is the app's
   one ambient loop (slow float and spin); it stops while the keyboard is open, while the
   screen is out of focus, and under Reduce Motion.
@@ -155,9 +184,10 @@ One object, the BUILT hex dumbbell, drawn live with three.js in the web hero
 - Progress rings and bars fill once on first view. Buttons scale to 0.97 on press.
 - Web scroll reveal: section headings and split copy rise in once (the `rise` keyframes,
   80ms stagger); only what starts below the fold is held back. Not every block reveals.
-- The hero dumbbell loop is the only ambient motion; see 3D.
-- `prefers-reduced-motion` (web) and Reduce Motion (app) turn all of it off, the dumbbell
-  included (the still poster shows).
+- The hero dumbbell loop is the only time-driven motion; the other 3D objects move with the scroll
+  and only bob a few pixels while on screen. See 3D.
+- `prefers-reduced-motion` (web) and Reduce Motion (app) turn all of it off, every 3D object
+  included (the still posters show).
 
 ## App screens (deck page 6)
 

@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-/* Renders the still poster of the hero dumbbell from the live scene, so the poster and
- * the first animated frame are the same picture.
+/* Renders the still posters of every 3D slot from the live scenes, so each poster and the
+ * live drawing are the same picture. The posters are what shows without WebGL, with Save-Data
+ * or with reduced motion, and what the live canvas fades in over.
  *
  *   assets/img/dumbbell-hero.webp       1200x1200  transparent, hero poster and LCP image
  *   assets/img/dumbbell-hero-640.webp    640x640   transparent, phones and the app tile
+ *   assets/img/3d/<slot>.webp           small, transparent, one per [data-3d] slot, at a
+ *                                       representative scroll pose (see POSTERS below)
  *
- * Uses the built bundle (assets/js/hero-3d.min.js), so run scripts/build-hero-3d.mjs first.
+ * Uses the built bundle (assets/js/site-3d.min.js), so run scripts/build-site-3d.mjs first.
  * Headless Chromium draws WebGL with SwiftShader; no GPU needed.
  *
  * Needs (not a repo dependency): playwright-core, found via BUILT_TOOLS_DIR, the repo, or
@@ -13,6 +16,7 @@
  *   BUILT_TOOLS_DIR=/tmp/built-tools node scripts/render-hero-poster.mjs
  *
  * Optional: --out <dir> writes there instead of assets/img (for previews).
+ *           --only <name,name>  render just these slots (hero, how-phone, final, ...)
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { dirname, join, extname } from 'node:path';
@@ -23,7 +27,27 @@ import { execSync } from 'node:child_process';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argOut = process.argv.indexOf('--out');
 const OUT = argOut > 0 ? process.argv[argOut + 1] : join(ROOT, 'assets', 'img');
-mkdirSync(OUT, { recursive: true });
+const argOnly = process.argv.indexOf('--only');
+const ONLY = argOnly > 0 ? process.argv[argOnly + 1].split(',') : null;
+mkdirSync(join(OUT, '3d'), { recursive: true });
+
+// file, slot, width, height, scroll progress of the pose. Rendered at 2x, then downsampled.
+const POSTERS = [
+  ['dumbbell-hero.webp', 'hero', 1200, 1200, 0],
+  ['dumbbell-hero-640.webp', 'hero', 640, 640, 0],
+  ['3d/how-phone.webp', 'how-phone', 256, 256, 0.5],
+  ['3d/how-tape.webp', 'how-tape', 256, 256, 0.5],
+  ['3d/how-pair.webp', 'how-pair', 256, 256, 0.5],
+  ['3d/how-bars.webp', 'how-bars', 256, 256, 0.5],
+  ['3d/features.webp', 'features', 600, 600, 0.5],
+  ['3d/diet.webp', 'diet', 330, 600, 0.75],
+  ['3d/training.webp', 'training', 310, 500, 0.75],
+  ['3d/accountability.webp', 'accountability', 300, 500, 0.6],
+  ['3d/progress.webp', 'progress', 575, 500, 0.7],
+  ['3d/pricing.webp', 'pricing', 440, 440, 0.6],
+  ['3d/final.webp', 'final', 1520, 800, 0.5],
+  ['3d/final-sm.webp', 'final', 720, 400, 0.5],
+];
 
 function loadPlaywright() {
   let globalRoot = '';
@@ -53,8 +77,8 @@ function chromiumPath() {
   return undefined;
 }
 
-const BUNDLE = join(ROOT, 'assets', 'js', 'hero-3d.min.js');
-if (!existsSync(BUNDLE)) { console.error('Build first: node scripts/build-hero-3d.mjs'); process.exit(1); }
+const BUNDLE = join(ROOT, 'assets', 'js', 'site-3d.min.js');
+if (!existsSync(BUNDLE)) { console.error('Build first: node scripts/build-site-3d.mjs'); process.exit(1); }
 
 const ORIGIN = 'http://poster.local';
 const MIME = { '.js': 'text/javascript', '.html': 'text/html' };
@@ -76,26 +100,23 @@ try {
   });
   await page.goto(`${ORIGIN}/`);
 
-  for (const [name, size] of [['dumbbell-hero.webp', 1200], ['dumbbell-hero-640.webp', 640]]) {
+  for (const [file, name, w, h, p] of POSTERS) {
+    if (ONLY && !ONLY.includes(name)) continue;
     // render at 2x and let the browser downsample: smoother edges on the bar and the B
-    const b64 = await page.evaluate(async ({ size }) => {
-      const { mount } = await import('/assets/js/hero-3d.min.js');
-      const host = document.getElementById('h');
-      host.style.setProperty('--ax', '0.5');
-      host.style.setProperty('--ay', '0.5');
-      const scene = mount(host, { still: true, size: { w: size, h: size }, dpr: 2 });
+    const b64 = await page.evaluate(async ({ name, w, h, p }) => {
+      const { still } = await import('/assets/js/site-3d.min.js');
+      const shot = still({ name, width: w, height: h, dpr: 2, p });
       const out = document.createElement('canvas');
-      out.width = out.height = size;
+      out.width = w; out.height = h;
       const g = out.getContext('2d');
       g.imageSmoothingQuality = 'high';
-      g.drawImage(scene.canvas, 0, 0, size, size);
-      scene.destroy();
-      scene.canvas.remove();
+      g.drawImage(shot.canvas, 0, 0, w, h);
+      shot.destroy();
       return out.toDataURL('image/webp', 0.86).split(',')[1];
-    }, { size });
+    }, { name, w, h, p });
     const buf = Buffer.from(b64, 'base64');
-    writeFileSync(join(OUT, name), buf);
-    console.log(`${join(OUT, name).replace(ROOT + '/', '')}  ${size}x${size}  ${(buf.length / 1024).toFixed(1)} KB`);
+    writeFileSync(join(OUT, file), buf);
+    console.log(`${join(OUT, file).replace(ROOT + '/', '')}  ${w}x${h}  ${(buf.length / 1024).toFixed(1)} KB`);
   }
   if (errors.length) { console.error(errors.join('\n')); process.exitCode = 1; }
 } finally {
