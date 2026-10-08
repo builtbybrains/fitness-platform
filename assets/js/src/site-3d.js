@@ -1,4 +1,4 @@
-/* BUILT website 3D: one WebGL renderer, one canvas, every [data-3d] slot on the page.
+/* BUILT website 3D: one WebGL renderer, one offscreen canvas, every [data-3d] slot on the page.
  *
  * Source for assets/js/site-3d.min.js. Rebuild after editing:
  *   node scripts/build-site-3d.mjs
@@ -6,12 +6,14 @@
  * from this same file:
  *   node scripts/render-hero-poster.mjs
  *
- * How it draws (the three.js "multiple elements" technique): a single transparent canvas the
- * size of the viewport sits above the page sections (z-index 1, pointer-events none). Each
- * frame it is cleared, then every slot that intersects the viewport is drawn into its own
- * bounding rect with setViewport + setScissor. Nothing is drawn outside a slot's rect, so copy
- * is never covered. The canvas is moved with the page (translateY) in the same frame it is
- * drawn, so objects stay glued to their slots while the compositor scrolls.
+ * How it draws (the three.js "multiple canvases" technique): one WebGL context renders into a
+ * canvas that never joins the document. Each slot holds its own transparent 2D canvas (inset 0,
+ * aria-hidden). Each frame every slot on or near the screen is drawn at its own size into the
+ * corner of the offscreen buffer (setViewport + setScissor), then copied into its canvas with
+ * drawImage. The pixels belong to the slot, so the compositor scrolls them with it on its own
+ * thread and a pinned slot's pixels stay pinned: nothing is moved from script, so on a phone
+ * nothing trails or shakes behind the scroll. Nothing is drawn outside a slot, so copy is never
+ * covered.
  *
  * Look (DESIGN.md, "3D"): matte black rubber, brushed steel, Carbon metal, matte Stone, and
  * Built Green as one accent per object: a collar, a ring, the latest bar, the B on the last streak tile. One studio light set
@@ -23,9 +25,14 @@
  * exactly on top of the poster image that uses the same alignment.
  *
  * Motion: every pose is a function of the slot's scroll progress (0 when the slot's centre meets
- * the bottom of the viewport, 1 when it reaches the top), plus a tiny bob while in view. Scrolling back plays it backwards.
+ * the bottom of the viewport, 1 when it reaches the top), eased by a critically damped spring
+ * (follow), plus a tiny bob while in view that fades out while the scroll moves. Scrolling back
+ * plays it backwards. Heights come from the small viewport (svh), never the live innerHeight, so a
+ * phone's toolbar sliding in and out moves nothing.
  * Pinned slots (data-3d-scrub, the scroll story) take their progress across their chapter's pinned
- * scroll instead, and a slot with data-3d-anchors gets leader lines aimed at points on its object.
+ * scroll instead: with the page's scroll loop (mount opts.loop) it is the loop's own eased value,
+ * so words and objects share one number. A slot with data-3d-anchors gets leader lines aimed at
+ * points on its object.
  * A pinned slot with data-3d-step="k/n" is step k of a sequence that shares one stage (how it works):
  * it grows in, plays and shrinks away during its own share of the chapter.
  * The hero slot (retired from the page, kept for its posters) has its own slow ambient loop.
@@ -82,9 +89,12 @@ const win = (a, b, x) => clamp01((x - a) / (b - a));
 const outCubic = (x) => 1 - Math.pow(1 - x, 3);
 const outQuart = (x) => 1 - Math.pow(1 - x, 4);
 const easeInOut = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
+/** smootherstep: flat at both ends, so a window eased with it never starts or lands with a kink */
+const smoother = (x) => x * x * x * (x * (x * 6 - 15) + 10);
 const damp = (rate, dt) => 1 - Math.exp(-dt * rate);
-/** a tiny vertical bob that only runs while the slot is drawn; zero for posters */
-const bob = (c, amp, period, phase = 0) => (c.still ? 0 : Math.sin((c.t / period) * TAU + phase) * amp);
+/** a tiny vertical bob, time based, that only runs while the slot is drawn; zero for posters. It
+ *  fades out while the scroll moves the pose (c.calm, 0 to 1) so it never fights the scrub */
+const bob = (c, amp, period, phase = 0) => (c.still ? 0 : Math.sin((c.t / period) * TAU + phase) * amp * (c.calm ?? 1));
 
 /* ---------- hero dumbbell dimensions (scene units, roughly decimetres) ---------- */
 const HEAD_R = 0.62;      // hex circumradius
@@ -692,8 +702,9 @@ function heroSlot(rt) {
 /* In the pinned step sequence (data-3d-step="k/n", how it works with motion) the four objects share
    one stage and are scrubbed by the sequence's progress p: step k owns x = p * n in [k, k + 1] and
    hands over to the next across 2 * STEP_HAND. Its object grows in turning one way, plays its entrance
-   while it holds, and shrinks away turning the other, as the page's card and step word swap. */
-const STEP_HAND = 0.16;
+   while it holds, and shrinks away turning the other, as the page's card and step word swap. The
+   hand-over window and its curve (smootherstep) are the page's (index.html, HH), so they stay in step. */
+const STEP_HAND = 0.22;
 function stepSlot(rt, build, phase) {
   const root = new Group();
   const holder = new Group();
@@ -702,18 +713,19 @@ function stepSlot(rt, build, phase) {
   root.add(holder);
   const camera = cam(5.7, 1.0);
   let staged = false;
-  return {
-    root, camera, aspect: 1,
+  const slot = {
+    root, camera, aspect: 1, idle: false,
     update(c) {
       holder.position.y = bob(c, 0.035, 5, phase);
       if (c.step) {
         // on the stage the camera comes in closer: the object fills its box rather than a card's corner
         if (!staged) { staged = true; camera.position.set(0, 0.85, 4.6); camera.lookAt(0, -0.02, 0); }
         const [k, n] = c.step, H = STEP_HAND, x = c.p * n;
-        const vin = k ? easeInOut(win(k - H, k + H, x)) : 1;
-        const vout = k < n - 1 ? easeInOut(win(k + 1 - H, k + 1 + H, x)) : 0;
+        const vin = k ? smoother(win(k - H, k + H, x)) : 1;
+        const vout = k < n - 1 ? smoother(win(k + 1 - H, k + 1 + H, x)) : 0;
         const v = vin * (1 - vout);
         holder.visible = v > 0.002;
+        slot.idle = !holder.visible; // off the stage: the engine skips the draw
         holder.scale.setScalar(outCubic(v));
         const own = clamp01((x - k + H) / (1 + 2 * H)); // through its own turn, hand-overs included
         holder.rotation.y = (own - 0.5) * 0.6 + (1 - vin) * 1.3 - vout * 1.3;
@@ -726,6 +738,7 @@ function stepSlot(rt, build, phase) {
       inner.update(c, e);
     },
   };
+  return slot;
 }
 
 function howPhone() {
@@ -1554,29 +1567,55 @@ export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.
    Live engine
    ============================================================ */
 
+/* Scroll smoothing, shared with the page's scroll loop (index.html uses the same numbers): a
+ * critically damped spring, stepped with its exact solution, so it moves the same at 30, 60 or
+ * 120 frames a second. OMEGA 11 trails a steady scroll by 2 / OMEGA = 0.18s, the lag of a 5.5 per
+ * second ease, but it starts and stops without a kink, so the coarse steps of a touch fling read as
+ * one move instead of a run of small jumps. `s` is { u, v, set }: value, velocity per second. */
+export const OMEGA = 11;
+export function follow(s, target, dt) {
+  if (!s.set || Math.abs(target - s.u) > 2) { s.u = target; s.v = 0; s.set = true; return; } // a jump lands at once
+  const x = s.u - target, k = (s.v + OMEGA * x) * dt, e = Math.exp(-OMEGA * dt);
+  s.v = (s.v - OMEGA * k) * e;
+  s.u = target + (x + k) * e;
+  if (Math.abs(s.u - target) < 0.0004 && Math.abs(s.v) < 0.004) { s.u = target; s.v = 0; }
+}
+
+/** a hidden fixed box `100<unit>` tall: the small (svh) or large (lvh) viewport height, which a
+ *  phone's toolbar sliding in and out never changes */
+function viewportProbe(unit) {
+  const d = document.createElement('div');
+  d.setAttribute('aria-hidden', 'true');
+  d.style.cssText = `position:fixed;top:0;left:0;width:0;height:100vh;height:100${unit};visibility:hidden;pointer-events:none`;
+  document.body.appendChild(d);
+  return d;
+}
+
 /**
- * Mount the shared canvas and start drawing every [data-3d] slot.
- * opts.canvas, opts.context   a canvas and its WebGL2 context (the page's capability probe),
- *                             so the page only ever opens one context
- * opts.slots                  the slot elements (default: every [data-3d])
- * Returns { canvas, renderer, stats(), destroy() }. The same handle hangs off canvas.built3d.
+ * Start drawing every [data-3d] slot.
+ * opts.canvas, opts.context  a canvas and its WebGL2 context (the page's capability probe), so the
+ *                            page only ever opens one context. The canvas never joins the document.
+ * opts.slots                 the slot elements (default: every [data-3d])
+ * opts.loop                  the page's scroll loop, so the page runs one rAF and one eased progress:
+ *                            { wake() asks for a frame; chapter(el) the loop's record { u, v } for a
+ *                            pinned chapter, eased once per frame; viewport() { s, l }, the small and
+ *                            large viewport heights }. The loop calls api.read(now) before its own
+ *                            writes and api.draw(now) after them. Without it the engine runs its own rAF.
+ * Returns { canvas, renderer, read, draw, stats(), debug(on), destroy() }, also on window.built3d.
  */
 export function mount(opts = {}) {
-  const canvas = opts.canvas || document.createElement('canvas');
+  const gl = opts.canvas || document.createElement('canvas');
   const renderer = new WebGLRenderer({
-    canvas, context: opts.context || undefined,
+    canvas: gl, context: opts.context || undefined,
     antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: 'low-power',
   });
   setupRenderer(renderer);
   renderer.autoClear = false;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  renderer.setPixelRatio(dpr);
+  renderer.setPixelRatio(1); // every size below is in device pixels
   const rt = runtime(renderer);
-
-  canvas.className = 'stage3d';
-  canvas.setAttribute('aria-hidden', 'true');
-  canvas.setAttribute('role', 'presentation');
-  document.body.insertBefore(canvas, document.body.firstChild);
+  const loop = opts.loop || null;
+  const doc = document.documentElement;
+  let devDpr = Math.min(window.devicePixelRatio || 1, 2), dpr = devDpr;
 
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   // phones list the exploded view's labels under the object, without leader lines
@@ -1588,13 +1627,17 @@ export function mount(opts = {}) {
   const entries = els.map((el) => {
     const trackSel = el.getAttribute('data-3d-track');
     const anchorSel = el.getAttribute('data-3d-anchors');
+    const track = (trackSel && document.querySelector(trackSel)) || el;
+    const scrub = el.hasAttribute('data-3d-scrub');
     return {
-      el, name: el.getAttribute('data-3d'),
-      track: (trackSel && document.querySelector(trackSel)) || el,
+      el, name: el.getAttribute('data-3d'), track,
       gate: el.getAttribute('data-3d-gate'),
       avoid: el.getAttribute('data-3d-avoid') ? Array.from(document.querySelectorAll(el.getAttribute('data-3d-avoid'))) : null,
-      // pinned chapters: progress runs across the chapter's pinned scroll, not its pass over the screen
-      scrub: el.hasAttribute('data-3d-scrub'),
+      // pinned chapters: progress runs across the chapter's pinned scroll, not its pass over the screen;
+      // with the page's loop it is the loop's own eased value for the chapter, so words and objects agree
+      scrub,
+      chapter: (scrub && loop && loop.chapter(track)) || null,
+      pin: scrub ? el.closest('.ch__pin') : null, pinH: 0,
       // a place in a pinned step sequence, "k/n" (how it works): the slot plays its step's share of it
       step: /^\d+\/\d+$/.test(el.getAttribute('data-3d-step') || '') ? el.getAttribute('data-3d-step').split('/').map(Number) : null,
       // labels whose leader lines run to a point on the object: { el, name, leader, rect, w }
@@ -1602,14 +1645,27 @@ export function mount(opts = {}) {
         el: a, name: a.getAttribute('data-anchor'), leader: a.querySelector('.leader'), rect: null, w: '',
       })).filter((l) => l.leader) : null,
       slot: null, near: false, live: false, fadeT0: 0, fade: 0, gateFade: 0, gateT0: 0,
-      p: 0, pSet: false, t: 0, W: 0, H: 0, ax: 0.5, ay: 0.5, mLeft: 0, mBottom: 0, varsDirty: true,
-      drawn: 0,
+      s: { u: 0, v: 0, set: false }, p: 0, v: 0, calm: 1, t: 0,
+      rect: null, trackRect: null, W: 0, H: 0, ax: 0.5, ay: 0.5, mLeft: 0, mBottom: 0, varsDirty: true,
+      canvas: null, ctx: null, pw: 0, ph: 0, blank: true, drawn: 0, c: null,
     };
   }).filter((e) => BUILDERS[e.name]);
 
   const pointer = { x: 0, y: 0, tx: 0, ty: 0, cx: 0, cy: 0, active: false };
-  const stats = { frames: 0, drawCalls: 0, lastDrawn: [], lastDrawCalls: 0 };
-  let cw = 0, ch = 0, raf = 0, last = 0, running = false, dirty = false, lost = false;
+  const stats = { frames: 0, drawCalls: 0, lastDrawn: [], lastDrawCalls: 0, ms: 0 };
+  let raf = 0, last = 0, dt = 0, running = false, lost = false, dbgOn = false;
+  let pageW = 0, bw = 0, bh = 0, vp = null, probes = null, near = [];
+  // frame-time governor: when frames stay slow while drawing (a throttled or weak phone), the slots
+  // drop to a pixel ratio of 1.5, once, which cuts the pixels drawn and copied by about 44%. A resize
+  // starts over at the device's own ratio.
+  let slowMs = 0, slowN = 0;
+
+  // the small viewport height drives progress, the large one culling; neither moves with a toolbar
+  const viewport = () => {
+    if (loop) return loop.viewport();
+    if (!probes) probes = [viewportProbe('svh'), viewportProbe('lvh')];
+    return { s: probes[0].offsetHeight || window.innerHeight, l: probes[1].offsetHeight || window.innerHeight };
+  };
 
   const readVars = (e) => {
     const cs = getComputedStyle(e.el);
@@ -1619,31 +1675,40 @@ export function mount(opts = {}) {
     e.varsDirty = false;
   };
 
-  const sizeCanvas = () => {
-    const w = document.documentElement.clientWidth;
-    const h = window.innerHeight;
-    // keep the tallest height seen at this width, so a phone's toolbar sliding away does not
-    // reallocate the canvas every few frames
-    const nh = w !== cw ? h : Math.max(ch, h);
-    if (w === cw && nh === ch) return;
-    cw = w; ch = nh;
-    renderer.setSize(cw, ch, false);
-    canvas.style.height = ch + 'px';
-    for (const e of entries) e.varsDirty = true;
-  };
-
   const build = (e) => {
     e.slot = buildSlot(rt, e.name);
     showOnly(rt, e.slot);
     try { renderer.compile(rt.scene, e.slot.camera); } catch { /* compiles on first draw instead */ }
   };
 
+  // Each slot draws into its own 2D canvas, inside the slot (CSS: .slot3d__c, inset 0). The pixels
+  // are part of the slot, so the compositor scrolls them with it, and a pinned slot's canvas stays
+  // pinned with its chapter: nothing is moved from script, so nothing trails the scroll.
+  const attach = (e) => {
+    if (e.canvas) return;
+    const c = document.createElement('canvas');
+    c.className = 'slot3d__c';
+    c.setAttribute('aria-hidden', 'true');
+    c.width = 0; c.height = 0;
+    e.el.appendChild(c);
+    e.canvas = c;
+    e.ctx = c.getContext('2d');
+    e.blank = true;
+  };
+  // frees a slot's pixels (far from the screen, or a step that is not on stage); it redraws on return
+  const release = (e) => {
+    if (!e.canvas || e.blank) return;
+    e.canvas.width = 0; e.canvas.height = 0;
+    e.blank = true;
+  };
+
   const gateOpen = (e) => !e.gate || !!e.el.closest(e.gate);
   // pinned chapters: 0 as the chapter's top meets the top of the screen, 1 as its bottom meets the
-  // bottom. Everything else: 0 as the slot's centre meets the bottom, 1 as it reaches the top
-  const progress = (e, vh) => {
-    const tr = e.trackRect;
-    return e.scrub ? clamp01(-tr.top / Math.max(1, tr.height - vh)) : clamp01((vh - (tr.top + tr.height / 2)) / vh);
+  // bottom (the pin is one small viewport high). Everything else: 0 as the slot's centre meets the
+  // bottom, 1 as it reaches the top. Both against the small viewport height, never the live one.
+  const progress = (e, vs) => {
+    const tr = e.trackRect || e.rect;
+    return e.scrub ? clamp01(-tr.top / Math.max(1, tr.height - (e.pinH || vs))) : clamp01((vs - (tr.top + tr.height / 2)) / vs);
   };
 
   // project each label's anchor through the slot camera (the matrices the draw just used) into
@@ -1679,19 +1744,30 @@ export function mount(opts = {}) {
   // the box the content actually paints (a centred paragraph is narrower than its block)
   const range = document.createRange();
   const inkRect = (el) => { range.selectNodeContents(el); return range.getBoundingClientRect(); };
+  // debug hook (api.debug): where a point fixed on the object lands on screen, per drawn frame
+  const dbgPt = new Vector3();
+  const probeObject = (e) => {
+    let m = null;
+    e.slot.root.traverse((o) => { if (!m && o.isMesh && o.visible && o.geometry) m = o; });
+    if (!m) return null;
+    if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+    dbgPt.copy(m.geometry.boundingSphere.center);
+    m.localToWorld(dbgPt).project(e.slot.camera);
+    const r = e.rect;
+    return [+(r.left + ((dbgPt.x + 1) / 2) * r.width).toFixed(2), +(r.top + ((1 - dbgPt.y) / 2) * r.height).toFixed(2)];
+  };
 
-  const frame = (now) => {
-    raf = 0;
-    if (!running) return;
-    const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
+  /* read(now): layout reads only. With the page's loop it runs before any of the loop's writes, so
+     nothing here forces a layout. */
+  const read = (now) => {
+    if (!running) return false;
+    dt = last ? Math.min(Math.max(0, (now - last) / 1000), 0.05) : 0;
     last = now;
-    sizeCanvas();
-
-    // reads first, then writes
-    const vw = cw, vh = window.innerHeight, sy = window.scrollY;
-    const docH = document.body.getBoundingClientRect().bottom + sy;
+    if (!vp || loop) vp = viewport();
+    const w = doc.clientWidth;
+    if (w !== pageW) { pageW = w; bw = 0; bh = 0; for (const e of entries) e.varsDirty = true; }
     let builtThisFrame = false;
-    const near = [];
+    near = [];
     for (const e of entries) {
       if (!e.near) continue;
       if (!e.slot) {
@@ -1701,19 +1777,29 @@ export function mount(opts = {}) {
       }
       if (e.varsDirty) readVars(e);
       e.rect = e.el.getBoundingClientRect();
-      e.trackRect = e.track === e.el ? e.rect : e.track.getBoundingClientRect();
+      // the layout box, untransformed: the slot's canvas is sized to it, and a CSS transform on the
+      // way up (the final panel opening) scales the canvas along with the page
+      e.W = e.el.offsetWidth; e.H = e.el.offsetHeight;
+      e.trackRect = e.chapter ? null : (e.track === e.el ? e.rect : e.track.getBoundingClientRect());
+      e.pinH = e.pin && !e.chapter ? e.pin.clientHeight : 0;
       e.avoidRect = e.avoid ? e.avoid.map(inkRect) : null;
       if (e.labels && !phone.matches) for (const l of e.labels) l.rect = l.el.getBoundingClientRect();
       e.open = gateOpen(e);
       near.push(e);
     }
+    return true;
+  };
 
-    // canvas follows the page; it always covers the viewport and never pokes past the document
-    const T = Math.max(0, Math.min(sy - (ch - vh) / 2, docH - ch));
-    canvas.style.transform = `translate3d(0,${T.toFixed(1)}px,0)`;
-    const off = sy - T;
-
+  /* draw(now): progress, poses, the GPU work and every write: each slot is drawn at its own size into
+     the corner of the offscreen buffer, then copied into the slot's canvas. Returns true while it
+     wants more frames. */
+  const draw = (now) => {
+    if (!running) return false;
+    const t0 = performance.now();
+    const vw = pageW, vs = vp.s, vl = vp.l, margin = vl * 0.25;
     const drawn = [];
+    // a pinned slot away from the screen still follows its chapter, so its state is always the page's
+    for (const e of entries) if (e.chapter && !e.near) { e.p = clamp01(e.chapter.u); e.v = e.chapter.v; }
     for (const e of near) {
       // the crossfade from poster to live drawing, then the poster is hidden
       if (e.open && !e.fadeT0) e.fadeT0 = now;
@@ -1727,50 +1813,63 @@ export function mount(opts = {}) {
       else if (!e.open) { e.gateFade = 0; e.gateT0 = 0; }
       else { if (!e.gateT0) e.gateT0 = now; e.gateFade = outQuart(clamp01((now - e.gateT0) / 400)); }
       const r = e.rect;
-      const visible = e.open && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
-      if (visible) drawn.push(e);
+      // drawn a quarter screen ahead, so a slot is ready before the compositor scrolls it in
+      const visible = e.open && e.W > 0 && e.H > 0 && r.bottom > -margin && r.top < vl + margin && r.right > 0 && r.left < vw;
+      if (e.chapter) { e.p = clamp01(e.chapter.u); e.v = e.chapter.v; }
+      else if (visible) { follow(e.s, progress(e, vs), dt); e.p = clamp01(e.s.u); e.v = e.s.v; }
       // off screen nothing eases: a slot keeps its exact progress, so it comes back where it should be
-      else if (e.pSet || e.scrub) { e.p = progress(e, vh); e.pSet = true; }
+      else { e.s.u = progress(e, vs); e.s.v = 0; e.s.set = true; e.p = e.s.u; e.v = 0; }
+      if (visible) drawn.push(e);
+      else if (!e.open) release(e);
     }
 
-    if (drawn.length || dirty) {
-      renderer.setScissorTest(false);
-      renderer.clear(true, true, false);
-      dirty = false;
+    // the offscreen buffer holds the biggest slot drawn; it only grows (to a 64px step), so a toolbar
+    // sliding in and out never reallocates it, and a new page width lets it shrink again
+    let needW = 0, needH = 0;
+    for (const e of drawn) {
+      e.pw = Math.max(1, Math.round(e.W * dpr)); e.ph = Math.max(1, Math.round(e.H * dpr));
+      needW = Math.max(needW, e.pw); needH = Math.max(needH, e.ph);
     }
+    if (needW > bw || needH > bh) {
+      bw = Math.max(bw, Math.ceil(needW / 64) * 64); bh = Math.max(bh, Math.ceil(needH / 64) * 64);
+      renderer.setSize(bw, bh, false);
+    }
+
     let calls = 0;
     const leaderWrites = [];
     for (const e of drawn) {
-      const r = e.rect;
-      const W = Math.round(r.width), H = Math.round(r.height);
+      const W = e.W, H = e.H;
       const key = `${W}x${H}:${e.ax}:${e.ay}:${vw}`;
       if (key !== e.framed) {
         e.framed = key;
         frameCamera(e.slot, W, H, e.ax, e.ay, vw);
       }
-      const tr = e.trackRect;
-      const target = progress(e, vh);
-      e.p = e.pSet ? e.p + (target - e.p) * damp(9, dt) : target;
-      e.pSet = true;
+      // the idle bob fades out while the progress is moving and back in once it rests
+      const rest = clamp01(1 - Math.abs(e.v) * 5);
+      e.calm += (rest - e.calm) * damp(rest < e.calm ? 10 : 2.5, dt);
       e.t += dt;
       const ctx = {
-        still: false, dt, t: e.t, p: e.p, track: tr, rect: r, avoid: e.avoidRect, vw, vh,
-        pointer, fine: fine.matches, started: e.live, step: e.step,
+        still: false, dt, t: e.t, p: e.p, calm: e.calm, track: e.trackRect || e.rect, rect: e.rect, avoid: e.avoidRect,
+        vw, vh: vs, pointer, fine: fine.matches, started: e.live, step: e.step,
       };
       e.slot.update(ctx);
+      // a step that is off the stage draws nothing and gives its pixels back
+      if (e.slot.idle) { release(e); continue; }
+      attach(e);
+      if (e.canvas.width !== e.pw || e.canvas.height !== e.ph) { e.canvas.width = e.pw; e.canvas.height = e.ph; }
       showOnly(rt, e.slot);
-      const top = r.top + off;
-      renderer.setViewport(r.left, ch - (top + r.height), r.width, r.height);
-      const x0 = Math.max(0, r.left), x1 = Math.min(vw, r.right);
-      const y0 = Math.max(0, r.top) + off, y1 = Math.min(vh, r.bottom) + off;
-      renderer.setScissor(x0, ch - y1, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+      const y = bh - e.ph; // the buffer's top-left corner, in GL's bottom-up rows
+      renderer.setViewport(0, y, e.pw, e.ph);
+      renderer.setScissor(0, y, e.pw, e.ph);
       renderer.setScissorTest(true);
+      renderer.clear(true, true, false);
       // a slot can move the key light for its own draw (the plate's sweep); restored straight after
       let keyX = 0, keyY = 0, keyZ = 0;
       if (e.slot.light) { ({ x: keyX, y: keyY, z: keyZ } = rt.key.position); e.slot.light(rt, ctx); }
       renderer.render(rt.scene, e.slot.camera);
       if (e.slot.light) rt.key.position.set(keyX, keyY, keyZ);
       calls += renderer.info.render.calls;
+      if (dbgOn) e.c = probeObject(e);
       if (e.labels && e.slot.anchors && !phone.matches) leaderWrites.push(...leaders(e));
       const f = e.fade * e.gateFade;
       const mB = Math.max(e.mBottom, e.slot.mBottom || 0); // a slot can fade its own lower edge (the world's zoom)
@@ -1780,8 +1879,11 @@ export function mount(opts = {}) {
         rt.maskMat.uniforms.uBottom.value = mB;
         renderer.render(rt.maskScene, rt.maskCam);
       }
+      // copy the slot's corner of the buffer into its own canvas, replacing what was there
+      e.ctx.globalCompositeOperation = 'copy';
+      e.ctx.drawImage(gl, 0, 0, e.pw, e.ph, 0, 0, e.pw, e.ph);
+      e.blank = false;
       e.drawn++;
-      dirty = true;
     }
     renderer.setScissorTest(false);
     // writes last: each label's leader line, from the label's edge to its part on the object
@@ -1794,27 +1896,34 @@ export function mount(opts = {}) {
     stats.lastDrawn = drawn.map((e) => e.name);
     stats.lastDrawCalls = calls;
     stats.drawCalls += calls;
+    stats.ms += (performance.now() - t0 - stats.ms) * 0.1;
 
-    if (!near.length) {
-      if (dirty) { renderer.clear(true, true, false); dirty = false; }
-      running = false;
-      return;
+    if (drawn.length && dt > 0) {
+      slowMs += (dt * 1000 - slowMs) * 0.08;
+      slowN++;
+      if (slowN > 40 && slowMs > 28 && dpr > 1.5) { dpr = 1.5; stats.dprDrops = (stats.dprDrops || 0) + 1; }
     }
-    raf = requestAnimationFrame(frame);
+
+    if (!near.length) { running = false; return false; }
+    return true;
   };
 
+  const own = (now) => { raf = 0; if (read(now) && draw(now)) raf = requestAnimationFrame(own); };
+  const wake = () => { if (loop) loop.wake(); else if (!raf) raf = requestAnimationFrame(own); };
   const sync = () => {
     const should = !lost && !document.hidden && entries.some((e) => e.near);
-    if (should && !running) { running = true; last = 0; raf = requestAnimationFrame(frame); }
+    if (should && !running) { running = true; last = 0; wake(); }
     else if (!should && running) { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
   };
 
   // "near" = within half a screen of the viewport: scenes build and posters hand over before
-  // the slot scrolls in; drawing itself is limited to slots that actually intersect the viewport
+  // the slot scrolls in; drawing itself is limited to slots on or just off the screen
   const io = new IntersectionObserver((list) => {
     for (const it of list) {
       const e = entries.find((x) => x.el === it.target);
-      if (e) e.near = it.isIntersecting;
+      if (!e) continue;
+      e.near = it.isIntersecting;
+      if (!e.near) release(e);
     }
     sync();
   }, { rootMargin: '50% 0px 50% 0px' });
@@ -1827,46 +1936,60 @@ export function mount(opts = {}) {
     pointer.cx = e.clientX; pointer.cy = e.clientY; pointer.active = true;
   };
   const onLeave = () => { pointer.x = 0; pointer.y = 0; pointer.active = false; };
-  const onResize = () => { for (const e of entries) e.varsDirty = true; };
+  // a real resize (a new width, a window made taller): new viewport heights and pixel ratio; the
+  // page width check in read() picks up the slots' layout variables
+  const onResize = () => {
+    if (!loop) vp = null;
+    const d = Math.min(window.devicePixelRatio || 1, 2);
+    if (doc.clientWidth !== pageW || d !== devDpr) { devDpr = d; dpr = d; slowMs = 0; slowN = 0; }
+  };
   window.addEventListener('pointermove', onPointer, { passive: true });
-  document.documentElement.addEventListener('pointerleave', onLeave);
+  doc.addEventListener('pointerleave', onLeave);
   window.addEventListener('resize', onResize);
   document.addEventListener('visibilitychange', sync);
 
-  canvas.addEventListener('webglcontextlost', (ev) => {
+  gl.addEventListener('webglcontextlost', (ev) => {
     ev.preventDefault();
     lost = true;
     sync();
-    for (const e of entries) e.el.classList.remove('is-3d-live');
-    canvas.style.display = 'none';
+    // the posters come back
+    for (const e of entries) {
+      e.el.classList.remove('is-3d-live');
+      if (e.canvas) e.canvas.remove();
+      e.canvas = null; e.ctx = null; e.blank = true;
+    }
   });
 
   // the first screen's object (the story world, or the hero where a page still has one) is built
   // at once so its first frame lands on the poster; the rest build as they near
   const first = entries.find((e) => e.name === 'story-world') || entries.find((e) => e.name === 'hero');
   if (first) build(first);
-  sizeCanvas();
 
   const api = {
-    canvas, renderer,
+    canvas: gl, renderer, read, draw,
     stats: () => ({
-      ...stats,
-      slots: entries.map((e) => ({ name: e.name, built: !!e.slot, near: e.near, live: e.live, drawn: e.drawn, p: +e.p.toFixed(3) })),
+      ...stats, buffer: [bw, bh], dpr,
+      slots: entries.map((e) => ({
+        name: e.name, built: !!e.slot, near: e.near, live: e.live, drawn: e.drawn, p: +e.p.toFixed(3), pr: e.p, c: e.c,
+        size: e.canvas ? [e.canvas.width, e.canvas.height] : null,
+      })),
       running,
     }),
+    debug(on) { dbgOn = !!on; },
     destroy() {
       running = false;
       if (raf) cancelAnimationFrame(raf);
       io.disconnect();
       window.removeEventListener('pointermove', onPointer);
-      document.documentElement.removeEventListener('pointerleave', onLeave);
+      doc.removeEventListener('pointerleave', onLeave);
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', sync);
-      for (const e of entries) e.el.classList.remove('is-3d-live');
+      for (const e of entries) { e.el.classList.remove('is-3d-live'); if (e.canvas) e.canvas.remove(); }
+      if (probes) probes.forEach((d) => d.remove());
       renderer.dispose();
-      canvas.remove();
     },
   };
-  canvas.built3d = api;
+  gl.built3d = api;
+  window.built3d = api;
   return api;
 }

@@ -159,9 +159,11 @@ one copy of three.js).
   environment. ACES tone mapping, sRGB output. No neon, no bloom, no glow, no light rays.
 - Ground: soft contact shadows on an invisible floor where an object stands. No visible floor,
   edge or plinth. Everything is transparent over the page.
-- Drawing: one WebGL context, one transparent canvas the size of the viewport, above the section
-  bands and below the nav. Each frame it draws only the slots that intersect the viewport, each
-  inside its own box (viewport and scissor), so an object can never land on copy. The final call's
+- Drawing: one WebGL context on an offscreen canvas; each slot holds its own transparent canvas that the
+  engine copies the slot's drawing into, so the browser scrolls and pins the pixels with their slot and
+  nothing trails the scroll on a phone. Only slots on or near the screen draw, each inside its own box,
+  so an object can never land on copy. Progress uses the small viewport height (svh), never the live
+  one, and the story's words and objects share one eased value (a critically damped spring). The final call's
   copy sits above the canvas; its objects keep to the free space either side of the lines under the
   headline (desktop) or orbit above the headline (phones).
 - Motion: every pose is a function of the slot's scroll progress (0 as the slot's centre meets the

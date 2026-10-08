@@ -651,12 +651,12 @@
     }
 
     /* ---------- 3D slots ----------
-       One canvas (.stage3d, added by assets/js/site-3d.min.js) sits above the section bands and
-       draws each [data-3d] slot inside that slot's own box, so it never covers copy. Each slot
-       holds a still poster that shows until the live drawing has faded in over it, and stays
-       for good without WebGL, with Save-Data or with reduced motion. */
-    .stage3d { position: absolute; top: 0; left: 0; z-index: 1; width: 100%; pointer-events: none; }
+       Each [data-3d] slot gets its own canvas (.slot3d__c, added by assets/js/site-3d.min.js) that
+       the one 3D engine draws into, so the drawing scrolls and pins with its slot and never covers
+       copy. Each slot holds a still poster that shows until the live drawing has faded in over it,
+       and stays for good without WebGL, with Save-Data or with reduced motion. */
     .slot3d { --ax: 0.5; --ay: 0.5; position: relative; pointer-events: none; }
+    .slot3d__c { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
     .slot3d img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
     .slot3d.is-3d-live img { visibility: hidden; }
 
@@ -865,7 +865,7 @@
     .fx .world__h { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: var(--foot); display: grid; place-content: center; font-size: clamp(5rem, 12.5vw, 15rem); }
     .fx .world__line { grid-area: 1 / 1; margin: 0; transform-origin: 50% 50%; }
     .fx .world__line + .world__line { opacity: 0; }
-    .fx .ch--world.is-live .world__line { will-change: transform, opacity, filter; }
+    .fx .ch--world.is-live .world__line { will-change: transform, opacity; }
     .fx .world__slot { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: var(--foot); height: auto; }
     .fx .world__foot { position: absolute; left: 0; right: 0; bottom: 0; min-height: var(--foot); align-items: flex-end; padding-block: 0 36px; }
     .fx .world__cue { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; min-height: 56px; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; }
@@ -882,6 +882,7 @@
       align-items: start; gap: 18px 24px;
     }
     .fx .part { opacity: 0; }
+    .fx .ch--explode.is-live .part { will-change: transform, opacity; }
     .fx .part[data-anchor='grip'] { grid-area: 1 / 1; }
     .fx .part[data-anchor='collar-l'] { grid-area: 2 / 1; }
     .fx .part[data-anchor='head-l'] { grid-area: 3 / 1; }
@@ -951,6 +952,7 @@
       .fx .part::before { content: counter(part, decimal-leading-zero); }
       .fx .part b { font-size: 1rem; }
       .fx .part span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 1rem; color: var(--stone); opacity: 0; }
+      .fx .ch--explode.is-live .parts .part { will-change: opacity; } /* a transform hint would make each row the line's containing block */
       .fx .explode__slot.is-3d-live ~ .parts .leader { display: none; }
       .fx .explode__copy { margin-top: 16px; }
       .part span { font-size: 1rem; }
@@ -1004,7 +1006,7 @@
     .fx .ch--how .roadmap__card { opacity: 0; transform: none; transition: none; }
     .fx .how__words { grid-area: 2 / 1; display: grid; font-family: var(--font-display); font-weight: 300; font-size: clamp(3.5rem, min(9vw, 16svh), 9rem); line-height: 1; letter-spacing: -0.04em; }
     .fx .how__w { grid-area: 1 / 1; opacity: 0; transform-origin: 0 100%; }
-    .fx .ch--how.is-live .how__w { will-change: transform, opacity, filter; }
+    .fx .ch--how.is-live .how__w, .fx .ch--how.is-live .roadmap__card { will-change: transform, opacity; }
     .fx .how__stage { display: block; grid-area: 1 / 2 / 3 / 3; position: relative; }
     .how__glow { position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(163, 255, 61, 0.12), rgba(163, 255, 61, 0.04) 55%, rgba(163, 255, 61, 0)); opacity: 0; }
     .fx .how__stage .slot3d--step { position: absolute; inset: 0; width: auto; height: auto; margin: 0; float: none; }
@@ -1027,7 +1029,6 @@
     }
 
     @media print {
-      .stage3d { display: none !important; }
       .nav, .mobile-menu, .slot3d, .switcher__bar, .world__cue, .leader { display: none !important; }
       body { background: #fff; color: #000; }
     }
@@ -1997,9 +1998,23 @@
        Positions are measured in one pass (on load, on resize, when fonts land and whenever the
        page changes height) as document offsets, which transforms never change. Each frame then
        reads scrollY once and only writes, and only what changed: no layout reads while scrolling.
-       Every effect is a function of the scroll position, so scrolling back plays it backwards. */
+       Every effect is a function of the scroll position, so scrolling back plays it backwards.
+       Heights are the small viewport (svh, V.h) and the large one (lvh, V.hl), read from two hidden
+       probes, never the live innerHeight: a phone's toolbar sliding in and out changes neither, so
+       it moves nothing. Once the 3D engine is up it joins this loop: it reads its layout before any
+       write here and draws after them, so the page runs one rAF and never forces a layout. */
     var docEl = document.documentElement;
-    var V = { y: 0, h: window.innerHeight, w: docEl.clientWidth, max: 1 };
+    var probe = function (unit) {
+      var d = document.createElement('div');
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100vh;height:100' + unit + ';visibility:hidden;pointer-events:none';
+      document.body.appendChild(d);
+      return d;
+    };
+    var svh = probe('svh'), lvh = probe('lvh');
+    var V = { y: 0, h: svh.offsetHeight || window.innerHeight, hl: 0, w: docEl.clientWidth, max: 1 };
+    var engine = null; // the 3D engine once it has loaded: { read(now), draw(now) }
+    var storyChapter = function () { return null; }; // the story's chapter record for an element, once built
     var fx = []; // { measure(), update(now) -> true while it needs another frame }
     var motion = !reduceMotion;
     if (motion) docEl.classList.add('fx');
@@ -2018,22 +2033,30 @@
       return clamp01((A - (top - V.y)) / (A - B));
     };
     var fxRaf = 0, needMeasure = true;
+    var measure = function () {
+      needMeasure = false;
+      V.h = svh.offsetHeight || window.innerHeight;
+      V.hl = Math.max(V.h, lvh.offsetHeight || 0);
+      V.w = docEl.clientWidth;
+      // the furthest the page can scroll with the toolbar hidden, so an effect at the very end completes
+      V.max = Math.max(1, docEl.scrollHeight - V.hl);
+      for (var m = 0; m < fx.length; m++) if (fx[m].measure) fx[m].measure();
+    };
     var frame = function (now) {
       fxRaf = 0;
-      if (needMeasure) {
-        needMeasure = false;
-        V.h = window.innerHeight;
-        V.w = docEl.clientWidth;
-        V.max = Math.max(1, docEl.scrollHeight - V.h);
-        for (var m = 0; m < fx.length; m++) if (fx[m].measure) fx[m].measure();
-      }
+      if (needMeasure) measure();
       V.y = window.scrollY;
       var more = false;
+      if (engine && engine.read(now)) more = true; // layout reads, before any write
       for (var i = 0; i < fx.length; i++) if (fx[i].update(now)) more = true;
+      if (engine && engine.draw(now)) more = true; // the 3D, with the same progress the words just used
       if (more) tick();
     };
     var tick = function () { if (!fxRaf) fxRaf = requestAnimationFrame(frame); };
     var remeasure = function () { needMeasure = true; tick(); };
+    // a resize only re-measures when the width or the small viewport changes (a rotation, a desktop
+    // window); a phone's toolbar sliding in and out fires resize too, and changes neither
+    var onResize = function () { if (docEl.clientWidth !== V.w || svh.offsetHeight !== V.h) remeasure(); };
 
     // Split a heading into word spans; the heading keeps its full text as its accessible name.
     var splitWords = function (el, cls) {
@@ -2135,26 +2158,39 @@
         });
       }
 
-      /* Scroll story: three pinned chapters. A chapter's progress p runs from 0, as its top meets the
-         top of the screen, to 1, as its bottom meets the bottom: the same formula the 3D engine uses,
-         eased toward the scroll at the engine's rate, so the words and the objects move together.
-         Every value below is a function of p, so scrolling back plays it backwards. Blur is only
-         ever set inside a transition; at rest the filter is cleared. */
+      /* Scroll story: pinned chapters. A chapter's progress p runs from 0, as its top meets the top
+         of the screen, to 1, as its bottom meets the bottom, over its pinned scroll (the chapter's
+         height less its pin's, which is one small viewport high). It is eased here once per frame and
+         the 3D engine draws with this same value (engine.chapter), so words and objects never drift
+         apart. The ease is a critically damped spring stepped with its exact solution (the engine's
+         `follow`, same OMEGA): framerate independent, 0.18s behind a steady scroll, and without the
+         kink a plain ease gets on every coarse step of a touch fling. Every value below is a function
+         of p, so scrolling back plays it backwards. Blur is only ever set inside a transition; at rest
+         the filter is cleared. */
       var smooth = function (t) { return t * t * (3 - 2 * t); };
+      var smoother = function (t) { return t * t * t * (t * (t * 6 - 15) + 10); }; // flat at both ends
       var win = function (a, b, v) { return clamp01((v - a) / (b - a)); };
       var blur = function (v) { return v > 0.02 ? 'blur(' + v.toFixed(2) + 'px)' : ''; };
-      var chapters = $$('[data-story]').map(function (el) { return { el: el, kind: el.dataset.story, top: 0, h: 0, u: null, last: 0, live: null }; });
+      var OMEGA = 11;
+      var chapters = $$('[data-story]').map(function (el) { return { el: el, kind: el.dataset.story, pin: $('.ch__pin', el), top: 0, h: 0, pinH: 0, u: null, v: 0, at: 0, live: null }; });
       var chapterStep = function (c, now) {
-        var target = (V.y - c.top) / Math.max(1, c.h - V.h);
-        var dt = c.last ? Math.min((now - c.last) / 1000, 0.05) : 0.016;
-        c.last = now;
-        if (c.u === null || Math.abs(target - c.u) > 2) c.u = target; // a jump (a link, a reload) lands at once
-        else c.u += (target - c.u) * (1 - Math.exp(-dt * 9));
-        if (Math.abs(target - c.u) < 0.0004) c.u = target;
-        var live = V.y + V.h > c.top && V.y < c.top + c.h;
+        var target = (V.y - c.top) / Math.max(1, c.h - c.pinH);
+        if (c.at !== now) {
+          var dt = c.at ? Math.min(Math.max((now - c.at) / 1000, 0), 0.05) : 0.016;
+          c.at = now;
+          if (c.u === null || Math.abs(target - c.u) > 2) { c.u = target; c.v = 0; } // a jump (a link, a reload) lands at once
+          else {
+            var x = c.u - target, k = (c.v + OMEGA * x) * dt, e = Math.exp(-OMEGA * dt);
+            c.v = (c.v - OMEGA * k) * e;
+            c.u = target + (x + k) * e;
+          }
+          if (Math.abs(target - c.u) < 0.0004 && Math.abs(c.v) < 0.004) { c.u = target; c.v = 0; }
+        }
+        var live = V.y + V.hl > c.top && V.y < c.top + c.h;
         if (live !== c.live) { c.live = live; c.el.classList.toggle('is-live', live); }
         return c.u !== target;
       };
+      storyChapter = function (el) { for (var i = 0; i < chapters.length; i++) if (chapters[i].el === el) return chapters[i]; return null; };
 
       // a line of the green world's headline: a = 0 at rest, 1 gone; dir -1 leaves upward, +1 arrives from below
       var swapLine = function (el, a, dir) {
@@ -2199,9 +2235,9 @@
           var lines = $$('.world__line', el), cue = $('.world__cue b', el), wPoster = $('.world__slot img', el), foot = $('.world__foot', el);
           step = function () {
             var p = clamp01(c.u);
-            // the lines swap at p = 0.33 and 0.66, each over a tenth of the chapter
-            swapLine(lines[0], smooth(win(0.28, 0.35, p)), -1);
-            swapLine(lines[1], p < 0.5 ? 1 - smooth(win(0.31, 0.38, p)) : smooth(win(0.61, 0.68, p)), p < 0.5 ? 1 : -1);
+            // the lines swap at p = 0.33 and 0.66, each over a seventh of the chapter, eased at both ends
+            swapLine(lines[0], smoother(win(0.26, 0.36, p)), -1);
+            swapLine(lines[1], p < 0.5 ? 1 - smoother(win(0.30, 0.40, p)) : smoother(win(0.59, 0.69, p)), p < 0.5 ? 1 : -1);
             // the last 15%: the camera flies into the dumbbell (the engine) while the green fades to the
             // Deep Black of the exploded view, so the hand-off to it is one continuous move
             var z = smooth(win(0.85, 1, p));
@@ -2209,7 +2245,7 @@
               put(lines[2], 'opacity', z >= 1 ? '0' : (1 - z).toFixed(3));
               put(lines[2], 'filter', z < 1 ? blur(10 * z) : '');
               put(lines[2], 'transform', 'scale(' + (1 + 0.14 * z).toFixed(4) + ')');
-            } else swapLine(lines[2], 1 - smooth(win(0.64, 0.71, p)), 1);
+            } else swapLine(lines[2], 1 - smoother(win(0.63, 0.73, p)), 1);
             var k = 1 - z, f = 1 - smooth(win(0.85, 0.93, p));
             put(el, 'backgroundColor', z > 0 ? 'rgb(' + Math.round(8 + 155 * k) + ',' + Math.round(8 + 247 * k) + ',' + Math.round(8 + 53 * k) + ')' : '');
             if (foot) { put(foot, 'opacity', f >= 1 ? '' : f.toFixed(3)); put(foot, 'visibility', f > 0 ? '' : 'hidden'); }
@@ -2222,18 +2258,22 @@
         } else if (c.kind === 'explode') {
           var parts = $$('.part', el).map(function (li) { return { el: li, at: parseFloat(li.getAttribute('data-at')) || 0, line: $('span', li) }; });
           step = function () {
-            var p = clamp01(c.u), phone = V.w <= 620, cur = -1;
-            parts.forEach(function (pt, i) { if (p >= pt.at) cur = i; });
+            var p = clamp01(c.u), phone = V.w <= 620;
+            // each part's reveal runs over 0.12 of the chapter from its data-at, eased at both ends
+            var r = parts.map(function (pt) { return clamp01((p - pt.at) / 0.12); });
             parts.forEach(function (pt, i) {
-              var k = outCubic(clamp01((p - pt.at) / 0.08));
+              var k = smoother(r[i]), next = i < parts.length - 1 ? r[i + 1] : 0;
               if (phone) {
-                // a numbered list: every row readable, the current part lit and its line shown
-                var lit = i === cur ? k : 0;
+                // a numbered list: every row readable, the current part lit and its line shown. The row
+                // dims as the next one lights; its line leaves in the first half of the next reveal and
+                // the next line arrives in the second half, so two lines never sit on each other
+                var lit = k * (1 - smoother(next));
+                var line = smoother(clamp01(r[i] * 2 - 1)) * (1 - smoother(clamp01(next * 2)));
                 put(pt.el, 'opacity', (0.45 + 0.55 * lit).toFixed(3));
                 put(pt.el, 'transform', '');
                 put(pt.el, 'filter', '');
-                put(pt.line, 'opacity', lit.toFixed(3));
-                put(pt.line, 'transform', lit < 1 ? px(8 * (1 - lit)) : '');
+                put(pt.line, 'opacity', line.toFixed(3));
+                put(pt.line, 'transform', line < 1 ? px(8 * (1 - line)) : '');
               } else {
                 put(pt.el, 'opacity', k >= 1 ? '1' : k.toFixed(3));
                 put(pt.el, 'transform', k >= 1 ? '' : px(12 * (1 - k)));
@@ -2249,7 +2289,7 @@
           step = function () {
             var p = clamp01(c.u);
             // caption and paragraph: in as the chapter arrives, held, then blurred away for the word
-            var inA = smooth(clamp01((c.u + 0.35) / 0.35)), outA = smooth(win(0.45, 0.55, p));
+            var inA = smoother(clamp01((c.u + 0.35) / 0.35)), outA = smoother(win(0.44, 0.56, p));
             var o = inA * (1 - outA);
             [cap, para].forEach(function (t, i) {
               put(t, 'opacity', o >= 1 ? '' : o.toFixed(3));
@@ -2259,7 +2299,7 @@
             // the word types in letter by letter: each from a blur, a quarter of a line low
             var n = letters.length;
             letters.forEach(function (l, i) {
-              var k = outCubic(clamp01((p - (0.5 + (i / n) * 0.35)) / 0.1));
+              var k = smoother(clamp01((p - (0.5 + (i / n) * 0.35)) / 0.12));
               put(l, 'opacity', k >= 1 ? '1' : k.toFixed(3));
               put(l, 'filter', k > 0 && k < 1 ? blur(14 * (1 - k)) : '');
               put(l, 'transform', k >= 1 ? '' : 'translate3d(0,' + (0.25 * (1 - k)).toFixed(3) + 'em,0)');
@@ -2280,7 +2320,7 @@
           };
           step = function () {
             var n = gWords.length, q = clamp01((clamp01(c.u) - 0.04) / 0.92) * (n - 1);
-            var i0 = Math.min(n - 1, Math.floor(q)), a = i0 + (i0 < n - 1 ? smooth(win(0.3, 0.7, q - i0)) : 0);
+            var i0 = Math.min(n - 1, Math.floor(q)), a = i0 + (i0 < n - 1 ? smoother(win(0.25, 0.75, q - i0)) : 0);
             var ia = Math.min(n - 1, Math.floor(a)), fa = a - ia;
             var cen = ia < n - 1 ? gCen[ia] + (gCen[ia + 1] - gCen[ia]) * fa : gCen[ia];
             var ty = 'translate3d(0,' + (gCy - cen).toFixed(1) + 'px,0)';
@@ -2319,12 +2359,13 @@
             }
             return slot;
           });
-          var GLOW = [0.05, 0.075, 0.1, 0.12], HH = 0.16;
+          var GLOW = [0.05, 0.075, 0.1, 0.12], HH = 0.22; // the engine's STEP_HAND
+          var hImgs = hSlots.map(function (sl) { return sl && $('img', sl); });
           step = function () {
             var n = hSteps.length, x = clamp01(c.u) * n, glow = 0;
             hSteps.forEach(function (s, k) {
-              var vin = k ? smooth(win(k - HH, k + HH, x)) : 1;
-              var vout = k < n - 1 ? smooth(win(k + 1 - HH, k + 1 + HH, x)) : 0;
+              var vin = k ? smoother(win(k - HH, k + HH, x)) : 1;
+              var vout = k < n - 1 ? smoother(win(k + 1 - HH, k + 1 + HH, x)) : 0;
               var v = vin * (1 - vout), dir = vout > 0 ? -1 : 1, mid = v > 0 && v < 1;
               glow += v * GLOW[k];
               var card = $('.roadmap__card', s);
@@ -2338,15 +2379,16 @@
                 put(w, 'filter', mid ? blur(14 * (1 - v)) : '');
                 put(w, 'transform', mid ? 'translate3d(0,' + (dir * 10 * (1 - v)).toFixed(2) + '%,0) scale(1,' + (1 + 0.2 * (1 - v)).toFixed(4) + ')' : '');
               }
-              // the posters crossfade the same way (they show until the live drawing takes over)
-              if (hSlots[k]) put(hSlots[k], 'opacity', v >= 1 ? '' : v.toFixed(3));
+              // the posters crossfade the same way (they show until the live drawing takes over); only the
+              // poster, so the live drawing in the slot's canvas keeps its own grow and shrink
+              if (hImgs[k]) put(hImgs[k], 'opacity', v >= 1 ? '' : v.toFixed(3));
             });
             if (hGlow) put(hGlow, 'opacity', (glow / 0.12).toFixed(3));
           };
         }
         fx.push({
           // a new measure (fonts landing, a resize) re-steps a parked chapter once, with the new positions
-          measure: function () { c.top = docTop(el); c.h = el.offsetHeight; if (c.measure) c.measure(); c.parked = undefined; },
+          measure: function () { c.top = docTop(el); c.h = el.offsetHeight; c.pinH = c.pin ? c.pin.clientHeight : V.h; if (c.measure) c.measure(); c.parked = undefined; },
           update: function (now) {
             var more = chapterStep(c, now);
             // far from the screen: settle once at the nearest end, then skip
@@ -2585,7 +2627,7 @@
     }
 
     window.addEventListener('scroll', tick, { passive: true });
-    window.addEventListener('resize', remeasure, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     window.addEventListener('load', remeasure);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
     if ('ResizeObserver' in window) new ResizeObserver(remeasure).observe(document.body); // details opening, late images
@@ -2742,8 +2784,14 @@
           gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
         } catch (e) { gl = null; }
         if (!gl) { stills(); return; }
-        import('./assets/js/site-3d.min.js?v=4').then(function (m) {
-          m.mount({ canvas: canvas, context: gl, slots: slots3d });
+        import('./assets/js/site-3d.min.js?v=5').then(function (m) {
+          // the engine joins the scroll loop: one rAF, and the story's eased progress, shared
+          engine = m.mount({ canvas: canvas, context: gl, slots: slots3d, loop: {
+            wake: tick,
+            chapter: function (el) { return storyChapter(el); },
+            viewport: function () { return { s: V.h, l: V.hl }; }
+          } });
+          tick();
         }).catch(stills); // the posters stay
       };
       var whenIdle = function () {
