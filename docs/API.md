@@ -490,6 +490,7 @@ All in `public`, all with RLS. "Own" = `auth.uid() = user_id`.
 | `contact_messages` | Website form | anyone may insert; nobody reads via the API |
 | `app_config` | `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `AI_MODEL`, `VISION_MODEL` fallback | nothing (service role only) |
 | `admin_credentials`, `admin_sessions`, `admin_login_attempts`, `admin_lockouts` | Admin login | nothing (service role only) |
+| `erp_customers`, `erp_notes`, `erp_tasks`, `erp_invoices`, `erp_transactions` | Admin ERP: customers (CRM) and finance (`supabase/erp.sql`) | nothing (service role only). Never deleted: customers archived, transactions voided, invoices set to `void` |
 
 `last_active_at` is bumped by the database whenever the person writes any
 of their data (at most every 5 minutes).
@@ -514,8 +515,11 @@ One Edge Function. Base URL:
 - **Lockout:** 5 failed logins from one address in 15 minutes lock that
   address for 15 minutes; 20 failures from anywhere lock every login for 15
   minutes. Changing the password clears lockouts and sessions.
-- **CORS:** only `https://builtbybrains.github.io` and
-  `http://localhost:<any>` / `http://127.0.0.1:<any>`. Other origins get 403.
+- **CORS:** only `https://builtbybrains.github.io`,
+  `https://fitness-platform-blue.vercel.app`, this project's Vercel preview
+  deployments (`https://fitness-platform-<hash or branch>-brains-ai.vercel.app`,
+  the brains-ai team only) and `http://localhost:<any>` /
+  `http://127.0.0.1:<any>`. Other origins get 403.
 - **Responses** are JSON with `Cache-Control: no-store`; errors are
   `{ "error": "<message to show>", "code": "<code>" }`.
 - **Days** in the admin (today, this week, signups) are Beirut days.
@@ -530,6 +534,7 @@ One Edge Function. Base URL:
 | 403 | `forbidden` | Origin not allowed |
 | 404 | `not_found` | Unknown route or id |
 | 405 | `method_not_allowed` | Wrong method on /login |
+| 409 | `conflict` | The change clashes with the current state (already a customer, invoice not a draft, void row); `id` is set when it points at an existing record |
 | 423 | `locked` | Too many attempts; `locked_until` (ISO time) says until when |
 | 503 | `not_configured` | No admin login set yet (README: admin_set_credentials) |
 | 500 | `server_error` | Anything else |
@@ -738,6 +743,199 @@ POST /reports/4444…/status
 ```json
 { "id": "4444…", "status": "in_progress", "user_id": "1111…" }
 ```
+
+### Customers and finance (ERP)
+
+Tables and functions: `supabase/erp.sql` (also the "ERP" section at the end
+of `schema.sql`). Payments are not live, so this is what the admin records,
+plus the app's own accounts. Money is **integer cents, USD**; dates are
+`yyyy-mm-dd` (Beirut days). Every input is checked: unknown values, wrong
+types, text over its limit, non-integer cents and impossible dates get 400
+`bad_request` with a message to show.
+
+Limits: name 120, email 254, phone 32 (stored as `+` and digits), source 60,
+tags 12 of up to 32 characters, note 4000, task title 200, transaction
+description 300 and at most $1,000,000.00, invoice notes 2000, 50 lines,
+quantity 1 to 10,000, total up to $20,000,000.00.
+
+Stages: `lead`, `trial`, `active`, `paused`, `cancelled`. Plans: `monthly`
+($30), `quarterly` ($81), `yearly` ($300). A plan with no price gets the
+list price. Moving to `active` fills `started_on` (today) and `renews_on`
+(one plan period later) when empty; moving to `cancelled` stamps
+`cancelled_on` (the churn count). Each stage move adds a note.
+
+#### GET /crm/customers
+
+CRM customers **plus app accounts not in the CRM yet** (`in_crm: false`; the
+row `id` is then the account id; stage `trial` once the questionnaire is
+finished, else `lead`).
+
+| Param | Values |
+| --- | --- |
+| `q` | Text in name, email or a tag; digits match the phone |
+| `stage` | a stage, `archived`, or `not_in_crm` (default: everything not archived) |
+| `plan` | a plan or `none` |
+| `sort` | `recent` (default), `name_asc`, `last_active_desc`, `renews_asc`, `price_desc`, `stage` |
+| `limit`, `offset` | 1 to 500 (default 50); 0+ |
+| `streak` | `0` to skip the workout streak (faster; the board uses it) |
+
+```json
+{
+  "total": 17, "limit": 50, "offset": 0,
+  "counts": { "lead": 4, "trial": 4, "active": 6, "paused": 1, "cancelled": 2 },
+  "archived": 0, "not_in_crm": 4,
+  "rows": [
+    {
+      "id": "5a00…0001", "user_id": null, "in_crm": true,
+      "name": "Karim Haddad", "email": "karim@example.com", "phone": "+96171123401",
+      "stage": "active", "plan": "monthly", "price_cents": 3000,
+      "started_on": "2026-03-22", "renews_on": "2026-10-20", "source": "Instagram", "tags": ["gym"],
+      "archived_at": null, "created_at": "…", "last_active_at": null,
+      "streak": null, "open_tasks": 1, "overdue_tasks": 0
+    }
+  ]
+}
+```
+`counts` follow `q` and `plan`, not `stage`.
+
+#### GET /crm/customers.csv
+
+Same filters, up to 5000 rows, `built-customers-<date>.csv`. Columns:
+`name,email,phone,stage,plan,price_usd,started_on,renews_on,source,tags,in_crm,open_tasks,streak,last_active_at,created_at`.
+Same formula guard as `/users.csv`.
+
+#### POST /crm/customers
+
+```http
+POST /crm/customers
+{ "name": "Sara Moussa", "email": "sara@example.com", "phone": "+961 70 123 456",
+  "stage": "active", "plan": "quarterly", "tags": ["gym"], "source": "Referral" }
+```
+Optional: `price_cents`, `started_on`, `renews_on`. To **adopt** an app
+account send `{ "user_id": "<account id>", "stage"?: "…" }`; name, email and
+phone are copied from the account. 201 with the same body as
+`GET /crm/customers/:id`. 409 `conflict` with `id` when the account is
+already a customer.
+
+#### GET /crm/customers/:id
+
+`:id` may be a CRM id or an app account id (a linked account opens its CRM
+record; an account not in the CRM returns `in_crm: false` with empty lists).
+
+```json
+{
+  "in_crm": true,
+  "customer": { "id": "…", "user_id": "…", "name": "…", "email": "…", "phone": "…", "stage": "active", "plan": "monthly",
+    "price_cents": 3000, "started_on": "…", "renews_on": "…", "cancelled_on": null, "source": "…", "tags": [],
+    "archived_at": null, "created_at": "…", "updated_at": "…", "last_active_at": "…" },
+  "app_user": { "id": "…", "name": "…", "email": "…", "phone": "…", "goal": "lose_fat", "created_at": "…",
+    "last_active_at": "…", "onboarding_done": true, "streak": 4 },
+  "notes": [ { "id": "…", "kind": "note", "body": "Asked about the yearly plan.", "created_at": "…" } ],
+  "tasks": [ { "id": "…", "customer_id": "…", "title": "Call back", "due_on": "2026-10-07", "done_at": null, "overdue": true, "due_today": false, "created_at": "…", "updated_at": "…" } ],
+  "invoices": [ { "id": "…", "number": "INV-2026-0001", "status": "sent", "issued_on": "…", "due_on": "…", "paid_on": null, "total_cents": 5500, "overdue": false } ],
+  "transactions": [ { "id": "…", "kind": "income", "category": "subscription", "amount_cents": 3000, "occurred_on": "…", "description": "…", "invoice_id": null, "void_at": null } ],
+  "totals": { "paid_cents": 3000, "outstanding_cents": 5500 }
+}
+```
+`app_user` is null without a linked account. Note `kind`: `note` (the
+admin's), `stage` (stage moves), `system` (added, archived, invoice moves).
+
+#### POST /crm/customers/:id
+
+Any of the create fields; only the keys sent change (`null` or `""` clears
+a date, the plan or the price). Returns the detail.
+
+#### POST /crm/customers/:id/archive
+
+`{}` archives (it leaves the board and lists; `stage=archived` lists it);
+`{ "archived": false }` restores. → `{ "id", "archived_at" }`.
+
+#### POST /crm/customers/:id/notes
+
+`{ "body": "…" }` → 201 `{ "id", "kind": "note", "body", "created_at" }`.
+
+#### GET /crm/tasks · POST /crm/tasks · POST /crm/tasks/:id
+
+`GET /crm/tasks?open=1&customer_id&limit` (limit 1 to 500, default 200):
+`{ "total", "overdue", "due_today", "rows": [task with customer_name] }`,
+open tasks by due date, then done ones. Tasks of archived customers are
+left out. `POST /crm/tasks` `{ "title", "due_on"?, "customer_id"? }` → 201
+task. `POST /crm/tasks/:id` `{ "title"?, "due_on"?, "customer_id"?, "done"?: true|false }`.
+
+#### GET /finance/summary
+
+`?from&to` (inclusive; default this month). Voided rows never count.
+
+```json
+{
+  "from": "2026-10-01", "to": "2026-10-31", "currency": "USD",
+  "income_cents": 31200, "expense_cents": 2500, "profit_cents": 28700,
+  "mrr_cents": 19600,
+  "active_by_plan": { "monthly": 3, "quarterly": 3, "yearly": 1, "none": 0 },
+  "months": [ { "month": "2025-11", "income_cents": 6000, "expense_cents": 4300 }, "… 12 entries, ending with the month of `to` …" ],
+  "expenses_by_category": [ { "category": "hosting", "cents": 2500, "count": 1 } ],
+  "income_by_category": [ { "category": "subscription", "cents": 31200, "count": 3 } ],
+  "outstanding": { "count": 2, "cents": 8500, "overdue_count": 1, "overdue_cents": 3000 },
+  "churned": 2, "new_active": 1,
+  "tasks": { "open": 6, "due_today": 2, "overdue": 1 },
+  "generated_at": "…"
+}
+```
+`mrr_cents`: every active, not archived customer's price per month
+(3 months / 3, yearly / 12, no plan counts as monthly). `churned`:
+customers moved to cancelled in the period. `outstanding`: invoices in
+status `sent`.
+
+#### Transactions
+
+Kinds and categories: `income` (`subscription`, `other`) and `expense`
+(`ai`, `hosting`, `app_store`, `marketing`, `salaries`, `equipment`, `other`).
+
+- `GET /finance/transactions?kind&category&from&to&q&customer_id&include_void&limit&offset`
+  → `{ "total", "limit", "offset", "income_cents", "expense_cents", "rows": [ { "id", "kind", "category", "amount_cents", "currency", "occurred_on", "customer_id", "customer_name", "invoice_id", "invoice_number", "description", "void_at", "created_at", "updated_at" } ] }`.
+  Newest first; `include_void=0` hides void rows; the sums skip them.
+- `GET /finance/transactions.csv`: same filters, up to 5000 rows, columns
+  `occurred_on,kind,category,amount_usd,currency,description,customer,invoice,void,created_at`.
+- `POST /finance/transactions` `{ "kind", "category", "amount_cents", "occurred_on"?, "customer_id"?, "description"? }` → 201 row. `currency` may only be `USD`.
+- `POST /finance/transactions/:id`: any of those; only the keys sent
+  change. 409 for a void row, and for a change of kind, amount or customer
+  on a payment created by an invoice.
+- `POST /finance/transactions/:id/void` → the row with `void_at`
+  (idempotent). Voiding an invoice's payment puts the invoice back to `sent`.
+
+#### Invoices
+
+Numbers: `INV-<year of issue>-<sequence>`, e.g. `INV-2026-0001`.
+
+- `GET /finance/invoices?status&customer_id&q&limit&offset` (status `draft`,
+  `sent`, `paid`, `void` or `overdue`) → `{ "total", "limit", "offset", "by_status": { "draft": { "count", "cents" }, "sent": …, "paid": …, "void": …, "overdue": … }, "rows": [ { "id", "number", "customer_id", "customer_name", "status", "issued_on", "due_on", "paid_on", "total_cents", "currency", "lines_count", "overdue", "created_at" } ] }`.
+- `POST /finance/invoices` creates a **draft**:
+  ```http
+  POST /finance/invoices
+  { "customer_id": "…", "issued_on": "2026-10-08", "due_on": "2026-10-22", "notes": "Thank you.",
+    "lines": [ { "description": "BUILT monthly plan", "qty": 1, "unit_cents": 3000 },
+               { "description": "Shaker bottle", "qty": 2, "unit_cents": 1250 } ] }
+  ```
+  The total is always computed by the server (a `total_cents` sent in is
+  ignored). Due date defaults to 14 days after issue. 201 with the detail.
+- `GET /finance/invoices/:id` → `{ "invoice": { "id", "number", "customer_id", "issued_on", "due_on", "status", "lines": [ { "description", "qty", "unit_cents", "amount_cents" } ], "total_cents", "currency", "paid_on", "sent_at", "notes", "overdue", "created_at", "updated_at" }, "customer": {…}, "payment": transaction | null }`.
+- `POST /finance/invoices/:id` edits a **draft** (same fields; 409 otherwise).
+- `POST /finance/invoices/:id/status` `{ "status": "sent" | "paid" | "void", "paid_on"? }`.
+  Moves: draft → sent, paid or void; sent → paid or void; paid → sent
+  (payment undone) or void; void is final (409). Marking **paid** creates
+  one income transaction (category `subscription` when the customer has a
+  plan, else `other`) dated `paid_on` (default today); marking paid again
+  changes nothing (`"unchanged": true`). Undoing or voiding a paid invoice
+  voids its payment. Sent or paid needs at least one line and a total above
+  zero (400).
+- `GET /finance/invoices/:id.html`: a printable, self-contained page (no
+  scripts, no external files, A4 or Letter). Fetch it with the token and
+  open it as a blob (the dashboard does this). Seller details and the foot
+  line come from `app_config` keys `INVOICE_FROM` and `INVOICE_FOOTER`
+  (`\n` for new lines), e.g.
+  `insert into app_config (key, value) values ('INVOICE_FROM', 'BUILT\nBeirut, Lebanon') on conflict (key) do update set value = excluded.value;`
+  The page's style block is allowed in the dashboard's CSP by its SHA-256
+  (`admin/index.html`); change both together.
 
 ## 12. Limits
 
