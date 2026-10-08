@@ -7,6 +7,8 @@
  *   assets/img/dumbbell-hero-640.webp    640x640   transparent, phones and the app tile
  *   assets/img/3d/<slot>.webp           small, transparent, one per [data-3d] slot, at a
  *                                       representative scroll pose (see POSTERS below)
+ *   assets/img/story/*.webp             the scroll story's three chapters; story/world*.webp is
+ *                                       the page's first paint and LCP image
  *
  * Uses the built bundle (assets/js/site-3d.min.js), so run scripts/build-site-3d.mjs first.
  * Headless Chromium draws WebGL with SwiftShader; no GPU needed.
@@ -17,6 +19,7 @@
  *
  * Optional: --out <dir> writes there instead of assets/img (for previews).
  *           --only <name,name>  render just these slots (hero, how-phone, final, ...)
+ *   node scripts/render-hero-poster.mjs --only story-world,story-exploded,story-plate
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { dirname, join, extname } from 'node:path';
@@ -30,8 +33,11 @@ const OUT = argOut > 0 ? process.argv[argOut + 1] : join(ROOT, 'assets', 'img');
 const argOnly = process.argv.indexOf('--only');
 const ONLY = argOnly > 0 ? process.argv[argOnly + 1].split(',') : null;
 mkdirSync(join(OUT, '3d'), { recursive: true });
+mkdirSync(join(OUT, 'story'), { recursive: true });
 
-// file, slot, width, height, scroll progress of the pose. Rendered at 2x, then downsampled.
+// file, slot, width, height, scroll progress of the pose, and optionally the viewport width the
+// poster stands for (a slot with a phone composition renders it when that width is 620 or less;
+// it matches the <picture> media query). Rendered at 2x, then downsampled.
 const POSTERS = [
   ['dumbbell-hero.webp', 'hero', 1200, 1200, 0],
   ['dumbbell-hero-640.webp', 'hero', 640, 640, 0],
@@ -48,6 +54,13 @@ const POSTERS = [
   ['3d/pricing.webp', 'pricing', 440, 440, 0.6],
   ['3d/final.webp', 'final', 1520, 800, 0.5],
   ['3d/final-sm.webp', 'final', 720, 400, 0.5],
+  // the scroll story: chapter 1's poster is the first paint, so it shows the p = 0 pose
+  ['story/world.webp', 'story-world', 1200, 1200, 0],
+  ['story/world-640.webp', 'story-world', 640, 640, 0],
+  ['story/exploded.webp', 'story-exploded', 1600, 900, 0.7],
+  ['story/exploded-sm.webp', 'story-exploded', 720, 720, 0.7, 390],
+  ['story/plate.webp', 'story-plate', 800, 800, 0.5],
+  ['story/plate-480.webp', 'story-plate', 480, 480, 0.5],
 ];
 
 function loadPlaywright() {
@@ -101,12 +114,12 @@ try {
   });
   await page.goto(`${ORIGIN}/`);
 
-  for (const [file, name, w, h, p] of POSTERS) {
+  for (const [file, name, w, h, p, vw] of POSTERS) {
     if (ONLY && !ONLY.includes(name)) continue;
     // render at 2x and let the browser downsample: smoother edges on the bar and the B
-    const b64 = await page.evaluate(async ({ name, w, h, p }) => {
+    const b64 = await page.evaluate(async ({ name, w, h, p, vw }) => {
       const { still } = await import('/assets/js/site-3d.min.js');
-      const shot = still({ name, width: w, height: h, dpr: 2, p });
+      const shot = still({ name, width: w, height: h, dpr: 2, p, vw: vw || w });
       const out = document.createElement('canvas');
       out.width = w; out.height = h;
       const g = out.getContext('2d');
@@ -114,7 +127,7 @@ try {
       g.drawImage(shot.canvas, 0, 0, w, h);
       shot.destroy();
       return out.toDataURL('image/webp', 0.86).split(',')[1];
-    }, { name, w, h, p });
+    }, { name, w, h, p, vw });
     const buf = Buffer.from(b64, 'base64');
     writeFileSync(join(OUT, file), buf);
     console.log(`${join(OUT, file).replace(ROOT + '/', '')}  ${w}x${h}  ${(buf.length / 1024).toFixed(1)} KB`);

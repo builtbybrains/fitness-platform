@@ -11,8 +11,8 @@ disagree, the deck wins; fix this file.
 - Audience: people who train, want a plan and a coach in their pocket, and pay $30/month.
 - Vibe: athletic, strong, premium, direct. Black gym, one electric green.
 - Family: flat ink on deep black. Solid fills, hard edges, no glass, no gradients.
-- Dials: variance 5/10, motion 6/10, density 5/10. Motion sits at 6 because of the 3D objects: the
-  hero dumbbell runs a slow ambient loop and the other objects follow the scroll (see 3D).
+- Dials: variance 5/10, motion 6/10, density 5/10. Motion sits at 6 because of the 3D objects: they
+  follow the scroll (see 3D). The scroll story at the top of the page runs at 8 (see Scroll story).
   Everything else stays at the old 4: short, motivated, once.
 
 ## Name and voice
@@ -111,8 +111,9 @@ Rules:
 ## Imagery
 
 - Only the client's own imagery. No stock photos, no people standing in for the client.
-- The web hero is a 3D BUILT dumbbell (client request, 2026-10-08), not a photo. It also
-  fills the workout tile in the site's phone mockup and the right half of `og-cover.png`.
+- The web opens on a 3D BUILT dumbbell (client request, 2026-10-08), not a photo: the scroll
+  story's green world. The old hero still (`dumbbell-hero-640.webp`) fills the workout tile in the
+  site's phone mockup, and the right half of `og-cover.png`.
   The athlete photo (`assets/img/athlete.*`) stays in the repo, unreferenced.
 - Dark, desaturated backgrounds, green only on the logo, the collars and the mark.
 - Meal photos in the app are AI-generated (Flux), realistic food photography on dark
@@ -126,7 +127,9 @@ The website carries a set of BUILT objects, all drawn live by one engine
 one copy of three.js).
 
 - Objects, one per slot (`<div class="slot3d" data-3d="name">` holding its poster):
-  - hero: the BUILT hex dumbbell.
+  - story-world, story-exploded, story-plate: the scroll story's three chapters (see Scroll story).
+  - hero: the BUILT hex dumbbell. Retired from the page (2026-10-08, replaced by the scroll story);
+    the builder and its posters stay for the app tile and `og-cover.png`.
   - how it works: one small object per step card: a phone with the green B on a dark screen,
     a coiled measuring tape on a Carbon hub, a dumbbell and shaker pair, the app's progress ring
     (a Carbon track with a green arc and round ends).
@@ -168,9 +171,9 @@ one copy of three.js).
   the viewer through most of the scroll; the shaker cap screws down; plates drop on one by one; the streak tiles flip up one by one from lying face down, the B last; the bars rise; the medal flips
   face up as the pricing head arrives, then leans toward a mouse pointer (up to 17 degrees,
   damped; mouse and trackpad only); the final three swing round each other. A bob of a few pixels
-  runs only while a slot is on screen. The hero keeps its own loop: slow float (about 8px, 6s,
-  sine), one turn around the bar every 20s, a slight rock, pointer tilt up to 8 degrees, and a
-  drift up and turn as the hero scrolls away.
+  runs only while a slot is on screen. The scroll story's slots are pinned: their progress runs
+  across the chapter's pinned scroll (`data-3d-scrub`), see Scroll story. The retired hero slot
+  keeps its own loop in the engine (slow float, a turn every 20s, pointer tilt).
 - Layout: desktop objects sit beside the copy (a column beside the features and progress heads, a
   narrow middle column in the diet, training and accountability splits from 1100px, above the copy
   in that column from 941px). Phones and tablets: the object sits above its heading, 180px tall,
@@ -179,9 +182,9 @@ one copy of three.js).
 - Cost: nothing draws while the tab is hidden or when no slot is near the screen; pixel ratio capped
   at 2; scenes build as their slot comes within half a screen; the engine loads after the page's load
   event, when the browser is idle, so it never delays the first paint.
-- Posters: a still of each slot (`assets/img/dumbbell-hero*.webp` for the hero, `assets/img/3d/*.webp`
-  for the rest, rendered by `scripts/render-hero-poster.mjs` from the same scenes). The hero poster is
-  the LCP image. Live drawing fades in over each poster in 500ms, then the poster hides. Without WebGL2,
+- Posters: a still of each slot (`assets/img/story/*.webp` for the story, `assets/img/3d/*.webp`
+  for the rest, `assets/img/dumbbell-hero*.webp` for the retired hero, all rendered by
+  `scripts/render-hero-poster.mjs` from the same scenes). The story world's poster is the LCP image. Live drawing fades in over each poster in 500ms, then the poster hides. Without WebGL2,
   with Save-Data, or with reduced motion, the engine never loads and the posters stay.
 - Elsewhere on the page, 3D is a touch: the phone mockup and the price card tilt toward a mouse
   pointer (perspective 900px, 6 degrees at most on the phone and 3 on the price card, eased, reset on
@@ -197,8 +200,8 @@ one copy of three.js).
 - Web scroll reveal: the Nutrition split copy rises in once (the `rise` keyframes, 80ms stagger),
   and the phone and price card settle in from a slight tilt; only what starts below the fold is
   held back. Everything else that moves with the page is scroll-linked (below).
-- The hero dumbbell loop is the only time-driven motion; the other 3D objects move with the scroll
-  and only bob a few pixels while on screen. See 3D.
+- The world dumbbell's bob (about 6px, 6s) is the only time-driven motion; every other 3D object
+  moves with the scroll and only bobs a few pixels while on screen. See 3D and Scroll story.
 - `prefers-reduced-motion` (web) and Reduce Motion (app) turn all of it off, every 3D object
   included (the still posters show).
 
@@ -217,9 +220,7 @@ Each section moves its own way, never the same fade-up twice:
 
 - Scroll progress: a 2px line under the nav. Stone at 35% for the page so far, green for the part
   of the current section already read.
-- Hero: as it leaves, the tagline and headline lines part (the top line fastest) and each fades only
-  as it nears the nav. The pillars, when they start below the fold (phones), come up from below
-  faster than the copy, one by one; on wide screens they rest and then lead the copy off the top.
+- Scroll story: see the section below.
 - Key headings (How it works, Features, Pricing, About, the final call; not every heading): word by
   word, each word rises out of its own mask with a 4-degree settle as the heading crosses the lower
   third of the screen.
@@ -240,6 +241,44 @@ Each section moves its own way, never the same fade-up twice:
   under a pinned status bar and tab bar, as if in use.
 - Final call: a Deep Black panel opens from a rounded card (scale 0.96, 24px corners) inside a band
   of `#121212` to full bleed as the section arrives. The copy itself never scales.
+
+## Scroll story (web, top of the page)
+
+Owner request, 2026-10-08, modelled on a reference video: three pinned chapters replace the old hero.
+Each chapter is tall (300, 400 and 250vh) and its content pins one screen high (`svh`) while the
+scroll scrubs it. Progress p runs 0 to 1 across the pinned scroll; the inline scroll loop and the 3D
+engine compute it the same way and ease toward it at the same rate, so words and objects move
+together, and scrolling back plays everything backwards. Native touch scroll, no hijacking.
+
+1. Green world (`#home`): the one full-bleed Built Green surface on the site. The dumbbell (ink
+   collars here: satin `#111` metal, the B marks stay green) turns 1.25 times across the chapter
+   over a soft contact shadow. Behind it, three headlines in Sora 800 caps swap at p 0.33 and 0.66
+   with a blur-stretch (blur 16px, scaleY 1.45, 8% slide). Text on green is Deep Black; buttons on
+   green are ink pills (`.btn-ink`: Deep Black, white label); the scroll cue's fill is p. The nav is
+   always solid Deep Black so the white wordmark and the green B read over the green.
+2. Exploded view (`#inside`, Deep Black): the dumbbell turns to three-quarters, then comes apart
+   along its bar (slices outer first, collars spin out, the grip drops back, the B medallion floats
+   forward to face the viewer) and holds, drifting 15 degrees. Five labels, one real feature each,
+   reveal in turn; from 1200px they sit in two columns with a 1px Stone leader to their part and a
+   small green dot on it, below that in a row above and a row below the object, and on phones they
+   become a numbered list under it with the current part lit and its line shown. Title in Sora Light.
+3. More than an app (`#more`): one plate flips from edge-on to face the viewer while the key light
+   sweeps across it (that slot's draw only). The caption and paragraph blur away, then "Powered by
+   AI." types in letter by letter from a blur, and the plate settles under it.
+
+Recorded exceptions to the rules above, scoped to the story only:
+
+- Motion dial 8/10 here (pinning, blur-stretch swaps, letter reveal); the rest of the page stays at 6.
+- Blur is allowed as a transition state only (headline swaps, label and letter reveals, the caption
+  leaving), never at rest: the filter is cleared outside each window.
+- Chapter 3 carries the site's one gradient: Deep Black to Carbon (ending in the band colour so it
+  meets How it works without a seam), with a green glow at 6% alpha at most.
+- Sora 800 for the world headlines only.
+- Full-bleed green for chapter 1 only.
+
+Fallbacks: without WebGL2 or with Save-Data the chapters still pin and the posters get a light CSS
+scrub (a rotate, a fake flip). With reduced motion or no script the chapters are plain sections:
+every headline, label and line shown, the posters in place, no engine.
 
 ## App screens (deck page 6)
 

@@ -23,12 +23,12 @@
   <meta name="twitter:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <link rel="icon" href="assets/img/favicon.svg?v=built1" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png?v=built1">
-  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" imagesizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/story/world-640.webp 640w, assets/img/story/world.webp 1200w" imagesizes="(max-width: 620px) 100vw, min(100vw, calc(100vh - 204px))" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap"></noscript>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap"></noscript>
   <style>
     /* ============================================================
        BUILT: marketing site. Flat ink on deep black, one green.
@@ -215,45 +215,6 @@
     .mobile-menu__foot { margin-top: auto; display: grid; gap: 12px; padding-top: 32px; }
     body.menu-open { overflow: hidden; }
 
-    /* ---------- Hero ---------- */
-    .hero {
-      position: relative; overflow: hidden;
-      min-height: min(100svh, 920px);
-      display: flex; align-items: center;
-      padding-top: calc(var(--nav-h) + clamp(40px, 7vh, 88px));
-      padding-bottom: clamp(56px, 8vw, 104px);
-    }
-    /* The 3D dumbbell and its still poster share one square composition, fitted like
-       object-fit: contain and aligned by --ax / --ay, so the canvas lands exactly on the poster. */
-    .hero__media {
-      --ax: 0.5; --ay: 0.46;
-      --m-left: 0.3; --m-bottom: 0.28; /* the same mask, applied to the live drawing by the 3D engine */
-      position: absolute; top: 0; right: 0; bottom: 0; width: min(58%, 900px);
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%), linear-gradient(180deg, #000 72%, transparent 100%);
-      -webkit-mask-composite: source-in;
-      mask-image: linear-gradient(90deg, transparent 0%, #000 30%), linear-gradient(180deg, #000 72%, transparent 100%);
-      mask-composite: intersect;
-    }
-    .hero__poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
-    .hero__media.is-3d-live .hero__poster { visibility: hidden; }
-    .hero__inner { position: relative; z-index: 1; }
-    .hero__copy { max-width: min(600px, 54%); }
-    .hero__copy .hero__tag { margin: 0 0 20px; font-size: 0.875rem; }
-    .hero__copy .lead { margin-top: 24px; max-width: 34em; }
-    .hero__copy .lead b { color: var(--white); font-weight: 600; }
-    .hero__copy .actions { margin-top: 32px; }
-    .pillars {
-      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 24px;
-      margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--line-strong);
-    }
-    .pillar { position: relative; display: grid; justify-items: start; gap: 12px; }
-    .pillar .ico { width: 32px; height: 32px; color: var(--white); }
-    .pillar span { font-size: 0.875rem; font-weight: 500; line-height: 1.3; letter-spacing: 0.06em; text-transform: uppercase; }
-    /* The deck splits body (Train, Nutrition) from mind (AI Coach, Progress) with one hairline. */
-    .pillar:nth-child(3)::before { content: ''; position: absolute; left: -12px; top: 2px; bottom: 2px; width: 1px; background: var(--line-strong); }
-
-    .js .hero__copy > * { animation: rise var(--t-slow) var(--ease-quart) both; animation-delay: calc(var(--d, 0) * 70ms + 80ms); }
-    /* No entrance on the hero media: the poster is the LCP image and must paint at once. */
     @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
     @keyframes tilt-in { from { opacity: 0; transform: perspective(900px) rotateX(6deg) translateY(16px); } to { opacity: 1; transform: perspective(900px); } }
 
@@ -618,19 +579,6 @@
       .nav__links, .nav__actions .btn { display: none; }
       .nav__burger { display: block; }
 
-      .hero { display: block; min-height: 0; padding-top: var(--nav-h); }
-      /* Dumbbell first, but short enough that the headline sits under it and the
-         primary button lands on the first screen at 360x640. */
-      .hero__media {
-        --ax: 0.5; --ay: 0.5;
-        --m-left: 0; --m-bottom: 0.3;
-        position: relative; width: auto; height: min(84vw, 40vh); height: min(84vw, 40svh);
-        -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
-        mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
-      }
-      .hero__inner { margin-top: -56px; }
-      .hero__copy { max-width: 620px; }
-
       .split, .price-wrap, .about-grid, .contact-grid, .dash { grid-template-columns: minmax(0, 1fr); }
       .split--reverse .split__media { order: 0; }
       .feature-group { grid-template-columns: minmax(0, 1fr); padding-block: 32px; }
@@ -667,18 +615,10 @@
       .feature-more > summary:active { color: var(--green); }
       .feature-more[open] > summary { margin-bottom: 12px; }
       .feature-more[open] > summary .ico { transform: rotate(-90deg); }
-      .hero__copy .actions .btn, .split .actions .btn { flex: 1 1 100%; }
-      .hero__copy .hero__tag { margin-bottom: 12px; font-size: 0.8125rem; }
-      .hero__copy .lead { margin-top: 16px; line-height: 1.55; }
-      .hero__copy .actions { margin-top: 20px; }
+      .split .actions .btn { flex: 1 1 100%; }
       .feature p, .step-list li, .tl-body span, .ex__meta span, .ex__meta b, .workout__head p, .workout__foot,
       .shortcut small, .fine, .price-note, .disclaimer, .notice, .form__small, .field__err,
       .footer__brand p, .footer__links a, .footer__bottom { font-size: 1rem; }
-      .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; margin-top: 32px; padding-top: 4px; }
-      .pillar { display: flex; align-items: center; gap: 12px; min-height: 60px; }
-      .pillar .ico { width: 28px; height: 28px; }
-      .pillar:nth-child(3)::before { display: none; }
-      .pillar:nth-child(n+3) { border-top: 1px solid var(--line-strong); }
       .footer__top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .tl-item { flex-direction: column; gap: 2px; }
       .tl-time { width: auto; }
@@ -788,9 +728,6 @@
     .scrollbar__all { background: var(--stone); opacity: 0.35; }
     .scrollbar__now { background: var(--green); }
 
-    /* Hero: the headline's lines part and fade as it leaves; the pillars come up from below */
-    .fx .hero__tag > span, .fx .hw { display: inline-block; }
-
     /* Key headings: each word rises out of its own mask */
     .fx .wm { display: inline-block; clip-path: inset(-0.12em -0.3em -0.22em -0.3em); }
     .fx .wm__i { display: inline-block; transform-origin: 0 100%; transform: translate3d(0, 115%, 0); }
@@ -847,16 +784,182 @@
 
     @media (prefers-reduced-motion: reduce) {
       .scrollbar, .final__panel { display: none !important; }
-      .wm__i, .hw, .feature, .kinetic__row, .switcher, .screen > *, .odo__strip, .draw-ul > i, .spark i, .hero__tag > span, .pillar { transform: none !important; opacity: 1 !important; }
+      .wm__i, .feature, .kinetic__row, .switcher, .screen > *, .odo__strip, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
+    }
+
+    /* ---------- Scroll story (DESIGN.md, "Scroll story") ----------
+       Three chapters open the page. With motion (.fx) each chapter is tall and its content pins
+       (a sticky box one screen high) while the scroll loop and the 3D engine scrub everything by
+       the chapter's progress, so scrolling back plays it backwards. Without .fx (reduced motion,
+       no script) the same content stands as three plain sections, every word shown, posters in
+       place. Blur appears only inside a transition, never at rest. */
+    .nav { background: var(--black); border-bottom-color: var(--line); } /* solid over the green world, so the white wordmark and the B read */
+    .btn-ink { background: var(--black); color: var(--white); }
+    .btn-ink:hover { background: var(--carbon); }
+    .ch { position: relative; overflow-x: clip; }
+    .ch__pin { position: relative; }
+
+    /* Chapter 1: the green world, the page's one full-bleed green surface. Text on it is Deep Black. */
+    .ch--world { background: var(--green); color: var(--black); }
+    .ch--world ::selection { background: var(--black); color: var(--green); }
+    .ch--world :focus-visible { outline-color: var(--black); }
+    .ch--world .ch__pin { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; padding-top: calc(var(--nav-h) + 32px); }
+    .world__h {
+      font-weight: 800; text-transform: uppercase; line-height: 0.86; letter-spacing: -0.03em; text-wrap: balance;
+      font-size: clamp(2.5rem, 1.2rem + 7vw, 7rem); padding-inline: var(--gutter); text-align: center;
+    }
+    .world__line { display: block; }
+    .world__line + .world__line { margin-top: 0.14em; }
+    .world__slot { flex: 1 0 auto; height: min(84vw, 44svh); }
+    .world__foot { display: flex; align-items: center; gap: 16px 32px; padding-block: 24px max(32px, env(safe-area-inset-bottom)); }
+    .world__lead { max-width: 34ch; font-size: 1.0625rem; font-weight: 500; line-height: 1.5; }
+    .world__cue { display: none; }
+    .world__cue i { position: relative; width: 72px; height: 2px; border-radius: 2px; background: rgba(8, 8, 8, 0.2); overflow: hidden; }
+    .world__cue b { position: absolute; inset: 0; background: var(--black); transform-origin: 0 50%; transform: scaleX(0); }
+
+    /* Chapter 2: the exploded view on Deep Black. Each label names a part and the feature it stands for. */
+    .ch--explode { background: var(--black); }
+    .ch--explode .ch__pin {
+      display: grid; gap: 32px; max-width: var(--container); margin-inline: auto;
+      padding: calc(var(--nav-h) + 48px) var(--gutter) 64px;
+    }
+    .explode__copy { order: -1; }
+    .explode__slot { height: min(56vw, 60svh); }
+    .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px 32px; counter-reset: part; }
+    .part { position: relative; display: grid; align-content: start; gap: 4px; counter-increment: part; }
+    .part::before { content: counter(part, decimal-leading-zero); font-family: var(--font-display); font-size: 0.8125rem; font-weight: 600; color: var(--faint); }
+    .part b { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 600; line-height: 1.3; }
+    .part span { font-size: 0.9375rem; line-height: 1.5; color: var(--muted); }
+    .explode__title { font-weight: 300; font-size: clamp(2.25rem, 1.4rem + 3vw, 3.75rem); line-height: 1.04; }
+    .explode__copy p { margin-top: 14px; max-width: 36ch; color: var(--stone); }
+    .explode__copy .btn { margin-top: 28px; }
+    /* a 1px Stone line from the label to its part, a small green dot on the part; drawn only over the
+       live 3D (the engine writes --lx, --ly, --len and --ang every frame) */
+    .leader { display: none; position: absolute; left: var(--lx, 0); top: var(--ly, 0); width: var(--len, 0); height: 1px; background: rgba(233, 233, 233, 0.55); transform-origin: 0 50%; transform: rotate(var(--ang, 0deg)); pointer-events: none; }
+    .leader::after { content: ''; position: absolute; right: -4px; top: -3.5px; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--black); }
+
+    /* Chapter 3: more than an app. Deep Black to Carbon with a faint green glow (DESIGN.md exception). */
+    .ch--more { background: var(--black); }
+    .ch--more .ch__pin {
+      display: grid; justify-items: center; gap: 24px; text-align: center;
+      padding: calc(var(--nav-h) + 48px) var(--gutter) 72px;
+      background:
+        radial-gradient(ellipse 46% 38% at 50% 58%, rgba(163, 255, 61, 0.06), transparent 70%),
+        linear-gradient(180deg, var(--black) 0%, var(--carbon) 72%, var(--band) 100%);
+    }
+    .more__cap { max-width: 13ch; font-family: var(--font-display); font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem); font-weight: 700; line-height: 1.1; text-transform: uppercase; }
+    .more__para { order: 2; max-width: 32ch; color: var(--stone); text-wrap: pretty; }
+    .more__word { order: 3; font-size: clamp(2.75rem, 1.5rem + 5vw, 6rem); font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+    .more__word .nw, .more__word .lw { white-space: nowrap; }
+    .more__word .lt { display: inline-block; }
+    .more__slot { order: 1; width: min(100%, 420px); aspect-ratio: 1; }
+
+    /* Motion allowed: tall chapters, content pinned one screen high */
+    .fx .ch--world { height: 300vh; }
+    .fx .ch--explode { height: 400vh; }
+    .fx .ch--more { height: 250vh; }
+    .fx .ch__pin { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; overflow: clip; }
+
+    .fx .ch--world .ch__pin { --foot: 132px; display: block; min-height: 0; padding: 0; }
+    .fx .world__h { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: var(--foot); display: grid; place-content: center; font-size: clamp(5rem, 12.5vw, 15rem); }
+    .fx .world__line { grid-area: 1 / 1; margin: 0; transform-origin: 50% 50%; }
+    .fx .world__line + .world__line { opacity: 0; }
+    .fx .ch--world.is-live .world__line { will-change: transform, opacity, filter; }
+    .fx .world__slot { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: var(--foot); height: auto; }
+    .fx .world__foot { position: absolute; left: 0; right: 0; bottom: 0; min-height: var(--foot); align-items: flex-end; padding-block: 0 36px; }
+    .fx .world__cue { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; min-height: 56px; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; }
+
+    .fx .ch--explode .ch__pin { z-index: 2; display: block; max-width: none; margin: 0; padding: 0; } /* labels and leaders sit over the live drawing */
+    .fx .explode__slot { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: 0; height: auto; }
+    /* wide screens: a column of labels either side of the object, stacked from the nav down so the
+       left column always clears the title block under it */
+    .fx .parts {
+      position: absolute; top: calc(var(--nav-h) + 3svh); left: var(--gutter); right: var(--gutter);
+      display: grid; grid-template-columns: clamp(220px, 19vw, 280px) minmax(0, 1fr) clamp(220px, 19vw, 280px);
+      align-items: start; gap: 18px 24px;
+    }
+    .fx .part { opacity: 0; }
+    .fx .part[data-anchor='head-l'] { grid-area: 1 / 1; }
+    .fx .part[data-anchor='collar-l'] { grid-area: 2 / 1; }
+    .fx .part[data-anchor='grip'] { grid-area: 3 / 1; }
+    .fx .part[data-anchor='mark'] { grid-area: 1 / 3; }
+    .fx .part[data-anchor='head-r'] { grid-area: 3 / 3; }
+    .fx .explode__slot.is-3d-live ~ .parts .leader { display: block; }
+    .fx .explode__copy { position: absolute; left: var(--gutter); bottom: 40px; max-width: 480px; }
+    .fx .explode__copy .btn { margin-top: 24px; }
+    .fx .explode__title { font-size: clamp(2.25rem, 1.2rem + 2.4vw, 3.5rem); }
+
+    .fx .ch--more .ch__pin { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: var(--nav-h) var(--gutter) 0; text-align: left; }
+    .fx .more__cap { max-width: 12ch; }
+    .fx .more__para { max-width: 28ch; }
+    /* --plate is the plate's box; the word sits just above the plate, wherever the plate lands */
+    .fx .ch--more .ch__pin { --plate: min(62svh, 46vw); }
+    .fx .more__word { position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(50% + var(--plate) * 0.34); text-align: center; }
+    .fx .more__word .lt { opacity: 0; }
+    .fx .more__slot { position: absolute; left: 50%; top: 50%; width: var(--plate); height: var(--plate); transform: translate(-50%, -44%); }
+
+    @media (max-width: 1199px) {
+      /* tablets and small laptops: labels in a row above the object and a row below it */
+      .fx .ch--explode .ch__pin { display: flex; flex-direction: column; padding: calc(var(--nav-h) + 20px) var(--gutter) 28px; }
+      .fx .parts {
+        position: relative; inset: auto; flex: 1 1 auto; display: grid; gap: 16px 24px;
+        grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-areas: 'a b c' '. . .' 'd e .';
+      }
+      .fx .explode__slot { top: calc(var(--nav-h) + 120px); bottom: 340px; } /* between the two label rows */
+      .fx .part[data-anchor='head-l'] { grid-area: a; }
+      .fx .part[data-anchor='head-r'] { grid-area: b; }
+      .fx .part[data-anchor='mark'] { grid-area: c; }
+      .fx .part[data-anchor='collar-l'] { grid-area: d; }
+      .fx .part[data-anchor='grip'] { grid-area: e; }
+      .fx .explode__copy { order: 0; position: relative; left: auto; bottom: auto; margin-top: 24px; }
+    }
+
+    @media (max-width: 940px) {
+      /* the headline takes the top, the dumbbell sits lower and overlaps its last line */
+      .fx .world__h { place-content: start center; padding-top: clamp(16px, 4svh, 40px); font-size: min(18.5vw, 24svh); }
+      .fx .world__slot { --ay: 0.82; left: 8vw; right: 8vw; }
+
+      /* phones and tablets: caption over the plate, paragraph under it; the word then takes the caption's place */
+      .fx .ch--more .ch__pin { --plate: min(100vw, 52svh); display: block; padding: 0; text-align: center; }
+      .fx .more__cap { position: absolute; left: var(--gutter); right: var(--gutter); bottom: calc(50% + var(--plate) * 0.36); max-width: none; }
+      .fx .more__para { position: absolute; left: 0; right: 0; top: calc(50% + var(--plate) * 0.5); max-width: 34ch; margin-inline: auto; padding-inline: var(--gutter); box-sizing: content-box; }
+    }
+
+    @media (max-width: 620px) {
+      .world__foot .btn { width: 100%; }
+      .fx .ch--world .ch__pin { --foot: 220px; }
+      .fx .world__slot { left: 0; right: 0; }
+      .fx .world__foot { flex-direction: column; align-items: stretch; gap: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      .fx .world__cue { margin: 0 auto; min-height: 24px; }
+      .world__foot { flex-direction: column; align-items: stretch; }
+
+      /* phones: the object stands in the upper half, the labels become a numbered list under it,
+         the current part lit and its line shown beneath the list; no leaders */
+      .fx .ch--explode .ch__pin { padding: calc(var(--nav-h) + 4px) var(--gutter) max(20px, env(safe-area-inset-bottom)); }
+      .fx .explode__slot { position: relative; inset: auto; flex: 1 1 0; min-height: 150px; }
+      .fx .parts { flex: none; display: block; margin-top: 4px; padding-bottom: 60px; }
+      .fx .parts .part { position: static; display: flex; align-items: baseline; gap: 12px; min-height: 32px; opacity: 0.45; }
+      .fx .part b { font-size: 1rem; }
+      .fx .part span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 1rem; color: var(--stone); opacity: 0; }
+      .fx .explode__slot.is-3d-live ~ .parts .leader { display: none; }
+      .fx .explode__copy { margin-top: 16px; }
+      .part span { font-size: 1rem; }
+      .explode__title, .fx .explode__title { font-size: 1.75rem; }
+      .explode__copy .btn { width: 100%; margin-top: 20px; }
     }
 
     @media print {
       .stage3d { display: none !important; }
-      .nav, .mobile-menu, .hero__media, .switcher__bar { display: none !important; }
+      .nav, .mobile-menu, .slot3d, .switcher__bar, .world__cue, .leader { display: none !important; }
       body { background: #fff; color: #000; }
     }
   </style>
-  <script>document.documentElement.classList.replace('no-js', 'js');</script>
+  <script>
+    document.documentElement.classList.replace('no-js', 'js');
+    // motion allowed: the scroll story pins from the first paint, so the layout never jumps
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('fx');
+  </script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -959,26 +1062,58 @@
 
 <main id="main">
 
-  <!-- ===== Hero (deck page 5) ===== -->
-  <section class="hero" id="home" aria-labelledby="hero-title">
-    <div class="hero__media" data-3d="hero" data-3d-track="#home">
-      <img class="hero__poster" src="assets/img/dumbbell-hero.webp?v=2" srcset="assets/img/dumbbell-hero-640.webp?v=2 640w, assets/img/dumbbell-hero.webp?v=2 1200w" sizes="(max-width: 940px) min(84vw, 40vh), min(58vw, 900px)" width="1200" height="1200" alt="A black hex dumbbell with green collars and the green BUILT B on its end, floating in a dark studio" fetchpriority="high">
+  <!-- ===== Scroll story: three pinned chapters (DESIGN.md, "Scroll story") ===== -->
+  <!-- Chapter 1, the green world: the dumbbell turns while the headlines swap behind it -->
+  <section class="ch ch--world" id="home" data-story="world" aria-labelledby="world-title">
+    <div class="ch__pin">
+      <h1 class="world__h" id="world-title">
+        <span class="world__line">Train with a plan</span>
+        <span class="world__line">Eat with a plan</span>
+        <span class="world__line">Built around you</span>
+      </h1>
+      <div class="slot3d world__slot" data-3d="story-world" data-3d-track="#home" data-3d-scrub aria-hidden="true">
+        <img src="assets/img/story/world.webp" srcset="assets/img/story/world-640.webp 640w, assets/img/story/world.webp 1200w" sizes="(max-width: 620px) 100vw, min(100vw, calc(100vh - 204px))" width="1200" height="1200" alt="" fetchpriority="high">
+      </div>
+      <div class="container world__foot">
+        <p class="world__lead">An all-in-one fitness and nutrition platform powered by AI coaching.</p>
+        <a class="btn btn-ink btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        <span class="world__cue" aria-hidden="true">Scroll <i><b></b></i></span>
+      </div>
     </div>
-    <div class="container hero__inner">
-      <div class="hero__copy">
-        <p class="tagline hero__tag" style="--d:0"><span>Build your best.</span></p>
-        <h1 class="display" id="hero-title" style="--d:0">Train. Fuel. <span class="hl">Become.</span></h1>
-        <p class="lead" style="--d:1">An all-in-one fitness and nutrition platform powered by AI coaching. Built to help you <b>train, fuel, and become</b> a stronger, healthier, better you.</p>
-        <div class="actions" style="--d:2">
-          <a class="btn btn-primary btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
-          <a class="btn btn-secondary btn-lg" href="#how">See how it works</a>
-        </div>
-        <ul class="pillars" style="--d:3" aria-label="The four pillars of BUILT">
-          <li class="pillar"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg><span>Train</span></li>
-          <li class="pillar"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg><span>Nutrition</span></li>
-          <li class="pillar"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg><span>AI Coach</span></li>
-          <li class="pillar"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg><span>Progress</span></li>
-        </ul>
+  </section>
+
+  <!-- Chapter 2, the exploded view: the dumbbell comes apart, each part names a feature -->
+  <section class="ch ch--explode" id="inside" data-story="explode" aria-labelledby="explode-title">
+    <div class="ch__pin">
+      <div class="slot3d explode__slot" data-3d="story-exploded" data-3d-track="#inside" data-3d-scrub data-3d-anchors="#inside [data-anchor]" aria-hidden="true">
+        <picture>
+          <source media="(max-width: 620px)" srcset="assets/img/story/exploded-sm.webp" width="720" height="720">
+          <img src="assets/img/story/exploded.webp" alt="" width="1600" height="900" loading="lazy" decoding="async">
+        </picture>
+      </div>
+      <ol class="parts" aria-label="What each part of BUILT does">
+        <li class="part" data-anchor="head-l" data-at="0.18"><b>AI training plan</b> <span>A weekly plan from your goal, your days and your equipment.</span><i class="leader" aria-hidden="true"></i></li>
+        <li class="part" data-anchor="head-r" data-at="0.26"><b>AI meal plan</b> <span>Daily meals around your diet and allergies. Swap any of them.</span><i class="leader" aria-hidden="true"></i></li>
+        <li class="part" data-anchor="collar-l" data-at="0.34"><b>Food photo scan</b> <span>Snap a plate. Get calories, protein, carbs and fat.</span><i class="leader" aria-hidden="true"></i></li>
+        <li class="part" data-anchor="mark" data-at="0.42"><b>AI coach</b> <span>A chat that knows your plan and remembers what you tell it.</span><i class="leader" aria-hidden="true"></i></li>
+        <li class="part" data-anchor="grip" data-at="0.5"><b>Check-ins</b> <span>Weekly weigh-ins and monthly reviews that adjust the plan.</span><i class="leader" aria-hidden="true"></i></li>
+      </ol>
+      <div class="explode__copy">
+        <h2 class="explode__title" id="explode-title">Every part, built for you.</h2>
+        <p>Five tools in one app, each one shaped by your goal.</p>
+        <a class="btn btn-primary btn-lg" href="#how">See how it works <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter 3, more than an app: one plate flips to the light, then the word types in -->
+  <section class="ch ch--more" id="more" data-story="more" aria-labelledby="more-word">
+    <div class="ch__pin">
+      <p class="more__cap">Isn&rsquo;t just a workout app.</p>
+      <p class="more__para">BUILT plans your training and your meals, reads your food photos and checks in with you every week. One coach that knows your whole day.</p>
+      <h2 class="more__word" id="more-word">Powered by <span class="nw"><span class="hl">AI</span>.</span></h2>
+      <div class="slot3d more__slot" data-3d="story-plate" data-3d-track="#more" data-3d-scrub aria-hidden="true">
+        <img src="assets/img/story/plate.webp" srcset="assets/img/story/plate-480.webp 480w, assets/img/story/plate.webp 800w" sizes="(max-width: 620px) 100vw, min(62vh, 46vw)" alt="" width="800" height="800" loading="lazy" decoding="async">
       </div>
     </div>
   </section>
@@ -1768,6 +1903,8 @@
     var fx = []; // { measure(), update(now) -> true while it needs another frame }
     var motion = !reduceMotion;
     if (motion) docEl.classList.add('fx');
+    // set once it is clear the 3D engine will not draw: the story's posters then get a light CSS scrub
+    var posterScrub = false;
     var clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
     var outCubic = function (t) { return 1 - Math.pow(1 - t, 3); };
     var docTop = function (el) { var y = 0; while (el) { y += el.offsetTop; el = el.offsetParent; } return y; };
@@ -1925,53 +2062,140 @@
         });
       }
 
-      /* Hero: as it scrolls away the headline's lines part (the top line fastest) and fade; the
-         pillars, when they start below the fold, come up from below faster than the copy, then
-         lead it off the top */
-      var hero = $('#home'), h1 = $('#hero-title'), heroTag = $('.hero__tag > span');
-      if (hero && h1) {
-        var hWords = splitWords(h1, 'hw');
-        var pillars = $$('.pillar', hero).map(function (el) { return { el: el, top: 0 }; });
-        var hGroups = [], hTop = 0, hH = 0, heroEnd = 0, pilEnter = false, hNav = 0;
+      /* Scroll story: three pinned chapters. A chapter's progress p runs from 0, as its top meets the
+         top of the screen, to 1, as its bottom meets the bottom: the same formula the 3D engine uses,
+         eased toward the scroll at the engine's rate, so the words and the objects move together.
+         Every value below is a function of p, so scrolling back plays it backwards. Blur is only
+         ever set inside a transition; at rest the filter is cleared. */
+      var smooth = function (t) { return t * t * (3 - 2 * t); };
+      var win = function (a, b, v) { return clamp01((v - a) / (b - a)); };
+      var blur = function (v) { return v > 0.02 ? 'blur(' + v.toFixed(2) + 'px)' : ''; };
+      var chapters = $$('[data-story]').map(function (el) { return { el: el, kind: el.dataset.story, top: 0, h: 0, u: null, last: 0, live: null }; });
+      var chapterStep = function (c, now) {
+        var target = (V.y - c.top) / Math.max(1, c.h - V.h);
+        var dt = c.last ? Math.min((now - c.last) / 1000, 0.05) : 0.016;
+        c.last = now;
+        if (c.u === null || Math.abs(target - c.u) > 2) c.u = target; // a jump (a link, a reload) lands at once
+        else c.u += (target - c.u) * (1 - Math.exp(-dt * 9));
+        if (Math.abs(target - c.u) < 0.0004) c.u = target;
+        var live = V.y + V.h > c.top && V.y < c.top + c.h;
+        if (live !== c.live) { c.live = live; c.el.classList.toggle('is-live', live); }
+        return c.u !== target;
+      };
+
+      // a line of the green world's headline: a = 0 at rest, 1 gone; dir -1 leaves upward, +1 arrives from below
+      var swapLine = function (el, a, dir) {
+        if (a <= 0) { put(el, 'opacity', '1'); put(el, 'filter', ''); put(el, 'transform', ''); return; }
+        put(el, 'opacity', a >= 1 ? '0' : (1 - a).toFixed(3));
+        put(el, 'filter', a >= 1 ? '' : blur(16 * a));
+        put(el, 'transform', a >= 1 ? '' : 'translate3d(0,' + (dir * 8 * a).toFixed(2) + '%,0) scale(' + (1 - 0.03 * a).toFixed(4) + ',' + (1 + 0.45 * a).toFixed(4) + ')');
+      };
+      // split a heading into letters, kept whole per word; the heading keeps its text as its name
+      var splitLetters = function (el) {
+        var out = [];
+        el.setAttribute('aria-label', el.textContent.replace(/\s+/g, ' ').trim());
+        (function walk(node) {
+          Array.prototype.slice.call(node.childNodes).forEach(function (n) {
+            if (n.nodeType === 1) { walk(n); return; }
+            if (n.nodeType !== 3) return;
+            var frag = document.createDocumentFragment();
+            n.textContent.split(/(\s+)/).forEach(function (part) {
+              if (!part) return;
+              if (!part.trim()) { frag.appendChild(document.createTextNode(' ')); return; }
+              var w = document.createElement('span');
+              w.className = 'lw';
+              w.setAttribute('aria-hidden', 'true');
+              part.split('').forEach(function (ch) {
+                var l = document.createElement('span');
+                l.className = 'lt';
+                l.textContent = ch;
+                w.appendChild(l);
+                out.push(l);
+              });
+              frag.appendChild(w);
+            });
+            node.replaceChild(frag, n);
+          });
+        })(el);
+        return out;
+      };
+
+      chapters.forEach(function (c) {
+        var el = c.el, step;
+        if (c.kind === 'world') {
+          var lines = $$('.world__line', el), cue = $('.world__cue b', el), wPoster = $('.world__slot img', el);
+          step = function () {
+            var p = clamp01(c.u);
+            // the lines swap at p = 0.33 and 0.66, each over a tenth of the chapter
+            swapLine(lines[0], smooth(win(0.28, 0.35, p)), -1);
+            swapLine(lines[1], p < 0.5 ? 1 - smooth(win(0.31, 0.38, p)) : smooth(win(0.61, 0.68, p)), p < 0.5 ? 1 : -1);
+            swapLine(lines[2], 1 - smooth(win(0.64, 0.71, p)), 1);
+            if (cue) put(cue, 'transform', 'scaleX(' + p.toFixed(4) + ')');
+            if (posterScrub && wPoster) put(wPoster, 'transform', 'rotate(' + (-8 + 16 * p).toFixed(2) + 'deg)');
+          };
+        } else if (c.kind === 'explode') {
+          var parts = $$('.part', el).map(function (li) { return { el: li, at: parseFloat(li.getAttribute('data-at')) || 0, line: $('span', li) }; });
+          step = function () {
+            var p = clamp01(c.u), phone = V.w <= 620, cur = -1;
+            parts.forEach(function (pt, i) { if (p >= pt.at) cur = i; });
+            parts.forEach(function (pt, i) {
+              var k = outCubic(clamp01((p - pt.at) / 0.08));
+              if (phone) {
+                // a numbered list: every row readable, the current part lit and its line shown
+                var lit = i === cur ? k : 0;
+                put(pt.el, 'opacity', (0.45 + 0.55 * lit).toFixed(3));
+                put(pt.el, 'transform', '');
+                put(pt.el, 'filter', '');
+                put(pt.line, 'opacity', lit.toFixed(3));
+                put(pt.line, 'transform', lit < 1 ? px(8 * (1 - lit)) : '');
+              } else {
+                put(pt.el, 'opacity', k >= 1 ? '1' : k.toFixed(3));
+                put(pt.el, 'transform', k >= 1 ? '' : px(12 * (1 - k)));
+                put(pt.el, 'filter', k > 0 && k < 1 ? blur(6 * (1 - k)) : '');
+                put(pt.line, 'opacity', '');
+                put(pt.line, 'transform', '');
+              }
+            });
+          };
+        } else if (c.kind === 'more') {
+          var cap = $('.more__cap', el), para = $('.more__para', el), word = $('.more__word', el), mPoster = $('.more__slot img', el);
+          var letters = word ? splitLetters(word) : [];
+          step = function () {
+            var p = clamp01(c.u);
+            // caption and paragraph: in as the chapter arrives, held, then blurred away for the word
+            var inA = smooth(clamp01((c.u + 0.35) / 0.35)), outA = smooth(win(0.45, 0.55, p));
+            var o = inA * (1 - outA);
+            [cap, para].forEach(function (t, i) {
+              put(t, 'opacity', o >= 1 ? '' : o.toFixed(3));
+              put(t, 'filter', outA > 0 && outA < 1 ? blur(10 * outA) : '');
+              put(t, 'transform', inA < 1 ? px((1 - inA) * (i ? 28 : 16)) : '');
+            });
+            // the word types in letter by letter: each from a blur, a quarter of a line low
+            var n = letters.length;
+            letters.forEach(function (l, i) {
+              var k = outCubic(clamp01((p - (0.5 + (i / n) * 0.35)) / 0.1));
+              put(l, 'opacity', k >= 1 ? '1' : k.toFixed(3));
+              put(l, 'filter', k > 0 && k < 1 ? blur(14 * (1 - k)) : '');
+              put(l, 'transform', k >= 1 ? '' : 'translate3d(0,' + (0.25 * (1 - k)).toFixed(3) + 'em,0)');
+            });
+            if (posterScrub && mPoster) {
+              // no live drawing: the still plate fakes its flip and its drop
+              var f = smooth(win(0.05, 0.45, p)), d = smooth(win(0.5, 0.95, p)), sc = 1 - 0.2 * d;
+              put(mPoster, 'transform', 'translate3d(0,' + (9 * d).toFixed(2) + '%,0) scale(' + sc.toFixed(4) + ',' + (sc * (0.08 + 0.92 * f)).toFixed(4) + ')');
+            }
+          };
+        }
         fx.push({
-          measure: function () {
-            hTop = docTop(h1); hH = h1.offsetHeight; heroEnd = docTop(hero) + hero.offsetHeight;
-            // words sharing a line move together; lines are read from the layout, so any wrap works
-            var lines = [], lastTop = null;
-            hWords.forEach(function (w) {
-              if (lastTop === null || Math.abs(w.offsetTop - lastTop) > 4) { lines.push([]); lastTop = w.offsetTop; }
-              lines[lines.length - 1].push(w);
-            });
-            hGroups = (heroTag ? [[heroTag]] : []).concat(lines);
-            hGroups.forEach(function (g) { g.top = docTop(g[0]); });
-            hNav = nav.offsetHeight;
-            var bottom = 0;
-            pillars.forEach(function (p) { p.top = docTop(p.el); bottom = Math.max(bottom, p.top + p.el.offsetHeight); });
-            pilEnter = bottom > V.h; // only what starts below the fold is held back
-          },
-          update: function () {
-            if (V.y > heroEnd + V.h && hero._fxDone) return;
-            hero._fxDone = V.y > heroEnd + V.h;
-            var T0 = Math.min(hTop, V.h * 0.55);
-            var s = clamp01((T0 - (hTop - V.y)) / (T0 + hH * 0.6));
-            var N = hGroups.length;
-            hGroups.forEach(function (g, gi) {
-              var dy = -s * (20 + 34 * (N - 1 - gi)), tf = s ? px(dy) : '';
-              // a line stays fully readable until it nears the nav, then fades as it slides under
-              var o = clamp01((g.top + dy - V.y - hNav * 0.5) / (V.h * 0.14));
-              g.forEach(function (el) { put(el, 'transform', tf); put(el, 'opacity', o < 1 ? o.toFixed(3) : ''); });
-            });
-            pillars.forEach(function (p, i) {
-              var vt = p.top - V.y;
-              var e = pilEnter ? outCubic(clamp01((V.h * 0.98 - vt) / (V.h * 0.3) - i * 0.12)) : 1;
-              var x = clamp01((Math.min(p.top, V.h * 0.6) - vt) / (V.h * 0.6));
-              var dy = (1 - e) * 44 - x * 36;
-              put(p.el, 'transform', Math.abs(dy) > 0.05 ? px(dy) : '');
-              put(p.el, 'opacity', e < 1 ? (0.15 + 0.85 * e).toFixed(3) : '');
-            });
+          measure: function () { c.top = docTop(el); c.h = el.offsetHeight; },
+          update: function (now) {
+            var more = chapterStep(c, now);
+            // far from the screen: settle once at the nearest end, then skip
+            var near = c.u > -1.5 && c.u < 2.5;
+            if (near || c.parked !== (c.u < 0)) { c.parked = near ? null : c.u < 0; if (step) step(); }
+            return more;
           }
         });
-      }
+      });
 
       /* Key headings: word by word, each rises out of its mask as the heading crosses the lower third */
       var heads = $$('[data-words]').map(function (el) { return { el: el, top: 0, words: splitWords(el, 'wm') }; });
@@ -2320,7 +2544,9 @@
     // engine. The hero poster stays the LCP image; the engine only loads after the load event.
     var slots3d = $$('[data-3d]');
     var saveData = navigator.connection && navigator.connection.saveData;
-    if (slots3d.length && !reduceMotion && !saveData && 'IntersectionObserver' in window) {
+    var stills = function () { posterScrub = true; remeasure(); };
+    if (!(slots3d.length && !reduceMotion && !saveData && 'IntersectionObserver' in window)) stills();
+    else {
       var start3d = function () {
         // The capability probe is the context the engine draws with, so the page opens exactly one.
         var canvas = document.createElement('canvas');
@@ -2328,10 +2554,10 @@
         try {
           gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
         } catch (e) { gl = null; }
-        if (!gl) return;
-        import('./assets/js/site-3d.min.js?v=2').then(function (m) {
+        if (!gl) { stills(); return; }
+        import('./assets/js/site-3d.min.js?v=3').then(function (m) {
           m.mount({ canvas: canvas, context: gl, slots: slots3d });
-        }).catch(function () { /* the posters stay */ });
+        }).catch(stills); // the posters stay
       };
       var whenIdle = function () {
         if ('requestIdleCallback' in window) requestIdleCallback(start3d, { timeout: 2000 });

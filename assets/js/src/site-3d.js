@@ -23,7 +23,10 @@
  * exactly on top of the poster image that uses the same alignment.
  *
  * Motion: every pose is a function of the slot's scroll progress (0 when the slot's centre meets
- * the bottom of the viewport, 1 when it reaches the top), plus a tiny bob while in view. Scrolling back plays it backwards. The hero keeps its own slow ambient loop.
+ * the bottom of the viewport, 1 when it reaches the top), plus a tiny bob while in view. Scrolling back plays it backwards.
+ * Pinned slots (data-3d-scrub, the scroll story) take their progress across their chapter's pinned
+ * scroll instead, and a slot with data-3d-anchors gets leader lines aimed at points on its object.
+ * The hero slot (retired from the page, kept for its posters) has its own slow ambient loop.
  */
 import {
   ACESFilmicToneMapping,
@@ -50,6 +53,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   PMREMGenerator,
+  Quaternion,
   RepeatWrapping,
   Scene,
   ShaderMaterial,
@@ -306,8 +310,26 @@ function contactShadow(rt, w, d, y, opacity = 0.85) {
    Objects
    ============================================================ */
 
-/* ---------- the hero hex dumbbell, unchanged ---------- */
-function buildDumbbell() {
+/* ---------- the hex dumbbell ----------
+   buildDumbbell() is the hero dumbbell, unchanged. Options:
+     collar: 'green' (default) or 'ink' (satin near-black metal, for the green world where a green
+             collar would vanish into the page)
+     split:  true builds each head as three slices and puts the right head's B on a thin rubber
+             medallion, so the exploded view can take it apart
+   The group's userData.parts = { slices: [[outer, middle, inner] left, [..] right] (split only),
+   heads (whole heads, not split), collars: [left, right], grip (group: knurl and shoulders),
+   shoulders, medal (split only), marks } */
+function headProfile(len, R, cIn, cOut) {
+  // a hex slice along the lathe's Y axis: -len/2 is the inner end, +len/2 the outer end
+  const h = len / 2;
+  return [
+    new Vector2(0, -h), new Vector2(R - cIn, -h), new Vector2(R, -h + cIn),
+    new Vector2(R, h - cOut), new Vector2(R - cOut, h), new Vector2(0, h),
+  ];
+}
+
+function buildDumbbell(opts = {}) {
+  const { collar: collarKind = 'green', split = false } = opts;
   const dumbbell = new Group();
 
   const rubber = new MeshStandardMaterial({ color: 0x262626, roughness: 0.52, metalness: 0, flatShading: false, envMapIntensity: 1.1 });
@@ -317,16 +339,14 @@ function buildDumbbell() {
     bumpMap: knurl, bumpScale: 1.6, roughnessMap: knurl, envMapIntensity: 1.6,
   });
   const steelSmooth = new MeshStandardMaterial({ color: 0xd4d7db, metalness: 0.9, roughness: 0.3, envMapIntensity: 1.6 });
-  const green = M.green();
+  const collarMat = collarKind === 'ink'
+    ? new MeshStandardMaterial({ color: 0x111111, metalness: 0.6, roughness: 0.4, envMapIntensity: 1.2 })
+    : M.green();
   const mark = M.mark();
 
   // hex head: a 6-sided lathe with chamfered rims, axis along X
   const h = HEAD_L / 2, R = HEAD_R, c = CHAMFER;
-  const profile = [
-    new Vector2(0, -h), new Vector2(R - c, -h), new Vector2(R, -h + c),
-    new Vector2(R, h - c), new Vector2(R - c, h), new Vector2(0, h),
-  ];
-  const headGeo = new LatheGeometry(profile, 6, Math.PI / 6);
+  const headGeo = new LatheGeometry(headProfile(HEAD_L, R, c, c), 6, Math.PI / 6);
   headGeo.rotateZ(-Math.PI / 2);
 
   const markGeo = new ShapeGeometry(markShape(), 6);
@@ -334,33 +354,90 @@ function buildDumbbell() {
   markGeo.scale(markScale, markScale, 1);
   markGeo.rotateZ(-0.38); // undo the diagonal pose so the B stands upright in the first frame
 
+  const parts = { slices: [], heads: [], collars: [], shoulders: [], marks: [], grip: null, medal: null };
+
+  // split heads: three slices, the outer one carries the big chamfer, the cut faces a small one
+  const SL = HEAD_L / 3, cut = 0.022;
+  const sliceGeo = split ? [
+    new LatheGeometry(headProfile(SL, R, cut, c), 6, Math.PI / 6),   // outer
+    new LatheGeometry(headProfile(SL, R, cut, cut), 6, Math.PI / 6), // middle
+    new LatheGeometry(headProfile(SL, R, c, cut), 6, Math.PI / 6),   // inner
+  ] : null;
+  if (sliceGeo) sliceGeo.forEach((g) => g.rotateZ(-Math.PI / 2)); // lathe +Y becomes -X; flipped per side below
+
   for (const side of [-1, 1]) {
-    const head = new Mesh(headGeo, rubber);
-    head.position.x = side * HEAD_X;
-    dumbbell.add(head);
+    if (split) {
+      const row = [];
+      for (let i = 0; i < 3; i++) {
+        const slice = new Group();
+        const m = new Mesh(sliceGeo[i], rubber);
+        // rotateZ(-PI/2) sends the lathe's outer end to +X; the left side mirrors it
+        if (side < 0) m.rotation.y = Math.PI;
+        slice.add(m);
+        slice.position.x = side * (HEAD_X + h - SL / 2 - i * SL);
+        slice.userData.rest = slice.position.x;
+        dumbbell.add(slice);
+        row.push(slice);
+      }
+      parts.slices.push(row);
+      if (side < 0) {
+        const m = new Mesh(markGeo, mark);
+        m.rotation.y = side * Math.PI / 2;
+        m.position.x = side * (SL / 2 + 0.002);
+        row[0].add(m);
+        parts.marks.push(m);
+      } else {
+        // the medallion: the B on a thin rubber disc, flush on the right head's outer face
+        const medal = new Group();
+        const disc = new Mesh(new CylinderGeometry((R - c) * 0.8, (R - c) * 0.8, 0.04, 48), rubber);
+        disc.rotation.x = Math.PI / 2;
+        disc.position.z = -0.02;
+        medal.add(disc);
+        const m = new Mesh(markGeo, mark);
+        m.position.z = 0.002;
+        medal.add(m);
+        medal.rotation.y = Math.PI / 2;
+        medal.position.x = SL / 2 + 0.04;
+        row[0].add(medal);
+        parts.medal = medal;
+        parts.marks.push(m);
+      }
+    } else {
+      const head = new Mesh(headGeo, rubber);
+      head.position.x = side * HEAD_X;
+      dumbbell.add(head);
+      parts.heads.push(head);
 
-    // the B sits on the outer face, upright, reading correctly from outside
-    const m = new Mesh(markGeo, mark);
-    m.rotation.y = side * Math.PI / 2;
-    m.position.x = side * (HEAD_X + h + 0.002);
-    dumbbell.add(m);
+      // the B sits on the outer face, upright, reading correctly from outside
+      const m = new Mesh(markGeo, mark);
+      m.rotation.y = side * Math.PI / 2;
+      m.position.x = side * (HEAD_X + h + 0.002);
+      dumbbell.add(m);
+      parts.marks.push(m);
+    }
 
-    const collar = new Mesh(new CylinderGeometry(COLLAR_R, COLLAR_R, COLLAR_L, 40), green);
+    const collar = new Mesh(new CylinderGeometry(COLLAR_R, COLLAR_R, COLLAR_L, 40), collarMat);
     collar.rotation.z = Math.PI / 2;
     collar.position.x = side * (GRIP_L / 2 + COLLAR_L / 2);
+    collar.userData.rest = collar.position.x;
     dumbbell.add(collar);
+    parts.collars.push(collar);
 
     // short smooth shoulder of the bar between knurl and collar
     const shoulder = new Mesh(new CylinderGeometry(GRIP_R, GRIP_R, 0.12, 40), steelSmooth);
     shoulder.rotation.z = Math.PI / 2;
     shoulder.position.x = side * (GRIP_L / 2 - 0.06);
-    dumbbell.add(shoulder);
+    parts.shoulders.push(shoulder);
   }
 
   const grip = new Mesh(new CylinderGeometry(GRIP_R, GRIP_R, GRIP_L - 0.24, 48, 1, true), steel);
   grip.rotation.z = Math.PI / 2;
-  dumbbell.add(grip);
+  const gripGroup = new Group();
+  gripGroup.add(grip, ...parts.shoulders);
+  dumbbell.add(gripGroup);
+  parts.grip = gripGroup;
 
+  dumbbell.userData.parts = parts;
   return dumbbell;
 }
 
@@ -1115,8 +1192,208 @@ function finalSlot() {
   return slot;
 }
 
+/* ============================================================
+   Scroll story: three pinned chapters at the top of the page. Each slot is scrubbed by its
+   chapter's pinned progress (data-3d-scrub: 0 as the chapter's top meets the top of the screen,
+   1 as its bottom meets the bottom), so every pose plays backwards on the way up.
+   ============================================================ */
+
+/* ---------- chapter 1, the green world: the dumbbell turns 1.25 times as the headlines swap ---------- */
+function storyWorldSlot(rt) {
+  const root = new Group();
+  const camera = new PerspectiveCamera(28, 1, 0.1, 50);
+  camera.position.set(0, 0.7, 8.25);
+  camera.lookAt(0, 0.05, 0);
+  // rig: float (bob) > turn (yaw about the vertical) > pose (the diagonal lean) > roll (about the bar)
+  const float = new Group();
+  const turn = new Group();
+  const pose = new Group();
+  const roll = new Group();
+  roll.add(buildDumbbell({ collar: 'ink' }));
+  pose.add(roll);
+  turn.add(pose);
+  float.add(turn);
+  root.add(float);
+  pose.rotation.x = 0.12;
+  const shadow = contactShadow(rt, 3.1, 0.95, -1.45, 0.5);
+  root.add(shadow);
+  return {
+    root, camera, aspect: 1,
+    update(c) {
+      const p = c.p;
+      turn.rotation.y = -0.62 + p * 1.25 * TAU;
+      pose.rotation.z = 0.46 - 0.14 * Math.sin(p * Math.PI);
+      roll.rotation.x = p * 0.9;
+      const b = bob(c, 0.045, 6);
+      float.position.y = b;
+      shadow.scale.set(1 - b * 1.5, 1, 1 - b * 1.5);
+      shadow.material.opacity = 0.5 - b * 2;
+    },
+  };
+}
+
+/* ---------- chapter 2, the exploded view: the dumbbell comes apart along its bar ----------
+   0.05 to 0.15 a quarter turn to a three-quarter view; 0.12 to 0.55 the slices leave the bar
+   (outer first), the collars slide out spinning, the grip drops back and the medallion floats
+   forward and turns to face the camera; 0.55 to 1 it holds, drifting 15 degrees.
+   Wide slots lay it across the screen with labels either side; phones stand it near vertical. */
+const EXPLODE_OUT = [1.08, 0.72, 0.38];            // how far each slice leaves along the bar: outer, middle, inner
+const EXPLODE_WIN = [[0.12, 0.4], [0.18, 0.47], [0.24, 0.55]];
+const EXPLODE_RISE = [0.26, 0.13, 0.05];
+function storyExplodedSlot(rt) {
+  const root = new Group();
+  const view = new Group();   // the quarter turn and the drift, about the vertical
+  const pose = new Group();   // the lean: slight on wide slots, near vertical on phones
+  const db = buildDumbbell({ split: true });
+  const P = db.userData.parts;
+  pose.add(db);
+  view.add(pose);
+  root.add(view);
+
+  // a set screw on each collar, so its spin reads
+  const screwGeo = new CylinderGeometry(0.035, 0.035, 0.05, 16);
+  const screwMat = M.steel(0.3);
+  for (const collar of P.collars) {
+    const s = new Mesh(screwGeo, screwMat);
+    s.rotation.x = Math.PI / 2;
+    s.position.z = COLLAR_R + 0.012;
+    collar.add(s);
+  }
+
+  // the medallion leaves its head: it lives in root space, placed each frame between its mount
+  // on the head and a spot in front, turned to face the camera
+  const medal = P.medal;
+  const mount = new Group();
+  medal.parent.add(mount);
+  mount.position.copy(medal.position);
+  mount.rotation.copy(medal.rotation);
+  medal.parent.remove(medal);
+  root.add(medal);
+  const face = new Group();
+  root.add(face);
+  const upright = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), 0.38);
+  const qa = new Quaternion(), qb = new Quaternion(), va = new Vector3(), vb = new Vector3();
+
+  // leader-line anchors, one per label (data-anchor on the page)
+  const anchor = (parent, x, y, z) => { const o = new Group(); o.position.set(x, y, z); parent.add(o); return o; };
+  const anchors = {
+    'head-l': anchor(P.slices[0][1], 0, HEAD_R * 0.5, HEAD_R * 0.5),
+    'head-r': anchor(P.slices[1][1], 0, HEAD_R * 0.5, HEAD_R * 0.5),
+    'collar-l': anchor(P.collars[0], 0, 0, COLLAR_R),
+    grip: anchor(P.grip, -0.18, 0, GRIP_R),
+    mark: anchor(medal, 0.32, 0.3, 0.04),
+  };
+
+  const camera = new PerspectiveCamera(28, 1, 0.1, 60);
+  let mode = '';
+  let float = { x: 0, y: 0, z: 0 };
+  const slot = {
+    // the slices' faces turn straight toward the green rim as they part: no rim for this slot, and a
+    // slightly softer environment, keep the rubber black
+    root, camera, aspect: 16 / 9, anchors, rim: 0, env: 0.8,
+    layout(W, H, vw) {
+      const next = (vw || W) <= 620 ? 'narrow' : 'wide';
+      if (next === mode) return;
+      mode = next;
+      if (mode === 'wide') {
+        slot.aspect = 16 / 9;
+        camera.position.set(0, 2.2, 10.6);
+        camera.lookAt(0.3, 0.12, 0);
+        pose.rotation.set(0, 0, 0.08);
+        float = { x: -1.0, y: 1.22, z: 0.9 };
+      } else {
+        slot.aspect = 1;
+        camera.position.set(0, 1.2, 12);
+        camera.lookAt(0.1, 0.15, 0);
+        pose.rotation.set(0, 0, 0.78);
+        float = { x: -1.5, y: -0.1, z: 1.0 };
+      }
+    },
+    update(c) {
+      const p = c.p;
+      const turn = easeInOut(win(0.05, 0.15, p));
+      const drift = easeInOut(win(0.55, 1, p));
+      view.rotation.y = -0.06 - 0.4 * turn + 0.26 * drift;
+      view.position.y = bob(c, 0.03, 6);
+
+      P.slices.forEach((row, s) => {
+        const side = s ? 1 : -1;
+        row.forEach((slice, i) => {
+          const k = easeInOut(win(EXPLODE_WIN[i][0], EXPLODE_WIN[i][1], p));
+          slice.position.x = slice.userData.rest + side * EXPLODE_OUT[i] * k;
+          slice.position.y = EXPLODE_RISE[i] * k; // the outer slices rise a little more: a shallow arc
+          slice.rotation.z = side * 0.05 * (2 - i) * k;
+        });
+      });
+      const kc = easeInOut(win(0.2, 0.5, p));
+      P.collars.forEach((collar, s) => {
+        const side = s ? 1 : -1;
+        collar.position.x = collar.userData.rest + side * 0.26 * kc;
+        collar.rotation.x = side * kc * 1.5 * TAU;
+      });
+      const kg = easeInOut(win(0.22, 0.55, p));
+      P.grip.position.set(0, -0.14 * kg, -0.3 * kg);
+
+      // the medallion: from flush on the head to floating in front, facing the camera
+      const km = easeInOut(win(0.18, 0.5, p));
+      root.updateMatrixWorld(true);
+      mount.getWorldPosition(va);
+      mount.getWorldQuaternion(qa);
+      vb.set(va.x + float.x * km, va.y + float.y * km, va.z + float.z * km);
+      face.position.copy(vb);
+      face.lookAt(camera.position);
+      qb.copy(face.quaternion).multiply(upright);
+      medal.position.copy(vb);
+      medal.quaternion.copy(qa).slerp(qb, km);
+      medal.scale.setScalar(1 + 0.08 * km);
+    },
+  };
+  slot.layout(1600, 900, 1600);
+  return slot;
+}
+
+/* ---------- chapter 3, more than an app: one plate flips to face the light ---------- */
+function storyPlateSlot() {
+  const root = new Group();
+  const drop = new Group();   // eases down and shrinks under the typed word
+  const tilt = new Group();   // the diagonal it starts on
+  const flip = new Group();   // edge-on to facing the camera
+  const rubber = M.rubber();
+  rubber.roughness = 0.42;    // a touch more sheen, so the light sweep reads on the face
+  flip.add(new Mesh(plateGeometry(1.0), rubber));
+  const ring = new Mesh(new TorusGeometry(0.235, 0.018, 10, 72), M.green());
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.09 + 0.006; // on the hub's front face
+  flip.add(ring);
+  tilt.add(flip);
+  drop.add(tilt);
+  root.add(drop);
+  const camera = cam(6.6, 0.3);
+  return {
+    // edge-on, the face turns straight toward the green rim: no rim for this slot, a softer environment
+    root, camera, aspect: 1, rim: 0, env: 0.8,
+    update(c) {
+      const p = c.p;
+      const f = easeInOut(win(0.05, 0.45, p));
+      flip.rotation.x = 0.24 + (Math.PI / 2 - 0.24) * f;
+      tilt.rotation.z = -0.55 * (1 - f);
+      tilt.rotation.y = 0.4 * (1 - f);
+      const d = easeInOut(win(0.5, 0.95, p));
+      drop.position.y = -0.42 * d + bob(c, 0.03, 6);
+      drop.scale.setScalar(1 - 0.2 * d);
+    },
+    // the key light sweeps across the face as it turns; restored after this slot draws
+    light(rt, c) {
+      rt.key.position.x = -6 + 12 * easeInOut(win(0.25, 0.6, c.p));
+    },
+  };
+}
+
 const BUILDERS = {
   hero: heroSlot,
+  'story-world': storyWorldSlot,
+  'story-exploded': storyExplodedSlot,
+  'story-plate': storyPlateSlot,
   'how-phone': (rt) => stepSlot(rt, howPhone, 0),
   'how-tape': (rt) => stepSlot(rt, howTape, 1.3),
   'how-pair': (rt) => stepSlot(rt, howPair, 2.6),
@@ -1178,7 +1455,7 @@ function runtime(renderer) {
   maskScene.add(quad);
   const maskCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  return { renderer, scene, rim, maskScene, maskCam, maskMat, shadowTex: shadowTexture(), roots: [] };
+  return { renderer, scene, key, rim, maskScene, maskCam, maskMat, shadowTex: shadowTexture(), roots: [] };
 }
 
 function buildSlot(rt, name) {
@@ -1193,11 +1470,14 @@ function buildSlot(rt, name) {
 function showOnly(rt, slot) {
   for (const r of rt.roots) r.visible = r === slot.root;
   rt.rim.intensity = slot.rim ?? RIM;
+  // with a scene environment three ignores each material's envMapIntensity: a slot sets its own
+  rt.scene.environmentIntensity = slot.env ?? 1;
 }
 
-/** object-fit: contain against the scene's composition aspect, aligned by ax / ay */
-function frameCamera(slot, W, H, ax, ay) {
-  if (slot.layout) slot.layout(W, H);
+/** object-fit: contain against the scene's composition aspect, aligned by ax / ay.
+ *  vw is the viewport width, for slots whose composition follows the page's breakpoints. */
+function frameCamera(slot, W, H, ax, ay, vw = W) {
+  if (slot.layout) slot.layout(W, H, vw);
   const a = slot.aspect;
   let Sw, Sh;
   if (W / H > a) { Sh = H; Sw = H * a; } else { Sw = W; Sh = W / a; }
@@ -1208,9 +1488,10 @@ function frameCamera(slot, W, H, ax, ay) {
 
 /**
  * Render one slot as a still (posters). Returns { canvas, destroy }.
- * opts: name, width, height, dpr, ax, ay, p (scroll progress for the pose)
+ * opts: name, width, height, dpr, ax, ay, p (scroll progress for the pose),
+ *       vw (the viewport width the poster stands for; picks a slot's phone or wide composition)
  */
-export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.5 }) {
+export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.5, vw = width }) {
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
   setupRenderer(renderer);
   renderer.setPixelRatio(dpr);
@@ -1218,9 +1499,11 @@ export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.
   const rt = runtime(renderer);
   const slot = buildSlot(rt, name);
   showOnly(rt, slot);
-  frameCamera(slot, width, height, ax, ay);
+  frameCamera(slot, width, height, ax, ay, vw);
   const rect = { left: 0, top: 0, width, height, right: width, bottom: height };
-  slot.update({ still: true, p, t: 0, dt: 0, pointer: { x: 0, y: 0, active: false }, track: rect, rect, vw: width, vh: height, fine: false });
+  const c = { still: true, p, t: 0, dt: 0, pointer: { x: 0, y: 0, active: false }, track: rect, rect, vw, vh: height, fine: false };
+  slot.update(c);
+  if (slot.light) slot.light(rt, c);
   renderer.render(rt.scene, slot.camera);
   return { canvas: renderer.domElement, destroy: () => renderer.dispose() };
 }
@@ -1254,14 +1537,23 @@ export function mount(opts = {}) {
   document.body.insertBefore(canvas, document.body.firstChild);
 
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+  // phones list the exploded view's labels under the object, without leader lines
+  const phone = window.matchMedia('(max-width: 620px)');
   const els = Array.from(opts.slots || document.querySelectorAll('[data-3d]'));
   const entries = els.map((el) => {
     const trackSel = el.getAttribute('data-3d-track');
+    const anchorSel = el.getAttribute('data-3d-anchors');
     return {
       el, name: el.getAttribute('data-3d'),
       track: (trackSel && document.querySelector(trackSel)) || el,
       gate: el.getAttribute('data-3d-gate'),
       avoid: el.getAttribute('data-3d-avoid') ? Array.from(document.querySelectorAll(el.getAttribute('data-3d-avoid'))) : null,
+      // pinned chapters: progress runs across the chapter's pinned scroll, not its pass over the screen
+      scrub: el.hasAttribute('data-3d-scrub'),
+      // labels whose leader lines run to a point on the object: { el, name, leader, rect, w }
+      labels: anchorSel ? Array.from(document.querySelectorAll(anchorSel)).map((a) => ({
+        el: a, name: a.getAttribute('data-anchor'), leader: a.querySelector('.leader'), rect: null, w: '',
+      })).filter((l) => l.leader) : null,
       slot: null, near: false, live: false, fadeT0: 0, fade: 0, gateFade: 0, gateT0: 0,
       p: 0, pSet: false, t: 0, W: 0, H: 0, ax: 0.5, ay: 0.5, mLeft: 0, mBottom: 0, varsDirty: true,
       drawn: 0,
@@ -1300,6 +1592,35 @@ export function mount(opts = {}) {
   };
 
   const gateOpen = (e) => !e.gate || !!e.el.closest(e.gate);
+  // pinned chapters: 0 as the chapter's top meets the top of the screen, 1 as its bottom meets the
+  // bottom. Everything else: 0 as the slot's centre meets the bottom, 1 as it reaches the top
+  const progress = (e, vh) => {
+    const tr = e.trackRect;
+    return e.scrub ? clamp01(-tr.top / Math.max(1, tr.height - vh)) : clamp01((vh - (tr.top + tr.height / 2)) / vh);
+  };
+
+  // project each label's anchor through the slot camera (the matrices the draw just used) into
+  // screen px, and aim a line at it from the label's nearest edge, in the label's own box
+  const pt = new Vector3();
+  const leaders = (e) => {
+    const r = e.rect, out = [];
+    for (const l of e.labels) {
+      const o = e.slot.anchors[l.name], lr = l.rect;
+      if (!o || !lr || !lr.width) continue;
+      o.getWorldPosition(pt).project(e.slot.camera);
+      const sx = r.left + ((pt.x + 1) / 2) * r.width;
+      const sy = r.top + ((1 - pt.y) / 2) * r.height;
+      let ox, oy;
+      if (sx > lr.right + 12) { ox = lr.width + 12; oy = 12; }
+      else if (sx < lr.left - 12) { ox = -12; oy = 12; }
+      else { ox = Math.min(lr.width, Math.max(0, sx - lr.left)); oy = sy > lr.bottom ? lr.height + 10 : -10; }
+      const dx = sx - (lr.left + ox), dy = sy - (lr.top + oy);
+      const len = Math.max(0, Math.hypot(dx, dy));
+      const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+      out.push([l, `--lx:${ox.toFixed(0)}px;--ly:${oy.toFixed(0)}px;--len:${len.toFixed(0)}px;--ang:${ang.toFixed(1)}deg`]);
+    }
+    return out;
+  };
   // the box the content actually paints (a centred paragraph is narrower than its block)
   const range = document.createRange();
   const inkRect = (el) => { range.selectNodeContents(el); return range.getBoundingClientRect(); };
@@ -1327,6 +1648,7 @@ export function mount(opts = {}) {
       e.rect = e.el.getBoundingClientRect();
       e.trackRect = e.track === e.el ? e.rect : e.track.getBoundingClientRect();
       e.avoidRect = e.avoid ? e.avoid.map(inkRect) : null;
+      if (e.labels && !phone.matches) for (const l of e.labels) l.rect = l.el.getBoundingClientRect();
       e.open = gateOpen(e);
       near.push(e);
     }
@@ -1352,6 +1674,8 @@ export function mount(opts = {}) {
       const r = e.rect;
       const visible = e.open && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
       if (visible) drawn.push(e);
+      // off screen nothing eases: a slot keeps its exact progress, so it comes back where it should be
+      else if (e.pSet || e.scrub) { e.p = progress(e, vh); e.pSet = true; }
     }
 
     if (drawn.length || dirty) {
@@ -1360,24 +1684,25 @@ export function mount(opts = {}) {
       dirty = false;
     }
     let calls = 0;
+    const leaderWrites = [];
     for (const e of drawn) {
       const r = e.rect;
       const W = Math.round(r.width), H = Math.round(r.height);
-      const key = `${W}x${H}:${e.ax}:${e.ay}`;
+      const key = `${W}x${H}:${e.ax}:${e.ay}:${vw}`;
       if (key !== e.framed) {
         e.framed = key;
-        frameCamera(e.slot, W, H, e.ax, e.ay);
+        frameCamera(e.slot, W, H, e.ax, e.ay, vw);
       }
       const tr = e.trackRect;
-      // 0 as the slot's centre meets the bottom of the screen, 1 as it reaches the top
-      const target = clamp01((vh - (tr.top + tr.height / 2)) / vh);
+      const target = progress(e, vh);
       e.p = e.pSet ? e.p + (target - e.p) * damp(9, dt) : target;
       e.pSet = true;
       e.t += dt;
-      e.slot.update({
+      const ctx = {
         still: false, dt, t: e.t, p: e.p, track: tr, rect: r, avoid: e.avoidRect, vw, vh,
         pointer, fine: fine.matches, started: e.live,
-      });
+      };
+      e.slot.update(ctx);
       showOnly(rt, e.slot);
       const top = r.top + off;
       renderer.setViewport(r.left, ch - (top + r.height), r.width, r.height);
@@ -1385,8 +1710,13 @@ export function mount(opts = {}) {
       const y0 = Math.max(0, r.top) + off, y1 = Math.min(vh, r.bottom) + off;
       renderer.setScissor(x0, ch - y1, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
       renderer.setScissorTest(true);
+      // a slot can move the key light for its own draw (the plate's sweep); restored straight after
+      let keyX = 0, keyY = 0, keyZ = 0;
+      if (e.slot.light) { ({ x: keyX, y: keyY, z: keyZ } = rt.key.position); e.slot.light(rt, ctx); }
       renderer.render(rt.scene, e.slot.camera);
+      if (e.slot.light) rt.key.position.set(keyX, keyY, keyZ);
       calls += renderer.info.render.calls;
+      if (e.labels && e.slot.anchors && !phone.matches) leaderWrites.push(...leaders(e));
       const f = e.fade * e.gateFade;
       if (f < 1 || e.mLeft > 0 || e.mBottom > 0) {
         rt.maskMat.uniforms.uFade.value = f;
@@ -1398,6 +1728,12 @@ export function mount(opts = {}) {
       dirty = true;
     }
     renderer.setScissorTest(false);
+    // writes last: each label's leader line, from the label's edge to its part on the object
+    for (const [l, v] of leaderWrites) {
+      if (v === l.w) continue;
+      l.w = v;
+      l.leader.setAttribute('style', v);
+    }
     stats.frames++;
     stats.lastDrawn = drawn.map((e) => e.name);
     stats.lastDrawCalls = calls;
@@ -1449,9 +1785,10 @@ export function mount(opts = {}) {
     canvas.style.display = 'none';
   });
 
-  // the hero is built at once so its first frame lands on the poster; the rest build as they near
-  const hero = entries.find((e) => e.name === 'hero');
-  if (hero) build(hero);
+  // the first screen's object (the story world, or the hero where a page still has one) is built
+  // at once so its first frame lands on the poster; the rest build as they near
+  const first = entries.find((e) => e.name === 'story-world') || entries.find((e) => e.name === 'hero');
+  if (first) build(first);
   sizeCanvas();
 
   const api = {
