@@ -7,7 +7,9 @@
    Motion: a short Stone bar under the active tab springs across to
    the new tab (about 250ms), and the new tab's icon pops (scale 0.9 to 1,
    180ms, ease-out quart), with a selection tick on phones. On Progress no
-   tab is active, so the bar fades out. Reduce Motion: the bar jumps, no pop. */
+   tab is active, so the bar fades out. The new tab's content slides 24px
+   in from the side it came from and fades in (220ms; tabLayout in
+   ScreenFade). Reduce Motion: the bar jumps, no pop, no slide. */
 
 import { ComponentProps, ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -16,6 +18,7 @@ import { Tabs } from 'expo-router';
 import { C, FONT } from '../../src/design';
 import { Icon, IconName } from '../../src/components/Icon';
 import { useReduceMotion } from '../../src/components/motion';
+import { tabLayout } from '../../src/components/ScreenFade';
 import { haptic } from '../../src/lib/haptics';
 import { indicatorX, INDICATOR_WIDTH } from '../../src/lib/tabIndicator';
 
@@ -162,6 +165,7 @@ export default function TabsLayout() {
     <Tabs
       backBehavior="history"
       tabBar={(props) => <TabBar {...props} />}
+      screenLayout={tabLayout}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: C.bg },

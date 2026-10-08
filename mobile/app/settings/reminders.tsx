@@ -1,6 +1,7 @@
 /* Reminder settings: each reminder on or off, and quiet hours (default
    22:00 to 07:00). Saved to the profile, so they follow the account; the
-   phone reschedules as soon as anything changes. */
+   phone reschedules as soon as anything changes. Vibration (on by default)
+   is kept on this device only: turning it on gives a tap so you feel it. */
 
 import { useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, Switch, Text, View } from 'react-native';
@@ -8,6 +9,7 @@ import { Linking, Platform, Pressable, Switch, Text, View } from 'react-native';
 import { C, FONT, R, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { useReminders } from '../../src/useReminders';
+import { haptic, setVibration, useVibration } from '../../src/lib/haptics';
 import { clockOf, daysText } from '../../src/components/onboarding/options';
 import { Button } from '../../src/components/Button';
 import { Field } from '../../src/components/Field';
@@ -60,6 +62,7 @@ export default function ReminderSettings() {
   const [to, setTo] = useState(r.quietEnd);
   const [savingQuiet, setSavingQuiet] = useState(false);
   const [asking, setAsking] = useState(false);
+  const vibration = useVibration();
 
   // Keep the switches in step with the saved profile.
   const savedKey = JSON.stringify(r.prefs);
@@ -76,6 +79,13 @@ export default function ReminderSettings() {
       setLocal((p) => ({ ...p, [key]: !v }));
       setFlash({ tone: 'error', text: res.error });
     } else setFlash({ tone: 'success', text: 'Saved.' });
+  }
+
+  async function toggleVibration(v: boolean) {
+    setFlash(null);
+    const res = await setVibration(v);
+    if (v) haptic.tap();
+    setFlash(res.error ? { tone: 'error', text: res.error } : { tone: 'success', text: v ? 'Vibration on.' : 'Vibration off.' });
   }
 
   async function saveQuiet() {
@@ -145,6 +155,18 @@ export default function ReminderSettings() {
         <View style={{ borderRadius: R.card, overflow: 'hidden', gap: 1, backgroundColor: C.line }}>
           <ToggleRow title="Plan updated" detail="When your coach changes your plan" value={local.plan_updated} onChange={(v) => void toggle('plan_updated', v)} />
           <ToggleRow title="Replies to your reports" detail="When BUILT support answers a problem you reported" value={local.report_reply} onChange={(v) => void toggle('report_reply', v)} />
+        </View>
+      </View>
+
+      <View style={{ gap: 10 }}>
+        <Text style={T.h3}>On this device</Text>
+        <View style={{ borderRadius: R.card, overflow: 'hidden', gap: 1, backgroundColor: C.line }}>
+          <ToggleRow
+            title="Vibration"
+            detail="A short buzz when you tick a set or a meal, swipe one off, or switch tabs"
+            value={vibration}
+            onChange={(v) => void toggleVibration(v)}
+          />
         </View>
       </View>
 
