@@ -9,10 +9,13 @@
    Meal photos live in Food now; the camera button here opens that flow.
 
    `?about=<text>` (the note on Today) shows that text as the coach's latest
-   message, on this screen only (it isn't saved to the history). */
+   message, on this screen only (it isn't saved to the history).
+
+   Motion: messages added in this visit spring in from their own side, and
+   three dots rise in turn while the coach is replying. */
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -27,7 +30,9 @@ import { BuiltMark } from '../../src/components/BuiltLogo';
 import { Button, IconButton, LinkButton } from '../../src/components/Button';
 import { Notice, ScreenHeader } from '../../src/components/Bits';
 import { Icon } from '../../src/components/Icon';
+import { useReduceMotion } from '../../src/components/motion';
 import { ChangeSummary, NeedsAccount } from '../../src/components/training/PlanChange';
+import { NoTabSwipe } from '../../src/components/ScreenFade';
 import type { MemoryFact } from '../../src/types';
 
 type Msg = {
@@ -38,6 +43,8 @@ type Msg = {
   suggest?: string | null;
   remembered?: MemoryFact[];
   change?: { state: 'busy' } | { state: 'done'; result: PlanChangeResult };
+  /** Added in this visit (sent, answered): springs in. History stays still. */
+  fresh?: boolean;
 };
 
 const SUGGESTIONS = ['What should I eat after training?', "I'm too tired to train today", 'My knee hurts when I squat'];
@@ -55,6 +62,8 @@ function rulesReply(message: string): string {
   return 'Keep it simple today: one workout, protein on every plate, water before 6pm. What is the smallest next step for you right now?';
 }
 
+const NATIVE = Platform.OS !== 'web';
+
 let seq = 0;
 const nextId = () => `m${Date.now()}-${seq++}`;
 
@@ -71,6 +80,78 @@ function CoachBubble({ children }: { children: React.ReactNode }) {
     <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', maxWidth: '94%' }}>
       <CoachAvatar />
       <View style={{ flexShrink: 1, backgroundColor: C.card, borderRadius: R.card, borderTopLeftRadius: 6, paddingVertical: 12, paddingHorizontal: 16, gap: 10 }}>{children}</View>
+    </View>
+  );
+}
+
+/** A new message arrives: it springs up from 8px and from 0.96 scale,
+    growing out of its own side (the coach's from the left, yours from the
+    right). About 300ms, the faintest overshoot. History and Reduce Motion
+    show it in place. */
+function BubbleIn({ side, play, children }: { side: 'left' | 'right'; play: boolean; children: React.ReactNode }) {
+  const reduce = useReduceMotion();
+  const still = reduce || !play;
+  const t = useRef(new Animated.Value(still ? 1 : 0)).current;
+  useEffect(() => {
+    if (still) return;
+    const a = Animated.spring(t, { toValue: 1, stiffness: 340, damping: 26, mass: 1, useNativeDriver: NATIVE });
+    a.start();
+    return () => a.stop();
+  }, [still, t]);
+  return (
+    <Animated.View
+      style={{
+        // The coach's row spans the column (its bubble caps itself at 94%).
+        alignSelf: side === 'right' ? 'flex-end' : 'stretch',
+        maxWidth: side === 'right' ? '84%' : '100%',
+        opacity: t.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1] }),
+        transformOrigin: side === 'right' ? 'right bottom' : 'left top',
+        transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }, { scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** The coach is replying: three dots that rise 4px in turn (150ms apart,
+    a 1.2s loop). Reduce Motion: three still dots. */
+function TypingDots() {
+  const reduce = useReduceMotion();
+  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    if (reduce) return;
+    const rise = (v: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(v, { toValue: 1, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE }),
+          Animated.timing(v, { toValue: 0, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: NATIVE }),
+          Animated.delay(680 - delay),
+        ]),
+      );
+    const a = Animated.parallel(dots.map((v, i) => rise(v, i * 150)));
+    a.start();
+    return () => {
+      a.stop();
+      dots.forEach((v) => v.setValue(0));
+    };
+  }, [reduce, dots]);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingHorizontal: 2 }} accessible accessibilityRole="text" accessibilityLabel="Your coach is replying" accessibilityLiveRegion="polite">
+      {dots.map((v, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 3.5,
+            backgroundColor: C.muted,
+            opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] }),
+            transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+          }}
+        />
+      ))}
     </View>
   );
 }
@@ -121,7 +202,7 @@ export default function CoachTab() {
   // Opened from the note on Today: the note leads the conversation.
   useEffect(() => {
     if (!about) return;
-    setMessages((prev) => (prev.some((m) => m.role === 'coach' && m.body === about) ? prev : [...prev, { id: nextId(), role: 'coach', body: about }]));
+    setMessages((prev) => (prev.some((m) => m.role === 'coach' && m.body === about) ? prev : [...prev, { id: nextId(), role: 'coach', body: about, fresh: true }]));
   }, [about]);
 
   useEffect(() => {
@@ -132,7 +213,7 @@ export default function CoachTab() {
   async function send(text = input.trim()) {
     if (!text || busy || !userId) return;
     setInput('');
-    setMessages((prev) => [...prev, { id: nextId(), role: 'user', body: text }]);
+    setMessages((prev) => [...prev, { id: nextId(), role: 'user', body: text, fresh: true }]);
     setBusy(true);
     let msg: Msg;
     try {
@@ -149,7 +230,7 @@ export default function CoachTab() {
         note: err.code === 'needs_account' ? 'A quick tip from this device. Your AI coach comes with a free account.' : `${err.message} Here's a quick tip for now.`,
       };
     }
-    setMessages((prev) => [...prev, msg]);
+    setMessages((prev) => [...prev, { ...msg, fresh: true }]);
     setBusy(false);
   }
 
@@ -231,11 +312,14 @@ export default function CoachTab() {
 
           {messages.map((m) =>
             m.role === 'user' ? (
-              <View key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '84%', backgroundColor: C.raised, borderRadius: R.card, borderTopRightRadius: 6, paddingVertical: 12, paddingHorizontal: 16 }}>
-                <Text style={T.body}>{m.body}</Text>
-              </View>
+              <BubbleIn key={m.id} side="right" play={!!m.fresh}>
+                <View style={{ backgroundColor: C.raised, borderRadius: R.card, borderTopRightRadius: 6, paddingVertical: 12, paddingHorizontal: 16 }}>
+                  <Text style={T.body}>{m.body}</Text>
+                </View>
+              </BubbleIn>
             ) : (
-              <CoachBubble key={m.id}>
+              <BubbleIn key={m.id} side="left" play={!!m.fresh}>
+              <CoachBubble>
                 {m.note ? <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 14, lineHeight: 20, color: C.warn }}>{m.note}</Text> : null}
                 <Text style={[T.body, { color: C.stone }]}>{m.body}</Text>
                 {m.remembered?.length ? (
@@ -274,20 +358,21 @@ export default function CoachTab() {
                   )
                 ) : null}
               </CoachBubble>
+              </BubbleIn>
             ),
           )}
 
           {busy ? (
-            <CoachBubble>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} accessibilityLiveRegion="polite">
-                <ActivityIndicator size="small" color={C.green} />
-                <Text style={T.meta}>Thinking</Text>
-              </View>
-            </CoachBubble>
+            <BubbleIn side="left" play>
+              <CoachBubble>
+                <TypingDots />
+              </CoachBubble>
+            </BubbleIn>
           ) : null}
         </ScrollView>
 
-        <View style={{ paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
+        {/* The composer's sideways drags (caret, selection) never change tab. */}
+        <NoTabSwipe style={{ paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 680, width: '100%', alignSelf: 'center' }}>
             <IconButton icon="camera" variant="bare" onPress={() => router.push('/food/log?mode=photo')} accessibilityLabel="Log a meal from a photo" />
             <View
@@ -334,7 +419,7 @@ export default function CoachTab() {
               <IconButton icon="arrowRight" variant="green" size={44} onPress={() => void send()} disabled={!canSend} busy={busy} accessibilityLabel="Send message" />
             </View>
           </View>
-        </View>
+        </NoTabSwipe>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

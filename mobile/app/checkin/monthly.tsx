@@ -106,7 +106,7 @@ export default function MonthlyCheckin() {
         secondaryLabel={result.plan ? 'Done' : undefined}
         onSecondary={result.plan ? () => goBack('/(tabs)') : undefined}
       >
-        <CheckinResultView summary={result.summary} changes={result.plan_changes} weight={result.checkin.weight_kg} />
+        <CheckinResultView saved summary={result.summary} changes={result.plan_changes} weight={result.checkin.weight_kg} />
       </QuestionShell>
     );
   }

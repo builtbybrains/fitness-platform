@@ -5,6 +5,8 @@ import { Text, View } from 'react-native';
 
 import { C, card, FONT, R, T } from '../../design';
 import { BuiltMark } from '../BuiltLogo';
+import { Notice } from '../Bits';
+import { DrawCheck } from '../DrawCheck';
 import type { Option } from '../onboarding/options';
 import type { CheckinAnswers, Measurements, PlanChanges } from '../../types';
 
@@ -97,15 +99,26 @@ export function answersSummary(a: CheckinAnswers): { label: string; value: strin
 }
 
 /** The coach's review, and what changed in the plan and why. */
-export function CheckinResultView({ summary, changes, weight }: { summary: string; changes: PlanChanges | null; weight: number | null | undefined }) {
+/** A check-in's result. `saved` (just submitted, not opened from the
+    history) leads with a check that draws itself on. */
+export function CheckinResultView({ summary, changes, weight, saved }: { summary: string; changes: PlanChanges | null; weight: number | null | undefined; saved?: boolean }) {
   const delta = changes?.kcal_delta ?? 0;
   return (
     <View style={{ gap: 20 }}>
       {weight != null ? (
-        <View style={[card, { gap: 2 }]}>
-          <Text style={T.small}>Logged today</Text>
-          <Text style={T.number}>{weight} kg</Text>
+        <View style={[card, { flexDirection: 'row', alignItems: 'center', gap: 16 }]}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={T.small}>Logged today</Text>
+            <Text style={T.number}>{weight} kg</Text>
+          </View>
+          {saved ? (
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: C.greenTint, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Saved">
+              <DrawCheck size={26} />
+            </View>
+          ) : null}
         </View>
+      ) : saved ? (
+        <Notice tone="success">Check-in saved.</Notice>
       ) : null}
       <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
         <BuiltMark size={32} />

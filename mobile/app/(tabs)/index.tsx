@@ -9,7 +9,8 @@
    The greeting, the note and the ring fade in on the first open of the day
    only; everything else is simply there. */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import Svg, { ClipPath, Defs, Path } from 'react-native-svg';
 import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused, useRouter } from 'expo-router';
@@ -19,7 +20,6 @@ import { TodayRing } from '../../src/components/today/TodayRing';
 import { BuiltMark } from '../../src/components/BuiltLogo';
 import { FadeIn } from '../../src/components/FadeIn';
 import { useReduceMotion, useTween } from '../../src/components/motion';
-import { usePop } from '../../src/components/usePop';
 import { TiltPressable } from '../../src/components/Tilt';
 import { Bone, Skeleton } from '../../src/components/Skeleton';
 import { usePullRefresh } from '../../src/components/usePullRefresh';
@@ -48,6 +48,7 @@ import { healthPlatform } from '../../src/api/device/health';
 import type { DailyNoteSummary } from '../../src/api/coach';
 import { haptic } from '../../src/lib/haptics';
 import { musclesForExercises } from '../../src/lib/muscles';
+import { DROP_PATH, wavePath } from '../../src/lib/motionMath';
 import { addDays, mondayIndex, parseDay, todayId as localToday } from '../../src/lib/dates';
 import type { Activity, HealthDaily } from '../../src/types';
 
@@ -188,20 +189,62 @@ function StreakChip({ count, onPress }: { count: number; onPress: () => void }) 
   );
 }
 
-function Greeting() {
+/** On the first open of the day a Built Green stroke draws itself under
+    "build your best." from left to right (420ms, ease-out quart, once the
+    greeting has risen in), holds a moment, then fades (300ms), leaving the
+    greeting exactly as the brand deck sets it. Later opens and Reduce
+    Motion: no stroke. */
+function Greeting({ draw }: { draw: boolean }) {
   const { profile } = useAuth();
   const { width } = useWindowDimensions();
+  const reduce = useReduceMotion();
   const name = profile?.name?.trim().split(/\s+/)[0];
   const size = width < 380 ? 24 : 27;
+  const play = draw && !reduce;
+  const scaleX = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!play) return;
+    const a = Animated.sequence([
+      Animated.delay(320),
+      Animated.timing(scaleX, { toValue: 1, duration: 420, easing: Easing.out(Easing.poly(4)), useNativeDriver: NATIVE }),
+      Animated.delay(900),
+      Animated.timing(fade, { toValue: 0, duration: 300, easing: Easing.out(Easing.poly(4)), useNativeDriver: NATIVE }),
+    ]);
+    a.start();
+    return () => a.stop();
+  }, [play, scaleX, fade]);
+  const line = { fontFamily: FONT.displaySemi, fontSize: size, lineHeight: size * 1.25, letterSpacing: -0.5, color: C.text };
   return (
     <View style={{ gap: 2 }} accessibilityRole="header">
       <Text style={{ fontFamily: FONT.display, fontSize: size, lineHeight: size * 1.25, letterSpacing: -0.4, color: C.text }}>
         {greetingWord()}
         {name ? `, ${name},` : ','}
       </Text>
-      <Text style={{ fontFamily: FONT.displaySemi, fontSize: size, lineHeight: size * 1.25, letterSpacing: -0.5, color: C.text }}>
-        Let&apos;s <Text style={{ color: C.green }}>build your best.</Text>
-      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <Text style={line}>Let&apos;s </Text>
+        <View>
+          <Text style={[line, { color: C.green }]}>build your best.</Text>
+          {play ? (
+            <Animated.View
+              aria-hidden
+              style={{
+                pointerEvents: 'none',
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: -2,
+                height: 3,
+                borderRadius: 1.5,
+                backgroundColor: C.green,
+                opacity: fade,
+                transformOrigin: 'left center',
+                transform: [{ scaleX }],
+              }}
+            />
+          ) : null}
+        </View>
+      </View>
     </View>
   );
 }
@@ -416,13 +459,47 @@ function FoodCard({ day, offPlanKcal, offPlanCount }: { day: WeekDay; offPlanKca
   );
 }
 
-/** One glass; the one just filled pops in. */
+const FILL_MS = 700;
+
+/** One glass. A filled glass holds Stone water inside its outline; the one
+    just added fills from the bottom, its surface a wave that settles flat
+    as it reaches the top (700ms, ease-out quart). Removing one empties it
+    at once. Reduce Motion: it is simply full. */
 function Drop({ filled }: { filled: boolean }) {
-  const scale = usePop(filled);
+  const reduce = useReduceMotion();
+  const clip = `drop-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const was = useRef(filled);
+  const [level, setLevel] = useState(filled ? 1 : 0);
+
+  useEffect(() => {
+    const rising = filled && !was.current;
+    was.current = filled;
+    if (!rising || reduce) {
+      setLevel(filled ? 1 : 0);
+      return;
+    }
+    let raf = 0;
+    const t0 = Date.now();
+    const step = () => {
+      const p = Math.min(1, (Date.now() - t0) / FILL_MS);
+      setLevel(p);
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    setLevel(0);
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [filled, reduce]);
+
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <Icon name="drop" size={26} color={filled ? C.stone : '#4A4A4A'} />
-    </Animated.View>
+    <Svg width={26} height={26} viewBox="0 0 24 24" pointerEvents="none">
+      <Defs>
+        <ClipPath id={clip}>
+          <Path d={DROP_PATH} />
+        </ClipPath>
+      </Defs>
+      {level > 0 ? <Path d={wavePath(level)} fill={C.stone} fillOpacity={0.32} clipPath={`url(#${clip})`} /> : null}
+      <Path d={DROP_PATH} fill="none" stroke={filled ? C.stone : '#4A4A4A'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
   );
 }
 
@@ -691,7 +768,7 @@ export default function TodayTab() {
         </View>
 
         <FadeIn {...enterAt()}>
-          <Greeting />
+          <Greeting draw={enter} />
         </FadeIn>
 
         <FadeIn {...enterAt()}>

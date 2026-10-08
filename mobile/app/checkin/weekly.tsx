@@ -44,7 +44,7 @@ export default function WeeklyCheckin() {
   if (result) {
     return (
       <QuestionShell title="Weight logged" primaryLabel="Done" onPrimary={() => goBack('/(tabs)')} secondaryLabel="See check-in history" onSecondary={() => router.replace('/checkin')}>
-        <CheckinResultView summary={result.summary} changes={result.plan_changes} weight={result.checkin.weight_kg} />
+        <CheckinResultView saved summary={result.summary} changes={result.plan_changes} weight={result.checkin.weight_kg} />
       </QuestionShell>
     );
   }

@@ -33,6 +33,7 @@ import { useReduceMotion } from '../motion';
 import { disposeTree } from './meshes';
 import { flickVelocity, spinAtRest, stepSpin, stepSpring, type Spin } from './pose';
 import { webglAvailable } from './support';
+import { markTouch } from '../../lib/tabPager';
 
 export type SceneInput = {
   /** Extra rotation from the person dragging, in radians (a free spin, or
@@ -458,6 +459,11 @@ export default function Scene3D({
       request();
     };
     return PanResponder.create({
+      // A drag that starts on the object is the object's, never the tab pager's.
+      onStartShouldSetPanResponderCapture: () => {
+        markTouch('3d');
+        return false;
+      },
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderGrant: () => {
         lastDx = 0;

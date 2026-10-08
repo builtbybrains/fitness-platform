@@ -1,16 +1,21 @@
 /* Buttons. Primary: Built Green pill, Deep Black Sora label, 48px tall.
    Secondary: Carbon pill, white label. Round icon buttons for play and
    send. Every target is at least 44x44 and scales to 0.97 on press
-   (unless Reduce Motion is on). */
+   (unless Reduce Motion is on). Pill buttons settle back on release with
+   a touch spring: about 250ms, a hair past full size, then still. */
 
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
 
 import { C, FONT, R, T } from '../design';
 import { Icon, IconName } from './Icon';
 import { useReduceMotion } from './motion';
 
 type Variant = 'primary' | 'secondary' | 'danger';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const NATIVE = Platform.OS !== 'web';
+const PRESSED_SCALE = 0.97;
 
 type ButtonProps = {
   label: string;
@@ -41,15 +46,28 @@ export function Button({
   const primary = variant === 'primary';
   const fg = primary ? C.onGreen : variant === 'danger' ? C.danger : C.text;
   const off = disabled || busy;
+  const [pressed, setPressed] = useState(false);
+  const scale = useRef(new Animated.Value(1)).current;
+  const press = (on: boolean) => {
+    setPressed(on);
+    if (reduce) return scale.setValue(1);
+    Animated.spring(scale, on
+      ? { toValue: PRESSED_SCALE, stiffness: 600, damping: 40, mass: 1, useNativeDriver: NATIVE }
+      : // Low damping: a tiny overshoot past 1 on the way back.
+        { toValue: 1, stiffness: 520, damping: 17, mass: 1, useNativeDriver: NATIVE },
+    ).start();
+  };
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      onPressIn={() => press(true)}
+      onPressOut={() => press(false)}
       disabled={off}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!off, busy: !!busy }}
-      style={({ pressed }) => [
+      style={[
         {
           minHeight: compact ? 44 : 52,
           paddingHorizontal: compact ? 18 : 24,
@@ -62,7 +80,7 @@ export function Button({
           borderWidth: variant === 'danger' ? 1 : 0,
           borderColor: variant === 'danger' ? 'rgba(255,90,78,0.5)' : 'transparent',
           opacity: disabled && !busy ? 0.45 : 1,
-          transform: [{ scale: pressed && !reduce ? 0.97 : 1 }],
+          transform: [{ scale }],
         },
         style,
       ]}
@@ -75,7 +93,7 @@ export function Button({
       <Text style={[T.button, { color: fg }]} numberOfLines={1}>
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

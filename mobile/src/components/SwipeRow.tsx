@@ -10,7 +10,11 @@
    12px, and half again more across than down), so the list still scrolls;
    it never starts in the left 24px, which belongs to the swipe back.
    Reduce Motion: the row still follows the finger (it is direct touch) but
-   snaps home instead of springing. */
+   snaps home instead of springing.
+
+   A rightward drag that starts on the row is always the row's: it marks
+   the touch, so the swipe between tabs leaves it alone (a leftward drag
+   still turns the page). */
 
 import React, { useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, PanResponder, Platform, StyleProp, Text, View, ViewStyle } from 'react-native';
@@ -20,6 +24,7 @@ import { haptic } from '../lib/haptics';
 import { Icon } from './Icon';
 import { useReduceMotion } from './motion';
 import { EDGE } from './ScreenFade';
+import { markTouch } from '../lib/tabPager';
 
 const NATIVE = Platform.OS !== 'web';
 /** Share of the row's width the finger must pass to commit. */
@@ -72,6 +77,8 @@ export function SwipeRow({
     PanResponder.create({
       onStartShouldSetPanResponderCapture: (e) => {
         live.current.startX = e.nativeEvent.pageX;
+        // Rightward drags from here are the row's, not the tab pager's.
+        if (live.current.enabled) markTouch('row');
         return false;
       },
       onMoveShouldSetPanResponder: (_e, g) => {

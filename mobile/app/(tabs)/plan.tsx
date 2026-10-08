@@ -4,10 +4,11 @@
    between home and gym for the week; ask for a change in your own words
    and read what changed. Check-offs save to the account, or to this
    device without one. Day chips tilt under the finger; pull down to
-   re-read the plan; while it loads, the week's shape stands in. */
+   re-read the plan; while it loads, the week's shape stands in. Picking a
+   day slides the Stone pill along the strip to it. */
 
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -24,6 +25,8 @@ import { ChangePlanCard } from '../../src/components/training/PlanChange';
 import { MealImage } from '../../src/components/food/MealImage';
 import { Ring } from '../../src/components/Ring';
 import { TiltPressable } from '../../src/components/Tilt';
+import { useReduceMotion } from '../../src/components/motion';
+import { segmentAt, segmentX } from '../../src/lib/motionMath';
 import { Bone, Skeleton } from '../../src/components/Skeleton';
 import { usePullRefresh } from '../../src/components/usePullRefresh';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
@@ -33,12 +36,37 @@ import { weekCounts, weekStrip } from '../../src/lib/weekStrip';
 import { dateEyebrow, planHeaderStats, weekCountLabel } from '../../src/lib/headerStats';
 import type { PlanWorkoutV2 } from '../../src/types';
 
-function DayChip({ day, today, selected, onPress }: { day: WeekDay; today: boolean; selected: boolean; onPress: () => void }) {
+/** One day in the strip. Its plate (Carbon, Surface for rest, the green
+    edge for today) and the Stone pill for the selected day are drawn by
+    DayStrip underneath, so the pill can slide between chips; the chip
+    itself is the label and the touch target. `lit` is the chip the pill
+    covers right now, which takes the dark label. Before the strip is
+    measured the chip draws its own fill. */
+function DayChip({
+  day,
+  today,
+  selected,
+  lit,
+  layered,
+  onPress,
+  onPressed,
+}: {
+  day: WeekDay;
+  today: boolean;
+  selected: boolean;
+  lit: boolean;
+  layered: boolean;
+  onPress: () => void;
+  onPressed: (on: boolean) => void;
+}) {
   const workoutDone = day.session.kind === 'workout' && day.done.workout;
   const rest = day.session.kind === 'rest';
+  const dark = layered ? lit : selected;
   return (
     <TiltPressable
       onPress={onPress}
+      onPressIn={() => onPressed(true)}
+      onPressOut={() => onPressed(false)}
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       aria-selected={selected}
@@ -51,24 +79,116 @@ function DayChip({ day, today, selected, onPress }: { day: WeekDay; today: boole
         justifyContent: 'center',
         gap: 4,
         borderRadius: R.tile,
-        backgroundColor: selected ? C.stone : pressed ? C.raised : rest ? C.surface : C.card,
+        backgroundColor: layered ? 'transparent' : selected ? C.stone : pressed ? C.raised : rest ? C.surface : C.card,
         borderWidth: 1.5,
-        borderColor: selected ? C.stone : today ? C.greenBorder : 'transparent',
+        borderColor: layered ? 'transparent' : selected ? C.stone : today ? C.greenBorder : 'transparent',
       })}
     >
-      <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: selected ? C.bg : C.muted }}>{DAY_SHORT[day.index]}</Text>
-      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 17, color: selected ? C.bg : C.text }}>{Number(day.id.slice(8))}</Text>
+      <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 12, color: dark ? C.bg : C.muted }}>{DAY_SHORT[day.index]}</Text>
+      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 17, color: dark ? C.bg : C.text }}>{Number(day.id.slice(8))}</Text>
       <View
         style={{
           width: 6,
           height: 6,
           borderRadius: 3,
-          backgroundColor: workoutDone ? (selected ? C.bg : C.green) : 'transparent',
+          backgroundColor: workoutDone ? (dark ? C.bg : C.green) : 'transparent',
           borderWidth: day.moved && !workoutDone ? 1.5 : 0,
-          borderColor: selected ? C.bg : C.muted,
+          borderColor: dark ? C.bg : C.muted,
         }}
       />
     </TiltPressable>
+  );
+}
+
+const CHIP_GAP = 4;
+
+/** The week's seven day chips. A Stone pill slides under the chips to the
+    picked day on a touch spring (about 300ms, the faintest overshoot); the
+    labels it passes over turn dark as it covers them. Reduce Motion: the
+    pill jumps. */
+function DayStrip({ days, todayIdx, selectedId, onSelect }: { days: WeekDay[]; todayIdx: number; selectedId: string; onSelect: (i: number) => void }) {
+  const reduce = useReduceMotion();
+  const [width, setWidth] = useState(0);
+  const [pressedIdx, setPressedIdx] = useState<number | null>(null);
+  const index = Math.max(0, days.findIndex((d) => d.id === selectedId));
+  const [lit, setLit] = useState(index);
+  const x = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+  const seg = segmentX(width, days.length, index, CHIP_GAP);
+  const layered = seg != null;
+
+  // The label under the pill follows the pill, not the tap.
+  useEffect(() => {
+    if (!seg) return;
+    const id = x.addListener(({ value }) => setLit(segmentAt(value, seg.w, CHIP_GAP, days.length)));
+    return () => x.removeListener(id);
+  }, [x, seg?.w, days.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!seg) return;
+    if (!placed.current || reduce) {
+      placed.current = true;
+      x.setValue(seg.x);
+      setLit(index);
+      return;
+    }
+    const a = Animated.spring(x, { toValue: seg.x, stiffness: 380, damping: 32, mass: 1, useNativeDriver: Platform.OS !== 'web' });
+    a.start(({ finished }) => finished && setLit(index));
+    return () => a.stop();
+  }, [seg?.x, index, reduce, x]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', gap: CHIP_GAP, marginHorizontal: -6 }} accessibilityRole="tablist">
+      {layered
+        ? days.map((d, i) => {
+            const plate = segmentX(width, days.length, i, CHIP_GAP)!;
+            return (
+              <View
+                key={`plate-${d.id}`}
+                style={{
+                  pointerEvents: 'none',
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: plate.x,
+                  width: plate.w,
+                  borderRadius: R.tile,
+                  backgroundColor: pressedIdx === i ? C.raised : d.session.kind === 'rest' ? C.surface : C.card,
+                  borderWidth: 1.5,
+                  borderColor: i === todayIdx ? C.greenBorder : 'transparent',
+                }}
+              />
+            );
+          })
+        : null}
+      {layered ? (
+        <Animated.View
+          style={{
+            pointerEvents: 'none',
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: seg.w,
+            borderRadius: R.tile,
+            backgroundColor: C.stone,
+            transform: [{ translateX: x }],
+          }}
+        />
+      ) : null}
+      {days.map((d, i) => (
+        <DayChip
+          key={d.id}
+          day={d}
+          today={i === todayIdx}
+          selected={d.id === selectedId}
+          lit={i === lit}
+          layered={layered}
+          onPress={() => onSelect(i)}
+          onPressed={(on) => setPressedIdx((p) => (on ? i : p === i ? null : p))}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -242,11 +362,7 @@ export default function PlanTab() {
           </View>
         ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 4, marginHorizontal: -6 }} accessibilityRole="tablist">
-          {days.map((d, i) => (
-            <DayChip key={d.id} day={d} today={i === todayIdx} selected={d.id === day.id} onPress={() => setSelected(i)} />
-          ))}
-        </View>
+        <DayStrip days={days} todayIdx={todayIdx} selectedId={day.id} onSelect={setSelected} />
 
         {note ? <Notice tone={note.tone}>{note.text}</Notice> : null}
 

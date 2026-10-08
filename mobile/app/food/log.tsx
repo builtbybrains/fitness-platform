@@ -5,7 +5,7 @@
    anything counts. Without an account the numbers can be entered by hand. */
 
 import { useEffect, useState } from 'react';
-import { Image, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams } from 'expo-router';
 
@@ -19,6 +19,7 @@ import { todayId } from '../../src/lib/dates';
 import { isCloudUser } from '../../src/lib/cloud';
 import { Button, LinkButton } from '../../src/components/Button';
 import { Notice } from '../../src/components/Bits';
+import { DrawCheck } from '../../src/components/DrawCheck';
 import { Field } from '../../src/components/Field';
 import { Icon } from '../../src/components/Icon';
 import { BackHeader, goBack } from '../../src/components/training/BackHeader';
@@ -26,6 +27,7 @@ import { Chip, MacroLine, Segmented, StateBlock } from '../../src/components/tra
 import { NeedsAccount } from '../../src/components/training/PlanChange';
 import { EditableEstimate, EstimateEditor, estimateProblem, parsed, slotForNow } from '../../src/components/food/EstimateEditor';
 import { permissionText, PermissionDenied, takeMealPhoto } from '../../src/components/food/photo';
+import { PhotoScan } from '../../src/components/food/PhotoScan';
 import type { ApiErrorCode, FoodEstimate, FoodQuestion, FoodSource } from '../../src/types';
 
 type Step = 'input' | 'questions' | 'review' | 'saved';
@@ -292,8 +294,8 @@ export default function LogFoodScreen() {
               <View style={{ gap: 12 }}>
                 {photo ? (
                   <View style={[cardStyle, { padding: 12, gap: 12 }]}>
-                    <Image source={{ uri: photo.uri }} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: R.tile, backgroundColor: C.raised }} accessibilityLabel="Your meal photo" accessibilityIgnoresInvertColors />
-                    <Button compact variant="secondary" icon="refresh" label="Choose another" onPress={() => void pick(false)} disabled={picking} />
+                    <PhotoScan uri={photo.uri} scanning={busy} label="Reading your plate" />
+                    <Button compact variant="secondary" icon="refresh" label="Choose another" onPress={() => void pick(false)} disabled={picking || busy} />
                   </View>
                 ) : (
                   <View style={[cardStyle, { alignItems: 'center', gap: 16, paddingVertical: 32 }]}>
@@ -318,7 +320,8 @@ export default function LogFoodScreen() {
                 <Field label="Anything the photo can't show? (optional)" value={text} onChangeText={setText} placeholder="Cooked in butter, half the rice" maxLength={200} />
               </View>
             )}
-            {busy ? <StateBlock kind="loading" title={mode === 'photo' ? 'Reading your plate' : 'Working out the numbers'} style={{ paddingVertical: 8 }} /> : null}
+            {/* With a photo, the scan over it is the loading state. */}
+            {busy && !(mode === 'photo' && photo) ? <StateBlock kind="loading" title={mode === 'photo' ? 'Reading your plate' : 'Working out the numbers'} style={{ paddingVertical: 8 }} /> : null}
             {error ? <ErrorBlock error={error} onManual={() => toReview(null, mode === 'photo' ? 'photo' : 'text')} onRetry={() => void analyse()} /> : null}
             {!error ? (
               <LinkButton align="flex-start" onPress={() => toReview(null, mode === 'photo' ? 'photo' : 'text')} accessibilityLabel="Enter the numbers yourself">
@@ -391,7 +394,7 @@ export default function LogFoodScreen() {
         {step === 'saved' && saved ? (
           <View style={[cardStyle, { alignItems: 'center', gap: 12, paddingVertical: 32 }]} accessibilityLiveRegion="polite">
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.greenTint, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="check" size={30} color={C.green} strokeWidth={2.6} />
+              <DrawCheck size={30} />
             </View>
             <Text style={[T.h2, { textAlign: 'center' }]}>{saved.kcal.toLocaleString()} kcal added to today</Text>
             <Text style={[T.meta, { textAlign: 'center' }]}>{saved.label}</Text>

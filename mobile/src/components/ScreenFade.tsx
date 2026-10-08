@@ -24,14 +24,27 @@
    Tabs (phones and web): the new tab's content slides 16px in from the side
    it came from and fades from half to full opacity (220ms, ease-out quart),
    so the first frame already shows the screen, never black.
+   - Swipe between tabs: drag a tab screen left for the next tab, right for
+     the one before. The screen follows the finger and the neighbour's name
+     slides in at the edge it uncovers; past the first or last tab it only
+     gives a little and springs back. Let go past 28% of the width, or flick,
+     and the screen slides out (180ms), the tab changes with a selection
+     tick, and the new tab comes in from 48px out. Otherwise it springs home.
+     The rules for when a drag is the pager's are in lib/tabPager.ts: a drag
+     that starts on a swipe row (rightward), a 3D object, a text field or a
+     NoTabSwipe area stays theirs, and nothing starts within 20px of either
+     side of the screen.
 
-   Reduce Motion: no slides or fades; the edge swipe still goes back. */
+   Reduce Motion: no slides or fades; the edge swipe still goes back, and a
+   tab swipe still changes tab, without the screen following the finger. */
 
-import React, { useLayoutEffect, useRef } from 'react';
-import { Animated, Easing, PanResponder, Platform, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Animated, Easing, GestureResponderEvent, PanResponder, Platform, StyleProp, Text, useWindowDimensions, View, ViewStyle } from 'react-native';
 
-import { C } from '../design';
+import { C, FONT } from '../design';
 import { haptic } from '../lib/haptics';
+import { markTouch, neighbourIndex, PAGER_COMMIT, PAGER_TABS, pagerDecision, pagerIndex, pagerOffset, shouldClaimTab, touchStart } from '../lib/tabPager';
+import { Icon } from './Icon';
 import { useReduceMotion } from './motion';
 
 const WEB = Platform.OS === 'web';
@@ -51,9 +64,9 @@ const COVER_OPACITY = 0.6;
 
 type Kind = 'push' | 'sheet';
 type NavState = { key: string; index: number; routes: { key: string }[] };
-type Nav = { getState: () => NavState; goBack: () => void };
+type Nav = { getState: () => NavState; goBack: () => void; navigate?: (name: string) => void };
 type LayoutArgs = {
-  route: { key: string };
+  route: { key: string; name?: string };
   navigation: Nav;
   options: { animation?: string; gestureEnabled?: boolean };
   children: React.ReactElement;
@@ -283,26 +296,82 @@ export const webFadeLayout = stackLayout;
 
 /** Each tab navigator's tab as last drawn. */
 const lastTab = new Map<string, number>();
+/** Tab navigators whose next tab change came from a swipe, and which way
+    the finger went (1: toward the next tab). */
+const swiped = new Map<string, 1 | -1>();
+/** A swiped-to tab comes in from further out than a tapped one. */
+const SWIPE_SHIFT = 48;
+const SWIPE_OUT_MS = 180;
+
+/** A touch that starts on a text field never turns the page (web: the
+    browser's own text selection and caret moves keep it). */
+function startsOnEditable(e: GestureResponderEvent): boolean {
+  if (!WEB || typeof Element === 'undefined') return false;
+  const t = (e.nativeEvent as unknown as { target?: unknown }).target ?? (e as unknown as { target?: unknown }).target;
+  return t instanceof Element && !!t.closest('input, textarea, select, [contenteditable="true"]');
+}
+
+/** Wrap an area whose sideways drags are its own (a text composer, a
+    horizontal list): a swipe that starts inside it never changes tab. */
+export function NoTabSwipe({ style, children }: { style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
+  return (
+    <View
+      style={style}
+      onStartShouldSetResponderCapture={() => {
+        markTouch('exempt');
+        return false;
+      }}
+    >
+      {children}
+    </View>
+  );
+}
 
 function TabScreen({ route, navigation, children }: LayoutArgs) {
   const reduce = useReduceMotion();
+  const { width } = useWindowDimensions();
   const s = navigation.getState();
   const i = indexOf(s, route.key);
   const top = s.index === i;
+  const order = pagerIndex(route.name ?? '');
   const x = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
+  // The swipe: the whole screen follows the finger, a peek of the
+  // neighbour's name waits in the strip it uncovers.
+  const drag = useRef(new Animated.Value(0)).current;
+  const [peek, setPeek] = useState<{ title: string; dir: 1 | -1 } | null>(null);
+
+  const live = useRef({ width, reduce, order, top, navKey: s.key, startX: 0, dx: 0, dir: 0, busy: false, navigation });
+  live.current = { ...live.current, width, reduce, order, top, navKey: s.key, navigation };
+
+  // Phone browsers: no overscroll back/forward on a sideways drag; the
+  // pager owns it (Android's own edge gesture is left alone by PAGER_EDGE).
+  useEffect(() => {
+    if (!WEB || typeof document === 'undefined') return;
+    document.documentElement.style.overscrollBehaviorX = 'none';
+    document.body.style.overscrollBehaviorX = 'none';
+  }, []);
 
   useLayoutEffect(() => {
-    if (!top) return;
+    if (!top) {
+      // Left by a swipe: back in place for the next visit, while hidden.
+      drag.setValue(0);
+      live.current.busy = false;
+      setPeek(null);
+      return;
+    }
     const was = lastTab.get(s.key);
     lastTab.set(s.key, i);
+    const from = swiped.get(s.key);
+    swiped.delete(s.key);
     if (was === undefined || was === i || reduce) {
       x.setValue(0);
       opacity.setValue(1);
       return;
     }
     // From the right when moving right along the bar, from the left when moving left.
-    x.setValue(i > was ? TAB_SHIFT : -TAB_SHIFT);
+    const shift = from ? SWIPE_SHIFT : TAB_SHIFT;
+    x.setValue(i > was ? shift : -shift);
     opacity.setValue(TAB_FROM_OPACITY);
     const a = Animated.parallel([
       Animated.timing(x, { toValue: 0, duration: TAB_MS, easing: OUT_QUART, useNativeDriver: !WEB }),
@@ -313,14 +382,120 @@ function TabScreen({ route, navigation, children }: LayoutArgs) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [top]);
 
+  const pan = useRef(
+    PanResponder.create({
+      // Outermost, so this runs first for every touch on the screen: note
+      // where it started and clear what the views under it will mark.
+      onStartShouldSetPanResponderCapture: (e) => {
+        touchStart.owner = startsOnEditable(e) ? 'exempt' : null;
+        live.current.startX = e.nativeEvent.pageX;
+        live.current.dx = 0;
+        return false;
+      },
+      // Bubble phase: a child that wants the drag (a swipe row, a 3D
+      // object) is asked first and keeps it.
+      onMoveShouldSetPanResponder: (e, g) => {
+        const l = live.current;
+        if (!l.top || l.order < 0 || l.busy || g.numberActiveTouches > 1) return false;
+        return shouldClaimTab({ dx: e.nativeEvent.pageX - l.startX, dy: g.dy, startX: l.startX, width: l.width, owner: touchStart.owner });
+      },
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        drag.stopAnimation();
+        live.current.dir = 0;
+      },
+      onPanResponderMove: (e) => {
+        const l = live.current;
+        const dx = e.nativeEvent.pageX - l.startX;
+        l.dx = dx;
+        const next = neighbourIndex(l.order, dx);
+        const dir = next == null ? 0 : dx < 0 ? 1 : -1;
+        if (dir !== l.dir) {
+          l.dir = dir;
+          setPeek(next == null ? null : { title: PAGER_TABS[next].title, dir: dir as 1 | -1 });
+        }
+        if (!l.reduce) drag.setValue(pagerOffset(dx, l.width, next != null));
+      },
+      onPanResponderRelease: (_e, g) => {
+        const l = live.current;
+        const next = neighbourIndex(l.order, l.dx);
+        if (next != null && pagerDecision({ dx: l.dx, vx: g.vx, width: l.width, hasNeighbour: true }) === 'commit') {
+          commit(next, l.dx < 0 ? 1 : -1);
+        } else home();
+      },
+      onPanResponderTerminate: () => home(),
+    }),
+  ).current;
+
+  function commit(next: number, dir: 1 | -1) {
+    const l = live.current;
+    l.busy = true;
+    haptic.select();
+    const go = () => {
+      swiped.set(l.navKey, dir);
+      l.navigation.navigate?.(PAGER_TABS[next].name);
+    };
+    if (l.reduce) return go();
+    Animated.timing(drag, { toValue: -dir * l.width, duration: SWIPE_OUT_MS, easing: OUT_QUART, useNativeDriver: !WEB }).start(go);
+  }
+
+  function home() {
+    const l = live.current;
+    l.dir = 0;
+    if (l.reduce) {
+      drag.setValue(0);
+      setPeek(null);
+      return;
+    }
+    Animated.spring(drag, { toValue: 0, stiffness: 400, damping: 34, mass: 1, useNativeDriver: !WEB }).start(({ finished }) => {
+      if (finished && live.current.dir === 0) setPeek(null);
+    });
+  }
+
+  // The peek fades in and slides 24px toward the middle as the screen
+  // moves; it is fully there at the commit point.
+  const reach = Math.max(1, width * PAGER_COMMIT);
+  const peekStyle =
+    peek && !reduce
+      ? {
+          opacity: drag.interpolate({ inputRange: peek.dir === 1 ? [-reach, -12] : [12, reach], outputRange: peek.dir === 1 ? [1, 0] : [0, 1], extrapolate: 'clamp' }),
+          transform: [
+            {
+              translateX: drag.interpolate({ inputRange: peek.dir === 1 ? [-reach, 0] : [0, reach], outputRange: peek.dir === 1 ? [0, 24] : [-24, 0], extrapolate: 'clamp' }),
+            },
+          ],
+        }
+      : null;
+  // Web: vertical scrolling stays the browser's; sideways moves reach the pager.
+  const webTouch = WEB ? ({ touchAction: 'pan-y' } as unknown as ViewStyle) : null;
+
   return (
-    <View style={{ flex: 1, overflow: 'hidden' }}>
-      <Animated.View style={{ flex: 1, opacity, transform: [{ translateX: x }] }}>{children}</Animated.View>
+    <View style={[{ flex: 1, overflow: 'hidden' }, webTouch]} {...(order >= 0 ? pan.panHandlers : null)}>
+      {peekStyle && peek ? (
+        <Animated.View
+          aria-hidden
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[
+            { pointerEvents: 'none', position: 'absolute', top: '42%', flexDirection: 'row', alignItems: 'center', gap: 4 },
+            peek.dir === 1 ? { right: 20 } : { left: 20 },
+            peekStyle,
+          ]}
+        >
+          {peek.dir === -1 ? <Icon name="chevronLeft" size={18} color={C.muted} /> : null}
+          <Text style={{ fontFamily: FONT.displaySemi, fontSize: 17, lineHeight: 22, color: C.stone }}>{peek.title}</Text>
+          {peek.dir === 1 ? <Icon name="chevronRight" size={18} color={C.muted} /> : null}
+        </Animated.View>
+      ) : null}
+      <Animated.View style={{ flex: 1, backgroundColor: C.bg, transform: [{ translateX: drag }] }}>
+        <Animated.View style={{ flex: 1, opacity, transform: [{ translateX: x }] }}>{children}</Animated.View>
+      </Animated.View>
     </View>
   );
 }
 
-/** `screenLayout` for the tab navigator: the 16px slide and fade, phones and web. */
+/** `screenLayout` for the tab navigator: the slide and fade on a tab
+    change, and the swipe between tabs, phones and web. */
 export const tabLayout = (props: LayoutArgs) => <TabScreen {...props} />;
 
 /** Options every stack shares: the push slides in from the right. */
