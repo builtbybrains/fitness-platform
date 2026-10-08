@@ -287,7 +287,7 @@ Off-plan food counts toward the day's calories; the person confirms or edits bef
 
 | Function | Returns | Notes |
 | --- | --- | --- |
-| `sendCoachMessage(userId, message, conversationId = 'default')` | `CoachReply` `{ reply, model, saved, suggestPlanChange, remembered }` | When `suggestPlanChange` is set, offer "Update my plan" → `generatePlan(userId, suggestPlanChange)`. `remembered`: facts saved from this message |
+| `sendCoachMessage(userId, message, conversationId = 'default')` | `CoachReply` `{ reply, model, saved, suggestPlanChange, remembered }` | When `suggestPlanChange` is set, offer "Update my plan" → `generatePlan(userId, suggestPlanChange)`. `remembered`: facts saved from this message. The function also returns `suggestions`, `thread` and `remaining_today` (section 9, `coach`); threads and paging: section 9, "Coach threads" |
 | `dailyNote(userId, summary)` | `string` | The Today note, one or two sentences. `''` means no AI note right now: show a built-in tip (`lib/coachTips.ts`). Today caches it per person and day |
 | `listMemory(userId)` | `MemoryFact[]` | For Profile → "What your coach remembers" |
 | `deleteMemory(userId, id)` | `void` | People can delete, never edit |
@@ -450,7 +450,19 @@ paths are in their folder, needs a front photo. 503 without a vision key.
 `{ imageBase64 }` → `{ estimate: { label, kcal, protein, carbs, fat, confidence, items }, model }`. No questions.
 
 ### `coach`
-`{ message, conversationId?, localDay? }` → `{ reply, model, saved, suggestPlanChange, remembered }`.
+`{ message, conversationId?, localDay? }` →
+`{ reply, model, saved, suggestPlanChange, remembered, suggestions, thread, remaining_today }`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `reply` | `string` | At most about 90 words. May contain a short list (lines starting `- `) and `**bold**` around key numbers; never headings, tables or em dashes. Render bold and list lines; show everything else as plain text |
+| `suggestions` | `string[]` | 0 to 3 follow-ups the person might tap next, written as they would type them ("Make it 30 minutes", "Swap today's dinner"). Plain text, at most 48 characters each. Tapping one sends it as the next `message`. Without AI they come from the person's day (rest day, workout done or not, water, calories) |
+| `thread` | `{ id: string, title: string }` | The conversation the exchange went into (`id` = `conversationId`, default `'default'`). On a thread's first exchange the title is set: AI picks 2 to 5 words; without AI it is the message cut to 48 characters. A title the person chose is never replaced (only `''`, `New chat`, `First chat` or the start of the first message count as "not chosen") |
+| `remaining_today` | `number` | Messages left today after this one (60 a day, never below 0). At 0 the next send answers 429 `limit_reached` |
+
+The message and the reply are saved with distinct times (reply 1 ms or
+more later), then the thread is updated through `coach_thread_touch`
+(below). If that update fails the reply still comes back with `saved: true`.
 `{ mode: 'daily_note', localDay?, summary: { day, focus?, minutes?, workoutDone?, done7?, planned7?, streak?, mealsYesterday? } }`
 → `{ note }` (at most 200 characters; `''` without AI). Reads profile and memory, writes neither
 chat history nor memory. 6 per person per UTC day (`ai_usage` kind `coach`).
@@ -464,6 +476,68 @@ losing too fast: +150; not gaining: +150; low energy or sleep while losing:
 hard it felt, a new plan, a written review, memory facts, and a
 `plan_updated` push.
 
+### Coach threads (chat history)
+
+One `coach_threads` row per conversation, kept up to date by the `coach`
+function. The app reads and edits it directly with supabase-js (RLS keeps
+everything to the signed-in person).
+
+List (pinned first, then most recent; `updated_at` is the time of the last
+message, so renaming, pinning or archiving never reorders):
+
+```ts
+supabase.from('coach_threads')
+  .select('id, title, pinned, archived_at, message_count, last_preview, last_role, updated_at')
+  .is('archived_at', null)            // archived list: .not('archived_at', 'is', null)
+  .order('pinned', { ascending: false })
+  .order('updated_at', { ascending: false });
+```
+
+Rename, pin, archive, restore (only these three columns can change; any
+other column sent is ignored, so sending the whole row back is safe):
+
+```ts
+supabase.from('coach_threads').update({ title: 'Knee plan' }).eq('id', threadId);   // title: trimmed, max 80
+supabase.from('coach_threads').update({ pinned: true }).eq('id', threadId);
+supabase.from('coach_threads').update({ archived_at: new Date().toISOString() }).eq('id', threadId);
+supabase.from('coach_threads').update({ archived_at: null }).eq('id', threadId);    // restore
+```
+
+There is no delete: archive instead (the daily message limit is counted
+from `coach_messages`, which is never deleted). Sending a new message into
+an archived thread brings it back to the list.
+
+New chat: make up an id (1 to 60 characters, for example a UUID) and send
+the first message with `conversationId: id`; the function creates the row.
+To show the chat in the list before the first message, insert it yourself:
+`insert({ user_id, id, title: '' })` (counters always start at 0).
+
+Messages of one thread, newest first, 50 at a time:
+
+```ts
+let q = supabase.from('coach_messages')
+  .select('id, role, body, created_at')
+  .eq('conversation_id', threadId)
+  .order('created_at', { ascending: false })
+  .order('role', { ascending: true })   // older same-time pairs: reply first, so reversed they read in order
+  .limit(50);
+if (cursor) q = q.lt('created_at', cursor); // cursor = created_at of the oldest message on screen
+```
+
+Reverse each page to show oldest at the top. Messages saved since threads
+shipped never share a time. Older ones were saved in pairs with the same
+time, so a page can end between a question and its reply; to be exact on
+those, use `.lte('created_at', cursor)` and skip ids already on screen.
+
+`coach_thread_touch(p_id text, p_preview text, p_role text, p_added int, p_title text default null)`
+is the only way the counters change. It is SECURITY DEFINER, works on
+`auth.uid()`'s own thread only (creating it when missing), adds `p_added`
+(0 to 20) to `message_count`, sets `last_preview` (cut to 160 characters)
+and `last_role` (`user` or `coach`), sets `title` when `p_title` is not
+blank, clears `archived_at` when messages were added, and returns the
+thread row. The `coach` function calls it after each exchange; the app does
+not need to.
+
 ## 10. Tables and storage
 
 All in `public`, all with RLS. "Own" = `auth.uid() = user_id`.
@@ -473,7 +547,8 @@ All in `public`, all with RLS. "Own" = `auth.uid() = user_id`.
 | `profiles` | Account, targets, whole questionnaire (section 5.1) | read/update own. DB enforces: 13+ (BU013), waiver (BU014), guardian 13 to 17 (BU015), birth date to finish (BU016); `age` synced from `birth_date` |
 | `plan_days` | Check-offs per day (`workout_done`, `exercises_done`, `meals_done`) | all on own |
 | `water`, `weights` | Glasses per day; kg per day | all on own |
-| `coach_messages` | Chat history | read, add own (no edit/delete: the daily limit counts them) |
+| `coach_messages` | Chat history (`conversation_id` = the thread id) | read, add own (no edit/delete: the daily limit counts them) |
+| `coach_threads` | One row per chat: `id` (= `conversation_id`), `title` (max 80), `pinned`, `archived_at`, `message_count`, `last_preview` (max 160), `last_role`, `created_at`, `updated_at` (last message). `supabase/coach-threads.sql` | read, add own; update only `title`, `pinned`, `archived_at`; no delete. Counters change only through `coach_thread_touch()` |
 | `ai_plans` | `plan` (v1 or v2), `kcal_target`, `water_target`, `change_log` (last 20) | all on own |
 | `plan_overrides` | Per-week moves and swaps (section 8) | all on own |
 | `food_logs` | `label, kcal, protein, carbs, fat, confidence, source (photo/text/plan/generated), slot, follow_up, items` | all on own |
