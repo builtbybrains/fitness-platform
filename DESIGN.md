@@ -194,12 +194,52 @@ one copy of three.js).
 
 - Ease-out quart or expo, 150 to 400ms, transform and opacity only.
 - Progress rings and bars fill once on first view. Buttons scale to 0.97 on press.
-- Web scroll reveal: section headings and split copy rise in once (the `rise` keyframes,
-  80ms stagger); only what starts below the fold is held back. Not every block reveals.
+- Web scroll reveal: the Nutrition split copy rises in once (the `rise` keyframes, 80ms stagger),
+  and the phone and price card settle in from a slight tilt; only what starts below the fold is
+  held back. Everything else that moves with the page is scroll-linked (below).
 - The hero dumbbell loop is the only time-driven motion; the other 3D objects move with the scroll
   and only bob a few pixels while on screen. See 3D.
 - `prefers-reduced-motion` (web) and Reduce Motion (app) turn all of it off, every 3D object
   included (the still posters show).
+
+### Web scroll system
+
+The site runs one scroll loop (the inline script in `index.html`): one passive scroll listener, one
+`requestAnimationFrame` per frame, shared by the solid nav, scroll-spy, the roadmap and every effect
+below. Positions are measured in one pass as document offsets (on load, resize, fonts ready and any
+change in the page's height, via a ResizeObserver), so a frame only reads `scrollY` and writes, and
+only values that changed. Every effect is a function of scroll position: scrolling back plays it
+backwards. Transform, opacity, `clip-path` and `stroke-dashoffset` only; `will-change` sits on the
+big movers (kinetic rows, phone, final panel) only while they are on screen. All of it hangs off
+the `.fx` class the script sets when motion is allowed; without it the page is the still page.
+
+Each section moves its own way, never the same fade-up twice:
+
+- Scroll progress: a 2px line under the nav. Stone at 35% for the page so far, green for the part
+  of the current section already read.
+- Hero: as it leaves, the tagline and headline lines part (the top line fastest) and each fades only
+  as it nears the nav. The pillars, when they start below the fold (phones), come up from below
+  faster than the copy, one by one; on wide screens they rest and then lead the copy off the top.
+- Key headings (How it works, Features, Pricing, About, the final call; not every heading): word by
+  word, each word rises out of its own mask with a 4-degree settle as the heading crosses the lower
+  third of the screen.
+- Roadmap: the green line draws down the rail against a playhead 62% down the screen; a green ring
+  charges round each step number as the line approaches and the number lights green as it lands.
+- Features: each card stands up from lying back (rotateX 24 degrees to 0, 40px rise, opacity), the
+  right-hand column a beat behind the left, rows staggered by their position.
+- Kinetic band (between Features and Nutrition, decorative, hidden from screen readers): "Train ·
+  Fuel · Become ·" in Sora Bold caps, solid and outline words alternating, green once. Two rows slide
+  against each other with the scroll and lean up to 6 degrees into the scroll's direction while it
+  moves.
+- Progress: the counters count up (900ms, ease-out quart) each time they come on screen and reset
+  when they leave; they keep the final number's width, so nothing shifts. The weekly bars grow with
+  the scroll, left to right.
+- Pricing: "$30" rolls up like an odometer as the card arrives (the last digit goes once round) and
+  lands by the time the price is 72% down the screen; "about $1 a day" underlines itself in green.
+- Phone mockup: drifts slower than the page (40px at most, 22px on phones) and its screen scrolls
+  under a pinned status bar and tab bar, as if in use.
+- Final call: a Deep Black panel opens from a rounded card (scale 0.96, 24px corners) inside a band
+  of `#121212` to full bleed as the section arrives. The copy itself never scales.
 
 ## App screens (deck page 6)
 
