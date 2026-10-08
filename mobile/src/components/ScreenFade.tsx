@@ -21,8 +21,9 @@
    nothing flashes black. Everything is clipped to the screen, so no
    horizontal scroll appears.
 
-   Tabs (phones and web): the new tab's content slides 24px in from the side
-   it came from and fades in (220ms, ease-out quart).
+   Tabs (phones and web): the new tab's content slides 16px in from the side
+   it came from and fades from half to full opacity (220ms, ease-out quart),
+   so the first frame already shows the screen, never black.
 
    Reduce Motion: no slides or fades; the edge swipe still goes back. */
 
@@ -42,7 +43,9 @@ const PUSH_MS = 320;
 const BACK_MS = 280;
 const SHEET_MS = 340;
 const TAB_MS = 220;
-const TAB_SHIFT = 24;
+const TAB_SHIFT = 16;
+/** A tab starts half shown, so its first frame is never a black screen. */
+const TAB_FROM_OPACITY = 0.5;
 const COVER_X = -0.3;
 const COVER_OPACITY = 0.6;
 
@@ -300,7 +303,7 @@ function TabScreen({ route, navigation, children }: LayoutArgs) {
     }
     // From the right when moving right along the bar, from the left when moving left.
     x.setValue(i > was ? TAB_SHIFT : -TAB_SHIFT);
-    opacity.setValue(0);
+    opacity.setValue(TAB_FROM_OPACITY);
     const a = Animated.parallel([
       Animated.timing(x, { toValue: 0, duration: TAB_MS, easing: OUT_QUART, useNativeDriver: !WEB }),
       Animated.timing(opacity, { toValue: 1, duration: TAB_MS, easing: OUT_QUART, useNativeDriver: !WEB }),
@@ -317,7 +320,7 @@ function TabScreen({ route, navigation, children }: LayoutArgs) {
   );
 }
 
-/** `screenLayout` for the tab navigator: the 24px slide and fade, phones and web. */
+/** `screenLayout` for the tab navigator: the 16px slide and fade, phones and web. */
 export const tabLayout = (props: LayoutArgs) => <TabScreen {...props} />;
 
 /** Options every stack shares: the push slides in from the right. */

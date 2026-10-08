@@ -1,14 +1,16 @@
 /* The BUILT 3D objects: a hex dumbbell, a milestone medal, a kettlebell, a
-   shaker, a bumper plate, the Today ring and the macro donut, the objects
-   carrying the green B. Flat ink brand, so the materials stay honest: matte black
+   shaker, a bumper plate and its steel pin, the Today ring and the macro
+   donut, the objects carrying the green B. Flat ink brand, so the materials stay honest: matte black
    rubber, brushed steel, Carbon metal, and Built Green used only on thin
    collars, the rim and the mark, as flat brand colour. No bloom, no glow;
    the only emissive (the sides of the raised B) stays at 0.12. Poly
    counts are kept low for phone GPUs: a few thousand triangles each. */
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import { MARK_PATH } from '../BuiltLogo';
+import { iconStrokes, type MedalIcon } from './iconStrokes';
 import { centredOutline } from './outline';
 import { arcSweep, clockPoint, donutSegments, type DonutSegment, type MacroKey } from './layout';
 
@@ -174,10 +176,49 @@ export function makeDumbbell({ hasEnv = true }: { hasEnv?: boolean } = {}): THRE
 }
 
 /**
- * Milestone medal facing +Z, radius 1: a bevelled Carbon metal disc, a
- * green ring inset on each face, and the B raised in green on the front.
+ * An icon from the app's set, raised `depth` and facing +Z: each 2px
+ * stroke on the 24px grid becomes a flat bar with round joins and caps,
+ * `size` units across the grid, centred. Flat Built Green, as the badges
+ * draw it. One merged mesh.
  */
-export function makeMedal({ hasEnv = true }: { hasEnv?: boolean } = {}): THREE.Group {
+function iconMesh(name: MedalIcon, size: number, depth: number): THREE.Mesh {
+  const k = size / 24;
+  const w = 2 * k; // the icon set's 2px stroke
+  const parts: THREE.BufferGeometry[] = [];
+  const at = ([x, y]: [number, number]) => new THREE.Vector2((x - 12) * k, -(y - 12) * k);
+  for (const s of iconStrokes(name)) {
+    const pts = s.pts.map(at);
+    const n = s.closed ? pts.length : pts.length - 1;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const len = a.distanceTo(b);
+      if (len < 1e-5) continue;
+      const bar = new THREE.BoxGeometry(len, w, depth);
+      bar.rotateZ(Math.atan2(b.y - a.y, b.x - a.x));
+      bar.translate((a.x + b.x) / 2, (a.y + b.y) / 2, depth / 2);
+      parts.push(bar);
+    }
+    for (const p of pts) {
+      const joint = new THREE.CylinderGeometry(w / 2, w / 2, depth, 12, 1);
+      joint.rotateX(Math.PI / 2);
+      joint.translate(p.x, p.y, depth / 2);
+      parts.push(joint);
+    }
+  }
+  const geo = mergeGeometries(parts.map((g) => g.toNonIndexed()), false) ?? new THREE.BufferGeometry();
+  for (const g of parts) g.dispose();
+  const mesh = new THREE.Mesh(geo, brandGreen());
+  mesh.name = 'icon';
+  return mesh;
+}
+
+/**
+ * Milestone medal facing +Z, radius 1: a bevelled Carbon metal disc, a
+ * green ring inset on each face, and on the front the B raised in green,
+ * or with `icon`, that milestone's icon raised in green instead.
+ */
+export function makeMedal({ hasEnv = true, icon }: { hasEnv?: boolean; icon?: MedalIcon } = {}): THREE.Group {
   const g = new THREE.Group();
   g.name = 'medal';
 
@@ -211,6 +252,12 @@ export function makeMedal({ hasEnv = true }: { hasEnv?: boolean } = {}): THREE.G
     g.add(ring);
   }
 
+  if (icon) {
+    const face = iconMesh(icon, 1.12, 0.04);
+    face.position.z = t - 0.005;
+    g.add(face);
+    return g;
+  }
   const mark = markMesh(0.82, 0.05);
   mark.position.z = t - 0.005;
   g.add(mark);
@@ -349,8 +396,9 @@ export function makeShaker(): THREE.Group {
 
 /**
  * Bumper plate lying flat (axis on Y), radius 1, `thickness` tall: matte
- * rubber with a rounded edge, a raised steel hub, a thin green line near
- * the rim on each face and a small green B on the top face.
+ * rubber with a rounded edge, a raised steel hub and a thin green line near
+ * the rim on each face. No mark on the face: lying flat on a small stack the
+ * B foreshortens past reading.
  */
 export function makePlate({ hasEnv = true, thickness = 0.22 }: { hasEnv?: boolean; thickness?: number } = {}): THREE.Group {
   const g = new THREE.Group();
@@ -383,11 +431,24 @@ export function makePlate({ hasEnv = true, thickness = 0.22 }: { hasEnv?: boolea
     ring.position.y = side * h;
     g.add(ring);
   }
-  // Big enough to read as the B on a 90px stack.
-  const mark = markMesh(0.36, 0.012);
-  mark.rotation.x = -Math.PI / 2;
-  mark.position.set(0, h, -0.52);
-  g.add(mark);
+  return g;
+}
+
+/**
+ * The steel pin plates stack onto: a short round base flange on the floor
+ * (its top at y = 0) and a rod `height` tall through the plates' holes.
+ */
+export function makePin({ hasEnv = true, height = 1.7 }: { hasEnv?: boolean; height?: number } = {}): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'pin';
+  const steel = steelMaterial(hasEnv);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.06, 40, 1), steel);
+  base.position.y = -0.03;
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.068, height, 24, 1), steel);
+  rod.position.y = height / 2;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.068, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), steel);
+  cap.position.y = height;
+  g.add(base, rod, cap);
   return g;
 }
 
@@ -399,24 +460,10 @@ export type TorusRing = {
   setProgress(progress: number): void;
 };
 
-/**
- * The Today ring facing +Z, radius 1 to the tube's centre: a Carbon track
- * torus and a green arc, a touch fatter so it sits proud of the track,
- * with round caps. The arc's vertices are rewritten in place on update,
- * so filling it allocates nothing.
- */
-export function makeTorusRing({ hasEnv = true, tube = 0.085, progress = 0 }: { hasEnv?: boolean; tube?: number; progress?: number } = {}): TorusRing {
-  const group = new THREE.Group();
-  group.name = 'ring';
-  const track = new THREE.Mesh(
-    new THREE.TorusGeometry(1, tube, 16, 128),
-    new THREE.MeshStandardMaterial({ color: '#2f2f2f', roughness: 0.5, metalness: hasEnv ? 0.35 : 0.15 }),
-  );
-  group.add(track);
-
-  const r = tube * 1.08;
-  const N = 128; // along the arc
-  const M = 14; // around the tube
+/** A tube of `radius` bent along the unit circle, from angle `from` to `to`
+    (clockwise from 12 o'clock), open at both ends. Its vertices are
+    rewritten in place by `set`, so moving the ends allocates nothing. */
+function arcTube(radius: number, N: number, M: number) {
   const geo = new THREE.BufferGeometry();
   const pos = new Float32Array((N + 1) * (M + 1) * 3);
   const nor = new Float32Array((N + 1) * (M + 1) * 3);
@@ -432,22 +479,9 @@ export function makeTorusRing({ hasEnv = true, tube = 0.085, progress = 0 }: { h
     }
   }
   geo.setIndex(index);
-  const green = brandGreen();
-  const arc = new THREE.Mesh(geo, green);
-  arc.frustumCulled = false;
-  group.add(arc);
-  const capGeo = new THREE.SphereGeometry(r, 14, 10);
-  const capStart = new THREE.Mesh(capGeo, green);
-  const capEnd = new THREE.Mesh(capGeo, green);
-  group.add(capStart, capEnd);
-
-  function setProgress(p: number) {
-    const sweep = arcSweep(p);
-    const show = sweep > 0.002;
-    arc.visible = capStart.visible = capEnd.visible = show;
-    if (!show) return;
+  function set(from: number, to: number) {
     for (let i = 0; i <= N; i++) {
-      const theta = (sweep * i) / N;
+      const theta = from + ((to - from) * i) / N;
       const [cx, cy] = clockPoint(theta, 1);
       for (let j = 0; j <= M; j++) {
         const phi = (j / M) * Math.PI * 2;
@@ -456,9 +490,9 @@ export function makeTorusRing({ hasEnv = true, tube = 0.085, progress = 0 }: { h
         const ny = Math.cos(phi) * cy;
         const nz = Math.sin(phi);
         const k = (i * (M + 1) + j) * 3;
-        pos[k] = cx + r * nx;
-        pos[k + 1] = cy + r * ny;
-        pos[k + 2] = r * nz;
+        pos[k] = cx + radius * nx;
+        pos[k + 1] = cy + radius * ny;
+        pos[k + 2] = radius * nz;
         nor[k] = nx;
         nor[k + 1] = ny;
         nor[k + 2] = nz;
@@ -466,6 +500,64 @@ export function makeTorusRing({ hasEnv = true, tube = 0.085, progress = 0 }: { h
     }
     geo.attributes.position.needsUpdate = true;
     geo.attributes.normal.needsUpdate = true;
+    geo.computeBoundingSphere();
+  }
+  return { geo, set };
+}
+
+/**
+ * The Today ring facing +Z, radius 1 to the tube's centre: a Carbon track
+ * and a green arc 15% fatter, with round caps. The track runs only where
+ * the arc does not and stops just short of the arc's caps, with round ends
+ * of its own tucked behind them, so the two never overlap and fight over
+ * the same pixels (a track running through the caps hides their round ends
+ * and leaves a ragged line where the surfaces cross). The arc is lit like the track, with a faint
+ * green glow of its own and no tone mapping, so its lit face lands on
+ * Built Green. Both are rewritten in place on update, so filling the ring
+ * allocates nothing.
+ */
+export function makeTorusRing({ hasEnv = true, tube = 0.085, progress = 0 }: { hasEnv?: boolean; tube?: number; progress?: number } = {}): TorusRing {
+  const group = new THREE.Group();
+  group.name = 'ring';
+  const trackTube = arcTube(tube, 128, 16);
+  const trackMat = new THREE.MeshStandardMaterial({ color: '#2f2f2f', roughness: 0.5, metalness: hasEnv ? 0.35 : 0.15 });
+  const track = new THREE.Mesh(trackTube.geo, trackMat);
+  const trackCapGeo = new THREE.SphereGeometry(tube, 20, 14);
+  const trackStart = new THREE.Mesh(trackCapGeo, trackMat);
+  const trackEnd = new THREE.Mesh(trackCapGeo, trackMat);
+  group.add(track, trackStart, trackEnd);
+
+  const r = tube * 1.15;
+  /** Angle between an arc end and the track's end: the arc's cap shows whole, the track's cap sits behind it. */
+  const gap = r * 1.6;
+  const arcTubeGeo = arcTube(r, 128, 14);
+  const green = new THREE.MeshStandardMaterial({ color: GREEN, emissive: GREEN, emissiveIntensity: 0.15, roughness: 0.45, toneMapped: false });
+  const arc = new THREE.Mesh(arcTubeGeo.geo, green);
+  group.add(arc);
+  const capGeo = new THREE.SphereGeometry(r, 20, 14);
+  const capStart = new THREE.Mesh(capGeo, green);
+  const capEnd = new THREE.Mesh(capGeo, green);
+  group.add(capStart, capEnd);
+
+  function setProgress(p: number) {
+    const sweep = arcSweep(p);
+    const show = sweep > 0.002;
+    arc.visible = capStart.visible = capEnd.visible = show;
+    // The track fills the rest of the turn; with no arc, the whole turn.
+    const full = Math.PI * 2;
+    const from = show ? sweep + gap : 0;
+    const to = show ? full - gap : full;
+    track.visible = to - from > 0.002;
+    trackStart.visible = trackEnd.visible = show && track.visible;
+    if (track.visible) trackTube.set(from, to);
+    if (trackStart.visible) {
+      const [ax, ay] = clockPoint(from, 1);
+      const [bx, by] = clockPoint(to, 1);
+      trackStart.position.set(ax, ay, 0);
+      trackEnd.position.set(bx, by, 0);
+    }
+    if (!show) return;
+    arcTubeGeo.set(0, sweep);
     const [sx, sy] = clockPoint(0, 1);
     const [ex, ey] = clockPoint(sweep, 1);
     capStart.position.set(sx, sy, 0);
@@ -492,6 +584,8 @@ export type MacroDonut = {
 };
 
 const DONUT = { outer: 1, inner: 0.6, depth: 0.24, gap: 0.08, lift: 0.12 };
+/** Slice colours; the chips under the donut (MacroDonut.tsx SWATCH) match. */
+export const DONUT_COLOR: Record<MacroKey, string> = { protein: GREEN, carbs: '#A3A3A3', fat: '#5A5A5A' };
 
 /** A flat annular sector (angles clockwise from 12 o'clock) as a shape. */
 function sectorShape(start: number, end: number, inner: number, outer: number): THREE.Shape {
@@ -510,7 +604,8 @@ function sectorShape(start: number, end: number, inner: number, outer: number): 
 /**
  * Macro donut facing +Z: one extruded segment per macro, sized by share
  * of calories with small gaps. Faces are the exact hex (protein Built
- * Green, carbs Stone #E9E9E9, fat grey #8C8C8C), sides lit. All zero: one grey ring.
+ * Green, carbs #A3A3A3, fat #5A5A5A: both well under the green, so a
+ * lifted slice is the brightest thing), sides lit. All zero: one grey ring.
  */
 export function makeMacroDonut(initial: Record<MacroKey, number>): MacroDonut {
   const group = new THREE.Group();
@@ -523,8 +618,8 @@ export function makeMacroDonut(initial: Record<MacroKey, number>): MacroDonut {
   ];
   const mats: Record<MacroKey, THREE.Material[]> = {
     protein: slice(GREEN, 0.12),
-    carbs: slice('#E9E9E9'),
-    fat: slice('#8C8C8C'),
+    carbs: slice(DONUT_COLOR.carbs),
+    fat: slice(DONUT_COLOR.fat),
   };
   const empty = new THREE.MeshStandardMaterial({ color: '#3a3a3a', roughness: 0.7, metalness: 0 });
   // Materials live for the donut's life; only geometry is rebuilt.

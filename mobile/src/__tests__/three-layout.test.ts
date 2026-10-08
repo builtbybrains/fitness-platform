@@ -6,7 +6,10 @@ import {
   arcSweep,
   clockPoint,
   donutSegments,
+  latestEarned,
+  PLATE_CAP,
   plateDrop,
+  plateRadius,
   plateSlots,
   plateThickness,
   plateY,
@@ -14,8 +17,6 @@ import {
   segmentAt,
   settle,
   sharePercents,
-  shelfOrder,
-  shelfSlots,
   softClamp,
   stepTween,
   swapPose,
@@ -145,20 +146,23 @@ describe('macro donut segments', () => {
 });
 
 describe('plate stack', () => {
-  it('gives one plate a set up to the cap', () => {
-    expect(plateSlots(9)).toBe(9);
-    expect(plateSlots(20)).toBe(12);
-    for (let d = 0; d <= 9; d++) expect(visiblePlates(d, 9)).toBe(d);
+  it('gives one plate a set up to the cap of 6', () => {
+    expect(PLATE_CAP).toBe(6);
+    expect(plateSlots(5)).toBe(5);
+    expect(plateSlots(20)).toBe(6);
+    for (let d = 0; d <= 5; d++) expect(visiblePlates(d, 5)).toBe(d);
   });
 
-  it('past the cap, the first tick drops a plate and the last fills the stack', () => {
+  it('past the cap, sets map onto the plates in proportion', () => {
     expect(visiblePlates(1, 15)).toBe(1);
-    expect(visiblePlates(15, 15)).toBe(12);
+    expect(visiblePlates(3, 12)).toBe(2);
+    expect(visiblePlates(6, 12)).toBe(3);
+    expect(visiblePlates(15, 15)).toBe(6);
     let last = 0;
     for (let d = 0; d <= 15; d++) {
       const v = visiblePlates(d, 15);
       expect(v).toBeGreaterThanOrEqual(last); // never shrinks as sets are ticked
-      expect(v).toBeLessThanOrEqual(12);
+      expect(v).toBeLessThanOrEqual(6);
       last = v;
     }
   });
@@ -166,13 +170,17 @@ describe('plate stack', () => {
   it('handles nothing to do and overshoot', () => {
     expect(visiblePlates(0, 0)).toBe(0);
     expect(visiblePlates(3, 0)).toBe(0);
-    expect(visiblePlates(30, 12)).toBe(12);
+    expect(visiblePlates(30, 12)).toBe(6);
+  });
+
+  it('alternates full and smaller plates', () => {
+    expect([0, 1, 2, 3, 4, 5].map(plateRadius)).toEqual([1, 0.86, 1, 0.86, 1, 0.86]);
   });
 
   it('thins plates so a full stack fits, never thicker than the max', () => {
     expect(plateThickness(3, 1.3, 0.22)).toBe(0.22);
-    expect(plateThickness(12, 1.3, 0.22)).toBeCloseTo(1.3 / 12, 9);
-    expect(plateThickness(40, 1.3, 0.22)).toBeCloseTo(1.3 / 12, 9);
+    expect(plateThickness(6, 1.2, 0.22)).toBeCloseTo(0.2, 9);
+    expect(plateThickness(40, 1.2, 0.22)).toBeCloseTo(0.2, 9);
   });
 
   it('stacks plate centres a thickness and a gap apart from the floor', () => {
@@ -189,24 +197,29 @@ describe('plate stack', () => {
 });
 
 describe('trophy shelf', () => {
-  it('centres medals and keeps them at most a step apart', () => {
-    expect(shelfSlots(0, 4, 1)).toEqual([]);
-    expect(shelfSlots(1, 4, 1)).toEqual([0]);
-    const xs = shelfSlots(4, 10, 0.8);
-    expect(xs[1] - xs[0]).toBeCloseTo(0.8, 9);
-    expect(xs[0] + xs[3]).toBeCloseTo(0, 9);
-    const tight = shelfSlots(8, 4, 1);
-    expect(tight[7] - tight[0]).toBeCloseTo(3.5, 9);
+  it('shows the latest milestone earned', () => {
+    const items = [
+      { id: 'a', earned: true, earnedAt: '2026-09-08' },
+      { id: 'b', earned: false, earnedAt: null },
+      { id: 'c', earned: true, earnedAt: '2026-09-20' },
+      { id: 'd', earned: true, earnedAt: '2026-09-12' },
+    ];
+    expect(latestEarned(items)?.id).toBe('c');
   });
 
-  it('counts earned medals and lights the last one', () => {
+  it('breaks a tie by list order and puts undated ones first', () => {
     const items = [
-      { earned: true, earnedAt: '2026-09-08' },
-      { earned: false, earnedAt: null },
-      { earned: true, earnedAt: '2026-09-20' },
+      { id: 'a', earned: true, earnedAt: '2026-09-20' },
+      { id: 'b', earned: true, earnedAt: '2026-09-20' },
+      { id: 'c', earned: true, earnedAt: null },
     ];
-    expect(shelfOrder(items)).toEqual({ count: 2, newest: 1 });
-    expect(shelfOrder([])).toEqual({ count: 0, newest: -1 });
+    expect(latestEarned(items)?.id).toBe('b');
+    expect(latestEarned([{ id: 'x', earned: true, earnedAt: null }])?.id).toBe('x');
+  });
+
+  it('is empty when nothing is earned', () => {
+    expect(latestEarned([])).toBeNull();
+    expect(latestEarned([{ earned: false, earnedAt: null }])).toBeNull();
   });
 });
 

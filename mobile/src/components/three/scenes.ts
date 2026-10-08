@@ -13,11 +13,13 @@ import type { BuildScene, SceneHandle } from './Scene3D';
 import type { ObjectKind, SceneKind, SceneParams } from './sceneTypes';
 import {
   addStudioLights,
+  disposeTree,
   makeDumbbell,
   makeEnvironment,
   makeKettlebell,
   makeMacroDonut,
   makeMedal,
+  makePin,
   makePlate,
   makeShaker,
   makeTorusRing,
@@ -25,13 +27,14 @@ import {
 import { fitDistance, fitExtent } from './pose';
 import {
   MACRO_KEYS,
+  PLATE_CAP,
   TAU,
   plateDrop,
+  plateRadius,
   plateThickness,
   plateY,
   retarget,
   settle,
-  shelfSlots,
   softClamp,
   stepTween,
   swapPose,
@@ -169,82 +172,62 @@ export const buildDonut: BuildScene = (scene, camera, renderer) => {
 
 // ─────────────────────────────── Progress shelf ───────────────────────────────
 
-const MEDAL_SCALE = 0.36;
-const MEDAL_STEP = 0.84;
+const MEDAL_SCALE = 0.4;
 const SHELF_TOP = -0.42;
+const SHELF_SPAN = 1.7;
 
+/** The latest milestone's medal standing on a short Carbon shelf: its
+    badge icon raised on the face, the green ring. Swipe to turn it; it
+    springs back. */
 export const buildShelf: BuildScene = (scene, camera, renderer) => {
   const hasEnv = studio(scene, renderer);
   const turn = new THREE.Group();
   scene.add(turn);
   camera.fov = 24;
 
-  // Matte Carbon: rough enough that the faint green rim light leaves no sheen on it.
-  const shelfMat = new THREE.MeshStandardMaterial({ color: '#2a2a2a', roughness: 0.85, metalness: 0.1 });
-  const shelf = new THREE.Mesh(new THREE.BoxGeometry(1, 0.06, 0.3), shelfMat);
+  // Matte Carbon, and a dim reflection of the room, so no glare runs along its edge.
+  const shelfMat = new THREE.MeshStandardMaterial({ color: '#2a2a2a', roughness: 0.85, metalness: 0.1, envMapIntensity: 0.6 });
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(SHELF_SPAN, 0.06, 0.34), shelfMat);
   shelf.position.y = SHELF_TOP - 0.03;
   turn.add(shelf);
 
-  const template = makeMedal({ hasEnv });
-  const medals = new THREE.Group();
-  turn.add(medals);
+  const holder = new THREE.Group();
+  holder.position.set(0, SHELF_TOP + MEDAL_SCALE, 0);
+  turn.add(holder);
+  let medal: THREE.Group | null = null;
 
-  // The newest medal catches the light: a soft, narrow key on it alone.
-  // It turns with the shelf, so it stays on its medal.
+  // The medal catches a soft, narrow key of its own, turning with it.
   const spot = new THREE.SpotLight('#fff3e6', 22, 0, 0.2, 0.6, 0);
+  spot.position.set(0.9, 2.6, 2.4);
+  spot.target.position.copy(holder.position);
   turn.add(spot, spot.target);
 
-  let span = 3.4;
   let shown = '';
-
-  function layout(count: number, newest: number) {
-    medals.clear();
-    const xs = shelfSlots(count, MEDAL_STEP * Math.max(count, 1), MEDAL_STEP);
-    xs.forEach((x, i) => {
-      const m = template.clone();
-      m.scale.setScalar(MEDAL_SCALE);
-      m.rotation.x = -0.06;
-      // A touch of turn either way, so the row reads as objects, not a print.
-      m.rotation.y = ((i % 3) - 1) * 0.1;
-      m.position.set(x, SHELF_TOP + MEDAL_SCALE, 0);
-      medals.add(m);
-    });
-    span = Math.max(3.4, count * MEDAL_STEP + 0.4);
-    shelf.scale.x = span;
-    const target = medals.children[Math.min(Math.max(0, newest), count - 1)];
-    spot.visible = !!target;
-    if (target) {
-      spot.target.position.copy(target.position);
-      spot.position.set(target.position.x + 0.9, 2.6, 2.4);
-    }
-  }
+  const frame = (aspect: number) => aim(camera, 0.1, fitExtent(SHELF_SPAN / 2, 0.52, 0.3, camera.fov, aspect), -0.06);
 
   return {
     onDemand: true,
-    resize: (aspect) => aim(camera, 0.1, fitExtent(span / 2, 0.5, 0.3, camera.fov, aspect), -0.08),
+    resize: frame,
     setParams(p) {
-      const s = p as SceneParams['shelf'];
-      const next = `${s.count}|${s.newest}`;
-      if (next === shown) return;
-      shown = next;
-      layout(s.count, s.newest);
-      const aspect = camera.aspect || 2.5;
-      aim(camera, 0.1, fitExtent(span / 2, 0.5, 0.3, camera.fov, aspect), -0.08);
+      const { icon } = p as SceneParams['shelf'];
+      if (icon === shown) return;
+      shown = icon;
+      if (medal) {
+        holder.remove(medal);
+        disposeTree(medal);
+      }
+      medal = makeMedal({ hasEnv, icon });
+      medal.scale.setScalar(MEDAL_SCALE);
+      medal.rotation.x = -0.06;
+      holder.add(medal);
     },
     still() {
       turn.rotation.y = 0;
     },
     update(_t, _dt, input) {
       // Nothing moves on its own: only the drag and its spring back, which Scene3D runs.
-      turn.rotation.y = softClamp(input.spin, 0.7);
+      turn.rotation.y = softClamp(input.spin, 0.9);
       return false;
-    },
-    dispose() {
-      // Clones share the template's geometry and materials; free them once.
-      template.traverse((o) => {
-        const m = o as THREE.Mesh;
-        m.geometry?.dispose();
-      });
     },
   };
 };
@@ -256,12 +239,19 @@ const PLATE_MAX = 0.22;
 const OPEN_GAP = 0.035;
 const DROP = 0.35;
 
-type Plate = { obj: THREE.Object3D; drop: Tween; leave: Tween | null };
+type Plate = { obj: THREE.Object3D; drop: Tween; leave: Tween | null; radius: number };
+
+/** Top of the pin: a full stack of the thickest plates, open, plus a little. */
+const PIN_HEIGHT = PLATE_CAP * (PLATE_MAX + OPEN_GAP) + 0.2;
+/** Seen from 0.8 rad (about 46 degrees) up, so the top plate's face reads as a disc. */
+const PLATE_ELEVATION = 0.8;
 
 export const buildPlates: BuildScene = (scene, camera, renderer) => {
   const hasEnv = studio(scene, renderer);
   const stack = new THREE.Group();
   scene.add(stack);
+  // The pin stands from the start, so no sets yet still shows the object.
+  stack.add(makePin({ hasEnv, height: PIN_HEIGHT }));
   camera.fov = 30;
   let template: THREE.Group | null = null;
   let thickness = PLATE_MAX;
@@ -284,7 +274,8 @@ export const buildPlates: BuildScene = (scene, camera, renderer) => {
     const obj = template.clone();
     stack.add(obj);
     const drop = settled ? tween(0) : { from: 1, to: 0, elapsed: -delay, duration: DROP };
-    plates.push({ obj, drop, leave: null });
+    const radius = plateRadius(plates.filter((p) => !p.leave).length);
+    plates.push({ obj, drop, leave: null, radius });
   }
 
   const pose = () => {
@@ -295,7 +286,8 @@ export const buildPlates: BuildScene = (scene, camera, renderer) => {
       // Drop: tween runs 1 to 0 over DROP seconds; plateDrop gives the ease-out height.
       const fall = p.drop.duration > 0 ? plateDrop(Math.max(0, p.drop.elapsed), p.drop.duration, 1.4) : 0;
       p.obj.position.y = plateY(i, thickness, g) + fall + leaving * 0.3;
-      p.obj.scale.setScalar(Math.max(0.001, 1 - leaving));
+      const k = Math.max(0.001, 1 - leaving);
+      p.obj.scale.set(p.radius * k, k, p.radius * k);
       p.obj.visible = p.drop.elapsed >= 0 || p.drop.duration === 0;
       if (!p.leave) i++;
     }
@@ -304,9 +296,8 @@ export const buildPlates: BuildScene = (scene, camera, renderer) => {
 
   return {
     onDemand: true,
-    // Framed on the full stack; a falling plate enters from above the top edge.
-    // Full open stack: about 1.7 tall, plus the top face seen from 24 degrees up.
-    resize: (aspect) => aim(camera, 0.42, fitExtent(1.15, 1.38, 0.3, camera.fov, aspect), 0.74),
+    // Framed on the pin and a full stack; a falling plate enters from above the top edge.
+    resize: (aspect) => aim(camera, PLATE_ELEVATION, fitExtent(1.08, 1.32, 0.3, camera.fov, aspect), PIN_HEIGHT * 0.42),
     setParams(p, first) {
       const s = p as SceneParams['plates'];
       if (s.total !== total) {
@@ -372,8 +363,15 @@ export const buildPlates: BuildScene = (scene, camera, renderer) => {
 
 /** The questionnaire object's box: 1.4 wide for 1 tall (its view is 168 by 120). */
 const OBJECT_BOX = { halfW: 1.4, halfH: 1 };
+/** Every object gets the same visual mass: the square root of its outline's
+    area (width times height) is this many units, about 85px of the 168 by
+    120 view. Filling the box instead made the long, low dumbbell read far
+    bigger than the tall shaker. Never wider than MAX_W or taller than MAX_H. */
+const OBJECT_MASS = 1.8;
+const OBJECT_MAX_W = 2.64;
+const OBJECT_MAX_H = 1.95;
 
-/** Each object in a three-quarter pose, centred and scaled to fill OBJECT_BOX. */
+/** Each object in a three-quarter pose, centred, all of one visual size. */
 function poseObject(kind: ObjectKind, hasEnv: boolean): THREE.Group {
   const holder = new THREE.Group();
   let model: THREE.Group;
@@ -399,7 +397,9 @@ function poseObject(kind: ObjectKind, hasEnv: boolean): THREE.Group {
   const box = new THREE.Box3().setFromObject(holder);
   const size = box.getSize(new THREE.Vector3());
   model.position.sub(box.getCenter(new THREE.Vector3()));
-  holder.scale.setScalar(0.94 / Math.max(0.01, size.x / 2 / OBJECT_BOX.halfW, size.y / 2 / OBJECT_BOX.halfH));
+  const w = Math.max(0.01, size.x);
+  const h = Math.max(0.01, size.y);
+  holder.scale.setScalar(Math.min(OBJECT_MASS / Math.sqrt(w * h), OBJECT_MAX_W / w, OBJECT_MAX_H / h));
   return holder;
 }
 

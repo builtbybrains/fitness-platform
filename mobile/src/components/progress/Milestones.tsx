@@ -6,8 +6,8 @@
    gets the celebration overlay and every new one carries a "New" tag on
    its ring for this visit. Seen ids are kept per person on this device.
    A badge tilts toward the finger while it is held (components/Tilt).
-   Above the grid, the earned ones stand as 3D medals on a shelf
-   (TrophyShelf), when 3D is available. */
+   Above the grid, the latest one earned stands as a 3D medal with its
+   icon on a shelf (TrophyShelf), when 3D is available. */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -17,12 +17,14 @@ import { C, card as cardStyle, FONT, R, T } from '../../design';
 import { useCelebration } from '../../celebration';
 import { loadLocal, saveLocal } from '../../lib/localFallback';
 import { newlyEarned, nextMilestone, type Milestone, type MilestoneId } from '../../lib/milestones';
-import { Icon, type IconName } from '../Icon';
+import { Icon } from '../Icon';
+import type { MedalIcon } from '../three/iconStrokes';
+import { latestEarned } from '../three/layout';
 import { TiltPressable } from '../Tilt';
 import { useTween } from '../motion';
 import { TrophyShelf } from './TrophyShelf';
 
-const ICON: Record<MilestoneId, IconName> = {
+const ICON: Record<MilestoneId, MedalIcon> = {
   first_workout: 'dumbbell',
   streak_3: 'flame',
   streak_7: 'flame',
@@ -129,6 +131,7 @@ export function Milestones({ items, userId, ready }: { items: Milestone[]; userI
 
   const earned = items.filter((m) => m.earned).length;
   const next = nextMilestone(items);
+  const latest = latestEarned(items);
 
   return (
     <View style={[cardStyle, { gap: 12 }]}>
@@ -140,7 +143,7 @@ export function Milestones({ items, userId, ready }: { items: Milestone[]; userI
           {earned} of {items.length} earned
         </Text>
       </View>
-      <TrophyShelf items={items} />
+      <TrophyShelf latest={latest} icon={latest ? ICON[latest.id] : 'medal'} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -2 }}>
         {items.map((m) => (
           <Badge key={m.id} m={m} fresh={fresh.has(m.id)} />

@@ -122,7 +122,11 @@ export function sharePercents(segs: readonly DonutSegment[]): Partial<Record<Mac
 
 // ─────────────────────────────── plates ───────────────────────────────
 
-export const PLATE_CAP = 12;
+/** Most plates the stack shows: past it, each plate stands for more than one set. */
+export const PLATE_CAP = 6;
+
+/** Plates alternate full and a size down, so each one reads as its own disc. */
+export const plateRadius = (i: number) => (i % 2 === 0 ? 1 : 0.86);
 
 /** How many plate places the stack has for a session: one per set, at most the cap. */
 export const plateSlots = (total: number, cap = PLATE_CAP) => Math.max(0, Math.min(cap, Math.floor(total)));
@@ -153,20 +157,16 @@ export const plateDrop = (t: number, duration = 0.35, from = 1.2) => from * (1 -
 
 // ─────────────────────────────── shelf ───────────────────────────────
 
-/** Centre x of each of `count` medals spread along a shelf `span` wide, at most `spacing` apart. */
-export function shelfSlots(count: number, span: number, spacing: number): number[] {
-  if (count <= 0) return [];
-  const step = Math.min(spacing, span / count);
-  const first = -((count - 1) * step) / 2;
-  return Array.from({ length: count }, (_, i) => first + i * step);
-}
-
-/** Medals on the shelf: one per earned milestone, all alike, so only the
-    count matters. They stand oldest to newest, and the newest (the one
-    lit) is the last, on the right. */
-export function shelfOrder(items: readonly { earned: boolean; earnedAt: string | null }[]): { count: number; newest: number } {
-  const count = items.filter((m) => m.earned).length;
-  return { count, newest: count - 1 };
+/** The milestone the shelf shows: the latest one earned. By the day it was
+    earned; an earned one with no day counts as oldest, and on a tie the one
+    later in the list (the bigger milestone) wins. Null when none is earned. */
+export function latestEarned<T extends { earned: boolean; earnedAt: string | null }>(items: readonly T[]): T | null {
+  let best: T | null = null;
+  for (const m of items) {
+    if (!m.earned) continue;
+    if (!best || (m.earnedAt ?? '') >= (best.earnedAt ?? '')) best = m;
+  }
+  return best;
 }
 
 // ─────────────────────────────── object swap ───────────────────────────────

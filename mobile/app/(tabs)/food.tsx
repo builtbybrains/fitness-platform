@@ -21,6 +21,7 @@ import { Icon } from '../../src/components/Icon';
 import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
 import { MacroDonut } from '../../src/components/food/MacroDonut';
+import { useCan3D } from '../../src/components/three/support';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
 import { MealImage } from '../../src/components/food/MealImage';
 import { Bone, Skeleton } from '../../src/components/Skeleton';
@@ -39,6 +40,11 @@ export default function FoodTab() {
   const { session, profileLoaded, profileError } = useAuth();
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
+  // With the 3D donut on screen, its chips carry protein, carbs and fat, so
+  // the totals card drops its macros row. Without it, the totals keep it.
+  const can3D = useCan3D();
+  const [donutFailed, setDonutFailed] = useState(false);
+  const donut = can3D && !donutFailed;
   const [swapSlot, setSwapSlot] = useState<string | null>(null);
   // The meal ticked last: its row re-mounts as eaten, and its tick pops in.
   const [justAte, setJustAte] = useState<string | null>(null);
@@ -106,15 +112,16 @@ export default function FoodTab() {
           eyebrow={dateEyebrow(day.index, day.id, true)}
           title="Time to"
           accent="fuel up."
-          stats={foodHeaderStats({ eatenKcal: summary.eaten.kcal, targetKcal: targets.kcal, meals: day.meals, eatenSlots: day.done.meals })}
+          // The day's totals card shows kcal left, so the header skips that chip.
+          stats={foodHeaderStats({ eatenKcal: summary.eaten.kcal, targetKcal: targets.kcal, meals: day.meals, eatenSlots: day.done.meals }).filter((st) => st.icon !== 'flame')}
           right={<PhotoLogButton />}
         />
 
         <OfflineNotice />
 
-        <MacroDonut eaten={summary.eaten} />
+        <MacroDonut eaten={summary.eaten} onFail={() => setDonutFailed(true)} />
 
-        <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} />
+        <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} macros={!donut} />
 
         <View style={[cardStyle, { gap: 4 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 8 }}>

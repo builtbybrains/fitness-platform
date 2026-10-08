@@ -6,7 +6,7 @@
 
 export type Pt = [number, number];
 
-function arcPoints(x1: number, y1: number, r: number, large: boolean, sweep: boolean, x2: number, y2: number, steps: number): Pt[] {
+export function arcPoints(x1: number, y1: number, r: number, large: boolean, sweep: boolean, x2: number, y2: number, steps: number): Pt[] {
   // Rotation is always 0 and rx = ry in the mark, so the transform is a translate.
   const dx = (x1 - x2) / 2;
   const dy = (y1 - y2) / 2;

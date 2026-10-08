@@ -33,7 +33,7 @@ import { MealImage } from '../../src/components/food/MealImage';
 import { greetingWord } from '../../src/components/copy';
 import { Meter } from '../../src/components/training/Controls';
 import { MuscleMap } from '../../src/components/training/MuscleMap';
-import { Lazy3D } from '../../src/components/three/Lazy3D';
+import { Lazy3D, preload3D } from '../../src/components/three/Lazy3D';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
@@ -570,8 +570,29 @@ function noteSummary(p: { day: WeekDay; yesterday: WeekDay | undefined; history:
   };
 }
 
+/** Once Today has drawn and gone quiet (2s, then the browser's next idle
+    moment where it has one), fetch the 3D code, so the first visit to Food
+    paints its donut without waiting on the download. */
+function usePreload3DWhenIdle() {
+  useEffect(() => {
+    let idle: number | null = null;
+    const timer = setTimeout(() => {
+      const run = () => void preload3D().catch(() => {});
+      const ric = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+      if (ric) idle = ric(run, { timeout: 2000 });
+      else run();
+    }, 2000);
+    return () => {
+      clearTimeout(timer);
+      const cic = (globalThis as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      if (idle !== null) cic?.(idle);
+    };
+  }, []);
+}
+
 export default function TodayTab() {
   const router = useRouter();
+  usePreload3DWhenIdle();
   const { height } = useWindowDimensions();
   // Below 900px tall the ring shrinks so today's workout and its play
   // button are on the first screen; below 700px the rhythm tightens too.

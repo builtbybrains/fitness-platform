@@ -115,10 +115,12 @@ export type Lazy3DSceneProps<K extends SceneKind> = {
   placeholder?: React.ReactNode;
   /** The 3D could not load or start; the screen can show its 2D form. */
   onFail?: () => void;
+  /** The first 3D frame is on screen; a 2D stand-in under it can go. */
+  onDrawn?: () => void;
   style?: StyleProp<ViewStyle>;
 };
 
-function SceneInner<K extends SceneKind>({ kind, params, width, height, drag, onPick, paused = false, fallback = null, placeholder, onFail, style }: Omit<Lazy3DSceneProps<K>, 'focusAware'>) {
+function SceneInner<K extends SceneKind>({ kind, params, width, height, drag, onPick, paused = false, fallback = null, placeholder, onFail, onDrawn, style }: Omit<Lazy3DSceneProps<K>, 'focusAware'>) {
   const box = { width, height };
   const touch = !!drag || !!onPick;
   return (
@@ -130,7 +132,7 @@ function SceneInner<K extends SceneKind>({ kind, params, width, height, drag, on
     >
       <LoadBoundary fallback={fallback} onFail={onFail}>
         <Suspense fallback={placeholder ?? <View style={box} />}>
-          <Param kind={kind} params={params} style={box} drag={drag} onPick={onPick} paused={paused} fallback={fallback} onFail={onFail} />
+          <Param kind={kind} params={params} style={box} drag={drag} onPick={onPick} paused={paused} fallback={fallback} onFail={onFail} onDrawn={onDrawn} />
         </Suspense>
       </LoadBoundary>
     </View>

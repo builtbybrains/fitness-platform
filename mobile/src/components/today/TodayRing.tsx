@@ -4,8 +4,11 @@
    ("Today", the percent) sits on top, centred, as before, and the whole
    box is one progressbar for screen readers with the same label.
 
-   Same box as the 2D ring, so the card keeps its height. Under Reduce
-   Motion, without WebGL, or if the 3D cannot load, the 2D Ring shows. */
+   Same box as the 2D ring, so the card keeps its height. The 2D track
+   holds the place under the canvas until the first 3D frame is drawn, so
+   the ring never shows blank while the 3D code loads or GL starts. Under
+   Reduce Motion, without WebGL, or if the 3D cannot load, the 2D Ring
+   shows. */
 
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -25,6 +28,7 @@ type Props = {
 export function TodayRing({ size, stroke, progress, accessibilityLabel, children }: Props) {
   const can3D = useCan3D();
   const [failed, setFailed] = useState(false);
+  const [drawn, setDrawn] = useState(false);
   const share = Math.max(0, Math.min(1, progress));
 
   if (!can3D || failed) {
@@ -43,16 +47,22 @@ export function TodayRing({ size, stroke, progress, accessibilityLabel, children
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(share * 100) }}
     >
+      {drawn ? null : (
+        <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
+          <Ring size={size} stroke={stroke} progress={0} />
+        </View>
+      )}
       <Lazy3DScene
         kind="ring"
         params={{ progress: share }}
         width={size}
         height={size}
         drag="spring"
-        // While the 3D code loads, the empty track holds the place.
-        placeholder={<Ring size={size} stroke={stroke} progress={0} />}
+        // While the 3D code loads, the 2D track under it holds the place.
+        placeholder={<View style={{ width: size, height: size }} />}
         fallback={<Ring size={size} stroke={stroke} progress={progress} />}
         onFail={() => setFailed(true)}
+        onDrawn={() => setDrawn(true)}
         style={StyleSheet.absoluteFill}
       />
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: stroke, pointerEvents: 'none' }]}>{children}</View>

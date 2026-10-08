@@ -1,5 +1,6 @@
 /* Today's protein, carbs and fat as a 3D donut, sized by each one's share
-   of calories: protein in Built Green, carbs Stone, fat grey. It turns
+   of calories: protein in Built Green, carbs mid grey (#A3A3A3), fat dark
+   grey (#5A5A5A), so a lifted slice is the brightest thing in the card. It turns
    once when it first shows (1.2s), then rests. Tap a slice, or one of the
    chips under it, to lift that slice out and read its grams beside the
    donut; tap it again to put it back. Nothing eaten yet: a grey ring and
@@ -8,7 +9,8 @@
    The donut itself is hidden from screen readers; the chips carry the
    numbers and are the same choice as a tap on the donut. Under Reduce
    Motion, without WebGL, or if the 3D cannot load, the card is not shown
-   and the day's totals below stand alone, as before. */
+   and the day's totals below stand alone, as before (`onFail` tells the
+   screen, which then shows the macros row in the totals again). */
 
 import React, { useMemo, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
@@ -21,9 +23,10 @@ import { useCan3D } from '../three/support';
 import type { Macros } from '../../stats';
 
 const NAME: Record<MacroKey, string> = { protein: 'Protein', carbs: 'Carbs', fat: 'Fat' };
-const SWATCH: Record<MacroKey, string> = { protein: C.green, carbs: C.stone, fat: C.faint };
+/** The legend dots match the donut's slice colours (meshes.ts DONUT_COLOR). */
+const SWATCH: Record<MacroKey, string> = { protein: C.green, carbs: '#A3A3A3', fat: '#5A5A5A' };
 
-export function MacroDonut({ eaten }: { eaten: Macros }) {
+export function MacroDonut({ eaten, onFail }: { eaten: Macros; onFail?: () => void }) {
   const can3D = useCan3D();
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<MacroKey | null>(null);
@@ -58,7 +61,10 @@ export function MacroDonut({ eaten }: { eaten: Macros }) {
           width={size}
           height={size}
           onPick={(id) => choose(id === 'protein' || id === 'carbs' || id === 'fat' ? id : null)}
-          onFail={() => setFailed(true)}
+          onFail={() => {
+            setFailed(true);
+            onFail?.();
+          }}
         />
         <View style={{ flex: 1, gap: 4 }} accessibilityLiveRegion="polite">
           {empty ? (

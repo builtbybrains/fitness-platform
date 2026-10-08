@@ -17,8 +17,11 @@
    Either way the loop stops when the screen loses focus (`paused`), when
    the app goes to the background, and under Reduce Motion, where a single
    still frame is drawn. While paused nothing is drawn at all, unless the
-   view has never been drawn or its size changed. Everything GPU-side is
-   freed on unmount. If GL cannot start, `fallback` renders instead and
+   view has never been drawn or its drawing buffer was resized or reset:
+   any resize clears the canvas, so it always draws a frame, even when no
+   animation runs. On web the runtime owns the canvas's drawing size
+   (guardCanvasSize), so expo-gl's own resizes after layout cannot clear a
+   picture behind its back. Everything GPU-side is freed on unmount. If GL cannot start, `fallback` renders instead and
    `onFail` is called. */
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -78,6 +81,8 @@ export type Scene3DProps = {
   fallback?: React.ReactNode;
   /** GL could not start, or the scene threw. */
   onFail?: () => void;
+  /** The first frame is on screen (a placeholder under it can go). */
+  onDrawn?: () => void;
 };
 
 const IS_WEB = Platform.OS === 'web';
@@ -106,11 +111,60 @@ type Runtime = {
   size: string;
   /** Frames drawn so far. */
   frames: number;
-  /** Web: set while this runtime resizes the canvas itself, so the watcher skips it. */
-  ownResize: boolean;
-  /** Web: watches the canvas for resets made by someone else. */
+  /** Web: lifts the canvas size guard for this runtime's own resizes (see guardCanvasSize). */
+  own: (resize: () => void) => void;
+  /** Web, only where the guard could not be set: watches for resets made by someone else. */
   watcher: MutationObserver | null;
 };
+
+/** Web: expo-gl's canvas sets its own drawing size after every layout
+    (CSS size times the full device pixel ratio). Setting a canvas's width
+    or height clears it, and a sleeping on-demand scene would then stay
+    blank until something woke it. So this runtime owns the drawing size:
+    sizes set by anyone else are ignored (the CSS size, which expo-gl also
+    sets, still applies), and the runtime sizes the buffer itself on every
+    frame where the view's size changed, drawing right after. Returns the
+    wrapper for those own resizes, or null if the guard could not be set. */
+function guardCanvasSize(canvas: HTMLCanvasElement): ((resize: () => void) => void) | null {
+  const proto = typeof HTMLCanvasElement !== 'undefined' ? HTMLCanvasElement.prototype : null;
+  const w = proto && Object.getOwnPropertyDescriptor(proto, 'width');
+  const h = proto && Object.getOwnPropertyDescriptor(proto, 'height');
+  if (!w?.get || !w.set || !h?.get || !h.set) return null;
+  let allow = false;
+  try {
+    for (const [name, d] of [
+      ['width', w],
+      ['height', h],
+    ] as const) {
+      Object.defineProperty(canvas, name, {
+        configurable: true,
+        get: () => d.get!.call(canvas),
+        set: (v: number) => {
+          if (allow) d.set!.call(canvas, v);
+        },
+      });
+    }
+  } catch {
+    return null;
+  }
+  return (resize) => {
+    allow = true;
+    try {
+      resize();
+    } finally {
+      allow = false;
+    }
+  };
+}
+
+function unguardCanvasSize(canvas: HTMLCanvasElement) {
+  try {
+    delete (canvas as unknown as Record<string, unknown>).width;
+    delete (canvas as unknown as Record<string, unknown>).height;
+  } catch {
+    /* nothing to restore */
+  }
+}
 
 function createRuntime(gl: ExpoWebGLRenderingContext, build: BuildScene): Runtime {
   if (!IS_WEB) quietPixelStore(gl);
@@ -137,14 +191,14 @@ function createRuntime(gl: ExpoWebGLRenderingContext, build: BuildScene): Runtim
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, w / Math.max(1, h), 0.1, 100);
   const handle = build(scene, camera, renderer);
-  return { gl, renderer, scene, camera, handle, t: 0, last: 0, raf: 0, ticking: false, size: '', frames: 0, ownResize: false, watcher: null };
+  return { gl, renderer, scene, camera, handle, t: 0, last: 0, raf: 0, ticking: false, size: '', frames: 0, own: (resize) => resize(), watcher: null };
 }
 
 /** Match the drawing size to the view. Web: CSS size times the pixel
     ratio, capped at 2. Native: the GL drawing buffer, which expo-gl sizes
     to the view at the screen's scale. Returns false while the view has no
     size yet, 'changed' when the drawing buffer was just resized (which
-    clears it), 'same' otherwise. */
+    clears it, so the caller must draw), 'same' otherwise. */
 function syncSize(rt: Runtime): false | 'same' | 'changed' {
   let w: number;
   let h: number;
@@ -164,9 +218,18 @@ function syncSize(rt: Runtime): false | 'same' | 'changed' {
   const key = `${w}x${h}@${ratio}`;
   if (key !== rt.size) {
     rt.size = key;
-    rt.ownResize = IS_WEB;
-    rt.renderer.setPixelRatio(ratio);
-    rt.renderer.setSize(w, h, false);
+    // Our own resize is not a reset to react to: stop watching while it
+    // happens, and drop any reset still queued (this frame redraws anyway).
+    const canvas = IS_WEB ? (rt.gl.canvas as HTMLCanvasElement) : null;
+    if (rt.watcher && canvas) {
+      rt.watcher.takeRecords();
+      rt.watcher.disconnect();
+    }
+    rt.own(() => {
+      rt.renderer.setPixelRatio(ratio);
+      rt.renderer.setSize(w, h, false);
+    });
+    if (rt.watcher && canvas) rt.watcher.observe(canvas, WATCH);
     rt.camera.aspect = w / h;
     rt.camera.updateProjectionMatrix();
     rt.handle.resize?.(w / h);
@@ -174,6 +237,8 @@ function syncSize(rt: Runtime): false | 'same' | 'changed' {
   }
   return 'same';
 }
+
+const WATCH: MutationObserverInit = { attributes: true, attributeFilter: ['width', 'height'] };
 
 function draw(rt: Runtime) {
   rt.renderer.render(rt.scene, rt.camera);
@@ -185,6 +250,7 @@ function dispose(rt: Runtime) {
   cancelAnimationFrame(rt.raf);
   rt.ticking = false;
   rt.watcher?.disconnect();
+  if (IS_WEB) unguardCanvasSize(rt.gl.canvas as HTMLCanvasElement);
   try {
     rt.handle.dispose?.();
     disposeTree(rt.scene);
@@ -229,6 +295,7 @@ export default function Scene3D({
   accessibilityLabel,
   fallback = null,
   onFail,
+  onDrawn,
 }: Scene3DProps) {
   const reduce = useReduceMotion();
   const [failed, setFailed] = useState(() => !webglAvailable());
@@ -243,14 +310,73 @@ export default function Scene3D({
   onPickRef.current = onPick;
   const onFailRef = useRef(onFail);
   onFailRef.current = onFail;
+  const onDrawnRef = useRef(onDrawn);
+  onDrawnRef.current = onDrawn;
   const mode = drag ?? (interactive ? 'spin' : undefined);
   const spring = mode === 'spring';
+  const springRef = useRef(spring);
+  springRef.current = spring;
   const spin = useRef<Spin>({ angle: 0, velocity: 0, dragging: false });
   const width = useRef(1);
-  /** Starts the loop again if it went to sleep (on-demand scenes). */
-  const wake = useRef<() => void>(() => {});
-  /** Draw again after the canvas was cleared: wake the loop, or a still frame. */
-  const redraw = useRef<() => void>(() => {});
+
+  const running = ready && !failed && !paused && active && !reduce;
+  const runningRef = useRef(running);
+  runningRef.current = running;
+  const reduceRef = useRef(reduce);
+  reduceRef.current = reduce;
+
+  /** Ask for a frame (one at a time). Every frame goes through `frame`
+      below, which decides what to draw:
+      - running: step the scene and draw; keep going while something moves
+        (on-demand scenes), or always (looping scenes).
+      - Reduce Motion: the settled pose, every time it is asked for.
+      - paused: nothing, unless the view has never been drawn or its
+        drawing buffer was just resized or reset (which clears it), so a
+        canvas is never left blank and a hidden screen draws nothing else. */
+  const request = useMemo(() => {
+    const frame = (now: number) => {
+      const r = rt.current;
+      if (!r) return;
+      r.ticking = false;
+      const size = syncSize(r);
+      if (!size) {
+        // No size yet. On screen, look again next frame; off screen, the
+        // view's layout asks again when there is one.
+        if (runningRef.current) ask(r);
+        return;
+      }
+      let more = false;
+      if (runningRef.current) {
+        // Clamp the step so a stall or a resume does not jump the motion.
+        const dt = r.last ? Math.min((now - r.last) / 1000, 1 / 20) : 0;
+        r.last = now;
+        r.t += dt;
+        spin.current = springRef.current ? stepSpring(spin.current, dt) : stepSpin(spin.current, dt);
+        const moving = r.handle.update(r.t, dt, { spin: spin.current.angle });
+        more = !(r.handle.onDemand && !moving && spinAtRest(spin.current, springRef.current));
+      } else if (reduceRef.current) {
+        if (r.handle.still) r.handle.still();
+        else r.handle.update(0, 0, { spin: 0 });
+      } else if (r.frames > 0 && size === 'same') {
+        return;
+      } else {
+        r.handle.update(r.t, 0, { spin: spin.current.angle });
+      }
+      draw(r);
+      if (r.frames === 1) onDrawnRef.current?.();
+      if (more) ask(r);
+      else r.last = 0; // asleep until asked again
+    };
+    const ask = (r: Runtime) => {
+      if (r.ticking) return;
+      r.ticking = true;
+      r.raf = requestAnimationFrame(frame);
+    };
+    return () => {
+      const r = rt.current;
+      if (r) ask(r);
+    };
+  }, []);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => setActive(s !== 'background'));
@@ -261,31 +387,36 @@ export default function Scene3D({
     if (failed) onFailRef.current?.();
   }, [failed]);
 
-  const onContextCreate = useCallback((gl: ExpoWebGLRenderingContext) => {
-    try {
-      const r = createRuntime(gl, buildRef.current);
-      r.handle.setParams?.(paramsRef.current, true);
-      if (IS_WEB && typeof MutationObserver !== 'undefined') {
-        // expo-gl's web canvas sets its own width and height after layout,
-        // which clears the picture. A sleeping on-demand scene would stay
-        // blank, so any resize this runtime did not make forces a redraw.
-        r.watcher = new MutationObserver(() => {
-          if (r.ownResize) {
-            r.ownResize = false;
-            return;
+  const onContextCreate = useCallback(
+    (gl: ExpoWebGLRenderingContext) => {
+      try {
+        const r = createRuntime(gl, buildRef.current);
+        r.handle.setParams?.(paramsRef.current, true);
+        if (IS_WEB) {
+          const canvas = gl.canvas as HTMLCanvasElement;
+          const own = guardCanvasSize(canvas);
+          if (own) r.own = own;
+          else if (typeof MutationObserver !== 'undefined') {
+            // No guard: any reset this runtime did not make (its own resizes
+            // are not watched) forces a resize and a redraw, even while the
+            // scene sleeps or is paused.
+            r.watcher = new MutationObserver(() => {
+              r.size = '';
+              request();
+            });
+            r.watcher.observe(canvas, WATCH);
           }
-          r.size = '';
-          redraw.current();
-        });
-        r.watcher.observe(gl.canvas as HTMLCanvasElement, { attributes: true, attributeFilter: ['width', 'height'] });
+        }
+        rt.current = r;
+        setReady(true);
+        request();
+      } catch (e) {
+        if (__DEV__) console.warn('3D scene could not start', e);
+        setFailed(true);
       }
-      rt.current = r;
-      setReady(true);
-    } catch (e) {
-      if (__DEV__) console.warn('3D scene could not start', e);
-      setFailed(true);
-    }
-  }, []);
+    },
+    [request],
+  );
 
   // Free GPU objects before GLView tears its context down (layout effect
   // cleanups run before the child's unmount).
@@ -297,80 +428,14 @@ export default function Scene3D({
     [],
   );
 
-  const running = ready && !failed && !paused && active && !reduce;
-  const runningRef = useRef(running);
-  runningRef.current = running;
-
-  /** One frame now (or on the next tick, after the view has its size).
-      Reduce Motion: the settled pose, every time. Paused: only when the
-      view has never been drawn or its size changed, so a hidden screen
-      draws nothing. */
-  const drawStill = useCallback(() => {
-    const r = rt.current;
-    if (!r) return;
-    cancelAnimationFrame(r.raf);
-    r.ticking = true;
-    r.raf = requestAnimationFrame(() => {
-      r.ticking = false;
-      const size = syncSize(r);
-      if (!size) return;
-      if (reduce) {
-        if (r.handle.still) r.handle.still();
-        else r.handle.update(0, 0, { spin: 0 });
-      } else {
-        if (r.frames > 0 && size === 'same') return;
-        r.handle.update(r.t, 0, { spin: spin.current.angle });
-      }
-      draw(r);
-    });
-  }, [reduce]);
-
-  useEffect(() => {
-    redraw.current = () => (runningRef.current ? wake.current() : drawStill());
-  }, [drawStill]);
-
+  // Start (or stop) the loop, or draw the still for Reduce Motion. Paused,
+  // a frame already asked for draws nothing more than it must.
   useEffect(() => {
     const r = rt.current;
     if (!r || failed) return;
-    if (!running) {
-      drawStill();
-      return;
-    }
     r.last = 0;
-    const step = (s: Spin, dt: number) => (spring ? stepSpring(s, dt) : stepSpin(s, dt));
-    const loop = (now: number) => {
-      r.ticking = false;
-      // Clamp the step so a stall or a resume does not jump the motion.
-      const dt = r.last ? Math.min((now - r.last) / 1000, 1 / 20) : 0;
-      r.last = now;
-      r.t += dt;
-      spin.current = step(spin.current, dt);
-      const size = syncSize(r);
-      if (!size) {
-        r.ticking = true;
-        r.raf = requestAnimationFrame(loop);
-        return;
-      }
-      const moving = r.handle.update(r.t, dt, { spin: spin.current.angle });
-      draw(r);
-      if (r.handle.onDemand && !moving && spinAtRest(spin.current, spring)) return; // asleep until woken
-      r.ticking = true;
-      r.raf = requestAnimationFrame(loop);
-    };
-    wake.current = () => {
-      if (r.ticking) return;
-      r.last = 0;
-      r.ticking = true;
-      r.raf = requestAnimationFrame(loop);
-    };
-    r.ticking = true;
-    r.raf = requestAnimationFrame(loop);
-    return () => {
-      cancelAnimationFrame(r.raf);
-      r.ticking = false;
-      wake.current = () => {};
-    };
-  }, [running, failed, drawStill, spring]);
+    request();
+  }, [running, reduce, failed, request]);
 
   // New data: hand it to the scene, then animate it (or draw it settled
   // under Reduce Motion). While paused it waits, and plays on return.
@@ -382,35 +447,34 @@ export default function Scene3D({
     const r = rt.current;
     if (!r?.handle.setParams) return;
     r.handle.setParams(paramsRef.current, false);
-    if (running) wake.current();
-    else if (reduce) drawStill();
-  }, [paramsKey, running, reduce, drawStill]);
+    if (running || reduce) request();
+  }, [paramsKey, running, reduce, request]);
 
   const pan = useMemo(() => {
     let lastDx = 0;
     const end = (vx: number) => {
       // Spring: let go and it springs back from where it is, no flick.
       spin.current = { angle: spin.current.angle, velocity: spring ? 0 : flickVelocity(vx, width.current), dragging: false };
-      wake.current();
+      request();
     };
     return PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderGrant: () => {
         lastDx = 0;
         spin.current = { ...spin.current, velocity: 0, dragging: true };
-        wake.current();
+        request();
       },
       onPanResponderMove: (_, g) => {
         const delta = ((g.dx - lastDx) / Math.max(1, width.current)) * Math.PI;
         lastDx = g.dx;
         spin.current = { ...spin.current, angle: spin.current.angle + delta };
-        wake.current();
+        request();
       },
       onPanResponderRelease: (_, g) => end(g.vx),
       onPanResponderTerminate: (_, g) => end(g.vx),
       onPanResponderTerminationRequest: () => true,
     });
-  }, [spring]);
+  }, [spring, request]);
 
   const tap = useCallback(
     (e: GestureResponderEvent) => {
@@ -436,9 +500,9 @@ export default function Scene3D({
       if (!w || !h) return;
       const id = r.handle.pick((x / w) * 2 - 1, -((y / h) * 2 - 1));
       onPickRef.current?.(id);
-      wake.current();
+      request();
     },
-    [reduce],
+    [reduce, request],
   );
 
   const canDrag = !!mode && !reduce && !failed;
@@ -464,8 +528,7 @@ export default function Scene3D({
       {...(canDrag ? pan.panHandlers : null)}
       onLayout={(e) => {
         width.current = e.nativeEvent.layout.width;
-        if (!running) drawStill();
-        else wake.current();
+        request();
       }}
     >
       {canPick ? (

@@ -5,10 +5,13 @@
 
    Phones use the platform's RefreshControl. The browser has no pull gesture
    for a scroll area inside the page, so on the web the same disc is drawn
-   here: at the top of the list, pull down and the disc follows the finger
-   (at half speed) with an arrow that turns as it fills; past 64px it is
-   armed, and letting go refreshes. Reduce Motion: the disc appears in place
-   instead of sliding. */
+   here: at the top of the list, pull down and the list follows the finger
+   (at half speed), opening a space above the header where the disc slides
+   in with an arrow that turns as it fills; past 64px it is armed, and
+   letting go refreshes. While it refreshes the list holds 72px down (the
+   disc plus a 16px margin above and below it), so the disc never covers the
+   headline; it slides back up when done. Reduce Motion: the disc and the
+   list move in place instead of sliding. */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Platform, RefreshControl, StyleProp, View, ViewStyle } from 'react-native';
@@ -22,6 +25,8 @@ const TRIGGER = 64;
 const MAX_PULL = 96;
 const DISC = 40;
 const REST = 16; // where the disc waits while refreshing
+/** How far the list stays down while refreshing: the disc with REST above and below. */
+const HOLD = DISC + 2 * REST;
 
 export function usePullRefresh(run: () => Promise<unknown>) {
   const [refreshing, setRefreshing] = useState(false);
@@ -59,16 +64,17 @@ function WebPullRefresh({ refreshing, onRefresh, style, children }: { refreshing
     [pull],
   );
 
-  // Hold the disc while refreshing; tuck it away when done.
+  // Hold the disc (and the list under it) while refreshing; tuck it away when done.
   useEffect(() => {
-    settle(refreshing ? TRIGGER : 0);
+    settle(refreshing ? HOLD : 0);
     if (!refreshing) setArmed(false);
   }, [refreshing, settle]);
 
   useEffect(() => {
     const el = box.current as unknown as HTMLElement | null;
     if (!el || typeof el.addEventListener !== 'function') return;
-    const scroller = () => el.firstElementChild as HTMLElement | null;
+    // The scroller sits inside the view that moves the list.
+    const scroller = () => (el.firstElementChild?.firstElementChild ?? null) as HTMLElement | null;
     // The page itself must not bounce or reload when the list is pulled at its top.
     const sc = scroller();
     if (sc) sc.style.overscrollBehaviorY = 'contain';
@@ -110,7 +116,6 @@ function WebPullRefresh({ refreshing, onRefresh, style, children }: { refreshing
       if (!tracking) return;
       tracking = false;
       if (distance >= TRIGGER) {
-        pull.setValue(TRIGGER);
         live.current.onRefresh();
       } else {
         setArmed(false);
@@ -131,13 +136,15 @@ function WebPullRefresh({ refreshing, onRefresh, style, children }: { refreshing
     };
   }, [pull, settle]);
 
-  const translateY = pull.interpolate({ inputRange: [0, TRIGGER], outputRange: [-DISC - 8, REST], extrapolateLeft: 'clamp' });
+  // The disc comes down to REST and stops there; the list keeps moving with the finger.
+  const translateY = pull.interpolate({ inputRange: [0, TRIGGER], outputRange: [-DISC - 8, REST], extrapolate: 'clamp' });
+  const shift = pull.interpolate({ inputRange: [0, TRIGGER], outputRange: [0, TRIGGER], extrapolateLeft: 'clamp' });
   const opacity = pull.interpolate({ inputRange: [0, 24], outputRange: [0, 1], extrapolate: 'clamp' });
   const rotate = pull.interpolate({ inputRange: [0, TRIGGER], outputRange: ['0deg', '270deg'], extrapolate: 'clamp' });
 
   return (
     <View ref={box} style={[{ flex: 1, overflow: 'hidden' }, style]}>
-      {children}
+      <Animated.View style={{ flex: 1, transform: [{ translateY: shift }] }}>{children}</Animated.View>
       <Animated.View
         accessibilityLiveRegion="polite"
         accessibilityLabel={refreshing ? 'Refreshing' : undefined}
