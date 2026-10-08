@@ -11,7 +11,8 @@
  *   splash-icon.png 1024 (transparent), favicon.png 48.
  *
  * Sources: assets/img/mark.svg (the B path), assets/img/logo-tagline.svg,
- * assets/img/favicon.svg, assets/img/athlete.jpg, and Inter Regular from
+ * assets/img/favicon.svg, assets/img/dumbbell-hero.webp (the 3D hero still, rendered by
+ * scripts/render-hero-poster.mjs; run that first when the scene changes), and Inter Regular from
  * mobile/node_modules/@expo-google-fonts/inter for the og-cover sentence.
  *
  * Needs (not a repo dependency; install it anywhere outside the repo):
@@ -211,15 +212,17 @@ const markLayer = (size, frac, fill) => {
 async function webImages(page) {
   await write(page, join(IMG, 'icon-180.png'), { w: 180, h: 180, bg: BLACK, layers: [markLayer(180, 0.6, GREEN)] }, true);
 
-  // og-cover: lockup + brand sentence left, the athlete right fading into black
+  // og-cover: lockup + brand sentence left, the 3D dumbbell right on Deep Black.
+  // dumbbell-hero.webp is a transparent square; the bell sits in its middle band, so the
+  // square bleeds past the top and bottom of the card and nothing visible is cropped.
   const W = 1200, H = 630;
-  const photoH = H, photoW = Math.round((1116 / 1170) * photoH); // athlete.jpg is 1116x1170
+  const bell = 760;
   const logoW = 470, logoH = (logoW * 140) / 482.4;           // logo-tagline.svg viewBox
   const top = 150;
   await write(page, join(IMG, 'og-cover.png'), {
     w: W, h: H, bg: BLACK,
     layers: [
-      { img: dataUri(join(IMG, 'athlete.jpg'), 'image/jpeg'), x: W - photoW, y: 0, w: photoW, h: photoH, fadeLeft: 110 },
+      { img: dataUri(join(IMG, 'dumbbell-hero.webp'), 'image/webp'), x: W - bell + 2, y: Math.round((H - bell) / 2) + 46, w: bell, h: bell },
       { img: dataUri(join(IMG, 'logo-tagline.svg'), 'image/svg+xml'), x: 72, y: top, w: logoW, h: logoH },
     ],
     text: {
