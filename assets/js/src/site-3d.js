@@ -1,41 +1,30 @@
-/* BUILT website 3D: one WebGL renderer, one offscreen canvas, every [data-3d] slot on the page.
+/* BUILT objects: the offline image generator. The website no longer runs this file.
  *
- * Source for assets/js/site-3d.min.js. Rebuild after editing:
- *   node scripts/build-site-3d.mjs
- * The still posters (assets/img/dumbbell-hero*.webp and assets/img/3d/*.webp) are rendered
- * from this same file:
- *   node scripts/render-hero-poster.mjs
+ * The page shows every object as a pre-rendered image and moves it with CSS transforms from its
+ * own scroll loop (index.html, DESIGN.md "Objects (2D renders)"). This file holds the 3D models,
+ * the studio light and the scenes those images are rendered from, once, on a developer's machine:
+ *   node scripts/build-site-3d.mjs           bundles this file to assets/js/site-3d.min.js
+ *   node scripts/render-hero-poster.mjs      renders the website images (assets/img/3d, story)
+ *   node scripts/render-hero-poster.mjs --app   renders the app images (mobile/assets/images/objects)
+ * The bundle is never requested by the page; only the render script loads it, in headless
+ * Chromium.
  *
- * How it draws (the three.js "multiple canvases" technique): one WebGL context renders into a
- * canvas that never joins the document. Each slot holds its own transparent 2D canvas (inset 0,
- * aria-hidden). Each frame every slot on or near the screen is drawn at its own size into the
- * corner of the offscreen buffer (setViewport + setScissor), then copied into its canvas with
- * drawImage. The pixels belong to the slot, so the compositor scrolls them with it on its own
- * thread and a pinned slot's pixels stay pinned: nothing is moved from script, so on a phone
- * nothing trails or shakes behind the scroll. Nothing is drawn outside a slot, so copy is never
- * covered.
+ * Exports used by the render script: still() renders one scene as a transparent image, and
+ * explodedLayers() renders each part of the exploded dumbbell on its own, at one shared camera,
+ * with the numbers the page needs to put the parts back together and move them apart.
+ * mount() (the old live engine, one WebGL context drawing every [data-3d] slot) is kept so the
+ * scenes can still be checked live, but no page calls it.
  *
- * Look (DESIGN.md, "3D"): matte black rubber, brushed steel, Carbon metal, matte Stone, and
- * Built Green as one accent per object: a collar, a ring, the latest bar, the B on the last streak tile. One studio light set
- * for every object: warm-neutral key top left, cool fill right, a faint green rim (0.2) from
- * behind, low sky, softbox reflections. No bloom, no glow.
+ * Look (DESIGN.md): matte black rubber, brushed steel, Carbon metal, matte Stone, and Built Green
+ * as one accent per object. The logo badge is the green B on a black disc, no ring. One studio
+ * light set for every object: warm-neutral key top left, cool fill right, a faint green rim (0.2)
+ * from behind, low sky, softbox reflections. No bloom, no glow.
  *
- * Framing works like CSS `object-fit: contain`: each scene is composed in a fixed aspect,
- * fitted inside its slot and aligned by --ax / --ay on the slot, so the live drawing lands
- * exactly on top of the poster image that uses the same alignment.
+ * Framing works like CSS `object-fit: contain`: each scene is composed in a fixed aspect and
+ * fitted inside the requested size, aligned by ax / ay.
  *
- * Motion: every pose is a function of the slot's scroll progress (0 when the slot's centre meets
- * the bottom of the viewport, 1 when it reaches the top), eased by a critically damped spring
- * (follow), plus a tiny bob while in view that fades out while the scroll moves. Scrolling back
- * plays it backwards. Heights come from the small viewport (svh), never the live innerHeight, so a
- * phone's toolbar sliding in and out moves nothing.
- * Pinned slots (data-3d-scrub, the scroll story) take their progress across their chapter's pinned
- * scroll instead: with the page's scroll loop (mount opts.loop) it is the loop's own eased value,
- * so words and objects share one number. A slot with data-3d-anchors gets leader lines aimed at
- * points on its object.
- * A pinned slot with data-3d-step="k/n" is step k of a sequence that shares one stage (how it works):
- * it grows in, plays and shrinks away during its own share of the chapter.
- * The hero slot (retired from the page, kept for its posters) has its own slow ambient loop.
+ * Poses: every scene's pose is a function of a progress p (0 to 1). The render script picks the p
+ * for each image; the page reproduces the motion between images with transforms.
  */
 import {
   ACESFilmicToneMapping,
@@ -584,33 +573,49 @@ function buildStreakTiles(rt) {
   });
 }
 
-/* ---------- medal: Carbon disc, green rings, the raised B ---------- */
-function buildMedal() {
+/* ---------- the logo badge: the green B on a black disc, no ring ----------
+   The brand's logo is a green B with black all around it, so the disc carries no outline ring. A
+   soft rounded bevel catches the key light so it still reads as an object. Options:
+     disc: 'black' (the logo badge, default) or 'carbon' (the app's trophy medal, a step lighter)
+     mark: false leaves the face blank (the app draws a milestone's icon on top)
+   Radius 1, facing +Z, about 0.24 thick. */
+const BADGE_T = 0.12;
+function buildBadge({ disc = 'black', mark = true } = {}) {
   const g = new Group();
-  const t = 0.12;
-  const profile = [
-    [0, t], [0.9, t], [0.955, t - 0.012], [0.99, t - 0.04], [1.0, t - 0.07],
-    [1.0, -(t - 0.07)], [0.99, -(t - 0.04)], [0.955, -(t - 0.012)], [0.9, -t], [0, -t],
-  ].map(([r, y]) => new Vector2(r, y));
-  const disc = new LatheGeometry(profile.slice().reverse(), 64);
-  disc.rotateX(Math.PI / 2);
-  g.add(new Mesh(disc, new MeshStandardMaterial({ color: 0x1f1f1f, metalness: 0.8, roughness: 0.42, envMapIntensity: 0.9 })));
-  const ringGeo = new TorusGeometry(0.84, 0.03, 8, 72);
-  const ringMat = M.green();
-  for (const side of [1, -1]) {
-    const ring = new Mesh(ringGeo, ringMat);
-    ring.position.z = side * t;
-    g.add(ring);
+  const t = BADGE_T;
+  // flat face, then a soft quarter-round bevel into the edge, sampled finely so it shades smoothly
+  const profile = [[0, t]];
+  const bev = 0.085;
+  for (let i = 0; i <= 10; i++) {
+    const a = (i / 10) * (Math.PI / 2);
+    profile.push([1 - bev + Math.sin(a) * bev, t - bev + Math.cos(a) * bev]);
   }
-  // the B raised on the front: exact green face, lit sides
-  const geo = new ExtrudeGeometry(markShape(), { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
-  const s = 1.06 / 127.5;
-  geo.scale(s, s, 1);
-  const face = new MeshBasicMaterial({ color: GREEN, toneMapped: false });
-  const side = new MeshStandardMaterial({ color: GREEN, roughness: 0.55, metalness: 0.05, emissive: GREEN, emissiveIntensity: 0.12, toneMapped: false });
-  const mark = new Mesh(geo, [face, side]);
-  mark.position.z = t - 0.005;
-  g.add(mark);
+  for (let i = 10; i >= 0; i--) {
+    const a = (i / 10) * (Math.PI / 2);
+    profile.push([1 - bev + Math.sin(a) * bev, -(t - bev + Math.cos(a) * bev)]);
+  }
+  profile.push([0, -t]);
+  const geo = new LatheGeometry(profile.reverse().map(([r, y]) => new Vector2(r, y)), 96);
+  geo.rotateX(Math.PI / 2);
+  const mat = disc === 'carbon'
+    ? new MeshStandardMaterial({ color: 0x1f1f1f, metalness: 0.8, roughness: 0.42, envMapIntensity: 0.9 })
+    : new MeshStandardMaterial({ color: 0x0c0c0c, metalness: 0.35, roughness: 0.38, envMapIntensity: 1.1 });
+  g.add(new Mesh(geo, mat));
+  if (mark) {
+    // the B raised on both faces (a coin reads the same from either side): exact green face, lit sides
+    const mg = new ExtrudeGeometry(markShape(), { depth: 0.035, bevelEnabled: false, curveSegments: 1 });
+    const s = 1.12 / 127.5;
+    mg.scale(s, s, 1);
+    const face = new MeshBasicMaterial({ color: GREEN, toneMapped: false });
+    const side = new MeshStandardMaterial({ color: GREEN, roughness: 0.55, metalness: 0.05, emissive: GREEN, emissiveIntensity: 0.12, toneMapped: false });
+    const front = new Mesh(mg, [face, side]);
+    front.position.z = t - 0.004;
+    g.add(front);
+    const back = new Mesh(mg, [face, side]);
+    back.rotation.y = Math.PI;
+    back.position.z = -(t - 0.004);
+    g.add(back);
+  }
   return g;
 }
 
@@ -1105,12 +1110,12 @@ function progressSlot(rt) {
   };
 }
 
-/* ---------- pricing: the B medal flips in, then leans toward the pointer ---------- */
+/* ---------- pricing: the logo badge flips in, then leans toward the pointer ---------- */
 function pricingSlot() {
   const root = new Group();
   const lean = new Group();
   const flip = new Group();
-  flip.add(buildMedal());
+  flip.add(buildBadge());
   lean.add(flip);
   root.add(lean);
   const camera = cam(6.0, 0.25);
@@ -1345,7 +1350,7 @@ function storyExplodedSlot(rt) {
   const slot = {
     // the slices' faces turn straight toward the green rim as they part: no rim for this slot, and a
     // slightly softer environment, keep the rubber black
-    root, camera, aspect: 16 / 9, anchors, rim: 0, env: 0.8,
+    root, camera, aspect: 16 / 9, anchors, rim: 0, env: 0.8, parts: P, mount,
     layout(W, H, vw) {
       const next = (vw || W) <= 620 ? 'narrow' : 'wide';
       if (next === mode) return;
@@ -1368,7 +1373,8 @@ function storyExplodedSlot(rt) {
       const p = c.p;
       const turn = easeInOut(win(0.05, 0.15, p));
       const drift = easeInOut(win(0.55, 1, p));
-      view.rotation.y = -0.06 - 0.4 * turn + 0.26 * drift;
+      // c.view pins the turn (the layer renders hold one camera angle for every pose)
+      view.rotation.y = c.view ?? (-0.06 - 0.4 * turn + 0.26 * drift);
       view.position.y = bob(c, 0.03, 6);
 
       P.slices.forEach((row, s) => {
@@ -1444,6 +1450,129 @@ function storyPlateSlot() {
   };
 }
 
+/* ============================================================
+   Offline scenes: stills only, for the page's 2D objects and the app's images
+   ============================================================ */
+
+/* ---------- the logo badge (or the app's blank medal), face-on at p 0, edge-on at p 1 ----------
+   A long lens (8 degrees) so the face is a true circle the page can turn with CSS perspective; the
+   disc fills 92% of the square frame (radius 1 in a half-frame of 1.09). */
+const BADGE_HALF = 1.09;
+function badgeStill(opts) {
+  return () => {
+    const root = new Group();
+    const turn = new Group();
+    turn.add(buildBadge(opts));
+    root.add(turn);
+    const fov = 8;
+    const camera = new PerspectiveCamera(fov, 1, 1, 60);
+    camera.position.set(0, 0, BADGE_HALF / Math.tan((fov / 2) * Math.PI / 180));
+    camera.lookAt(0, 0, 0);
+    return {
+      root, camera, aspect: 1,
+      update(c) { turn.rotation.y = c.p * Math.PI / 2; },
+    };
+  };
+}
+
+/** project a world point to the frame, as fractions of its width and height */
+function toFrame(v, camera) {
+  const q = v.clone().project(camera);
+  return [(q.x + 1) / 2, (1 - q.y) / 2];
+}
+
+/* ---------- app: the dumbbell floating (sign-in) or lying on a hex face (Today, rest day) ---------- */
+function appDumbbell(resting) {
+  return () => {
+    const root = new Group();
+    const spin = new Group();
+    const tilt = new Group();
+    const db = buildDumbbell();
+    // the heads have a point at the bottom; a sixth of a turn about the bar lays a face flat
+    if (resting) db.rotation.x = Math.PI / 6;
+    tilt.add(db);
+    spin.add(tilt);
+    root.add(spin);
+    tilt.rotation.z = resting ? 0 : 0.2;
+    tilt.rotation.x = resting ? 0 : 0.12;
+    spin.rotation.y = -0.62;
+    const camera = new PerspectiveCamera(28, 1, 0.1, 60);
+    const el = resting ? 0.5 : 0.2, d = resting ? 7.2 : 7.4;
+    camera.position.set(0, Math.sin(el) * d, Math.cos(el) * d);
+    camera.lookAt(0, 0, 0);
+    return { root, camera, aspect: 1, update() {} };
+  };
+}
+
+/* ---------- app: kettlebell and shaker in a three-quarter pose, the B toward the viewer ---------- */
+function appKettlebell() {
+  const root = new Group();
+  const k = buildKettlebell();
+  k.rotation.y = -0.22;
+  k.position.y = -0.36;
+  root.add(k);
+  return { root, camera: cam(5.1, 0.7, 0, [0, 0, 0]), aspect: 1, update() {} };
+}
+function appShaker() {
+  const root = new Group();
+  const sh = buildShaker();
+  sh.group.rotation.y = -0.3;
+  sh.group.position.y = -0.05;
+  root.add(sh.group);
+  return { root, camera: cam(4.7, 0.7, 0, [0, 0, 0]), aspect: 1, update() {} };
+}
+
+/* ---------- app: one bumper plate lying flat, seen from 0.8 rad up (the workout's plate stack) ----------
+   The story plate's look: rubber, raised rim and hub, the green ring on the hub. info() gives the
+   face's centre and the step one plate's thickness makes on screen, so the app can stack copies. */
+const APP_PLATE_EL = 0.8;
+function appPlate() {
+  const root = new Group();
+  const rubber = M.rubber();
+  rubber.roughness = 0.46;
+  root.add(new Mesh(plateGeometry(1.0), rubber));
+  const ring = new Mesh(new TorusGeometry(0.235, 0.018, 10, 72), M.green());
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.09 + 0.006;
+  root.add(ring);
+  const camera = new PerspectiveCamera(26, 1, 0.1, 60);
+  const d = 5.0;
+  camera.position.set(0, Math.sin(APP_PLATE_EL) * d, Math.cos(APP_PLATE_EL) * d);
+  camera.lookAt(0, 0, 0);
+  return {
+    root, camera, aspect: 1, update() {},
+    info() {
+      const top = toFrame(new Vector3(0, 0.09, 0), camera), bot = toFrame(new Vector3(0, -0.09, 0), camera);
+      const front = toFrame(new Vector3(0, 0.09, 1), camera), back = toFrame(new Vector3(0, 0.09, -1), camera);
+      return { faceCentre: top, plateStep: +(bot[1] - top[1]).toFixed(4), faceHeight: +(front[1] - back[1]).toFixed(4) };
+    },
+  };
+}
+
+/* ---------- app: the short Carbon trophy shelf, without its medal ----------
+   The app's shelf (1.7 x 0.06 x 0.34, matte Carbon) at its camera; info() gives the box the medal
+   stands in (radius 0.4, its foot on the shelf), so the app can place medal-face over it. */
+function appShelf() {
+  const root = new Group();
+  const shelfMat = new MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.85, metalness: 0.1, envMapIntensity: 0.6 });
+  const top = -0.42;
+  const shelf = new Mesh(new BoxGeometry(1.7, 0.06, 0.34), shelfMat);
+  shelf.position.y = top - 0.03;
+  root.add(shelf);
+  const camera = new PerspectiveCamera(24, 2.5, 0.1, 60);
+  const el = 0.1, d = 2.15, y = -0.04;
+  camera.position.set(0, y + Math.sin(el) * d, Math.cos(el) * d);
+  camera.lookAt(0, y, 0);
+  return {
+    root, camera, aspect: 2.5, rim: 0.06, update() {},
+    info() {
+      const c = toFrame(new Vector3(0, top + 0.4, 0), camera);
+      const t = toFrame(new Vector3(0, top + 0.8, 0), camera), b = toFrame(new Vector3(0, top, 0), camera);
+      return { medalCentre: c, medalHeight: +(b[1] - t[1]).toFixed(4) };
+    },
+  };
+}
+
 const BUILDERS = {
   hero: heroSlot,
   'story-world': storyWorldSlot,
@@ -1460,6 +1589,15 @@ const BUILDERS = {
   progress: progressSlot,
   pricing: pricingSlot,
   final: finalSlot,
+  // offline stills (render script only)
+  badge: badgeStill(),
+  'app-medal': badgeStill({ disc: 'carbon', mark: false }),
+  'app-dumbbell-float': appDumbbell(false),
+  'app-dumbbell-rest': appDumbbell(true),
+  'app-kettlebell': appKettlebell,
+  'app-shaker': appShaker,
+  'app-plate': appPlate,
+  'app-shelf': appShelf,
 };
 export const SLOTS = Object.keys(BUILDERS);
 
@@ -1546,7 +1684,7 @@ function frameCamera(slot, W, H, ax, ay, vw = W) {
  * opts: name, width, height, dpr, ax, ay, p (scroll progress for the pose),
  *       vw (the viewport width the poster stands for; picks a slot's phone or wide composition)
  */
-export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.5, vw = width }) {
+export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.5, vw = width, light = true }) {
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
   setupRenderer(renderer);
   renderer.setPixelRatio(dpr);
@@ -1558,9 +1696,127 @@ export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.
   const rect = { left: 0, top: 0, width, height, right: width, bottom: height };
   const c = { still: true, p, t: 0, dt: 0, pointer: { x: 0, y: 0, active: false }, track: rect, rect, vw, vh: height, fine: false };
   slot.update(c);
-  if (slot.light) slot.light(rt, c);
+  if (slot.light && light) slot.light(rt, c); // light: false keeps the studio key still (the page sweeps its own)
   renderer.render(rt.scene, slot.camera);
-  return { canvas: renderer.domElement, destroy: () => renderer.dispose() };
+  return { canvas: renderer.domElement, info: slot.info ? slot.info(c) : null, destroy: () => renderer.dispose() };
+}
+
+/**
+ * The exploded dumbbell as separate layers, one per part, all from one camera: the three-quarter
+ * view the chapter holds once its quarter turn is done. Each part is drawn on its own at its
+ * exploded place (p 0.55); the page stacks the layers far to near and moves each one back to its
+ * assembled place with a 2D transform. For every part this returns its picture (cropped to its
+ * pixels) and, in stage pixels: its centre exploded (the transform origin), the 2D map from its
+ * exploded look to its assembled one (a 2x2 matrix from two of its own axes, projected), and the
+ * offset back to its assembled place. The medallion's offset is split in two: riding its head out,
+ * then floating free. Anchors are the leader-line points, exploded.
+ * opts: mode 'wide' (16:9) or 'narrow' (phones, 1:1); width, height the stage in px; dpr.
+ */
+export function explodedLayers({ mode = 'wide', width = 1600, height = 900, dpr = 2 }) {
+  const renderer = new WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
+  setupRenderer(renderer);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(width, height, false);
+  const rt = runtime(renderer);
+  const slot = buildSlot(rt, 'story-exploded');
+  showOnly(rt, slot);
+  slot.layout(width, height, mode === 'wide' ? 1600 : 390);
+  frameCamera(slot, width, height, 0.5, 0.5, mode === 'wide' ? 1600 : 390);
+  const VIEW = -0.46; // -0.06 - 0.4: the quarter turn done, before the drift
+  const P = slot.parts;
+  const parts = [
+    ['l0', P.slices[0][0], 's0'], ['l1', P.slices[0][1], 's1'], ['l2', P.slices[0][2], 's2'],
+    ['cl', P.collars[0], 'c'], ['grip', P.grip, 'g'], ['cr', P.collars[1], 'c'],
+    ['r2', P.slices[1][2], 's2'], ['r1', P.slices[1][1], 's1'], ['r0', P.slices[1][0], 's0'],
+    ['medal', P.medal, 'm'],
+  ];
+  const cam = slot.camera;
+  cam.updateMatrixWorld(true); // project() needs the view matrix before the first render
+  const px = (v) => { const q = v.clone().project(cam); return [((q.x + 1) / 2) * width, ((1 - q.y) / 2) * height]; };
+  // a part's centre and two axes on screen; collars use their parent's axes (their spin about the
+  // bar would flip their own), everything else its own
+  const frameOf = (obj, parentAxes) => {
+    obj.updateWorldMatrix(true, false);
+    const o = obj.getWorldPosition(new Vector3());
+    let ax, ay;
+    if (parentAxes) {
+      ax = obj.parent.localToWorld(obj.position.clone().add(new Vector3(0.3, 0, 0)));
+      ay = obj.parent.localToWorld(obj.position.clone().add(new Vector3(0, 0.3, 0)));
+    } else {
+      ax = obj.localToWorld(new Vector3(0.3, 0, 0));
+      ay = obj.localToWorld(new Vector3(0, 0.3, 0));
+    }
+    const c = px(o), x = px(ax), y = px(ay);
+    return { c, A: [x[0] - c[0], x[1] - c[1], y[0] - c[0], y[1] - c[1]] }; // columns: x axis, y axis
+  };
+  const ctx = (p) => ({ still: true, p, view: VIEW, t: 0, dt: 0, pointer: { x: 0, y: 0 }, rect: { left: 0, top: 0, width, height }, vw: width, vh: height });
+  const pose = (p) => { slot.update(ctx(p)); slot.root.updateMatrixWorld(true); };
+
+  pose(0.55);
+  const exp = parts.map(([, obj, k]) => frameOf(obj, k === 'c'));
+  const mountExp = px(slot.mount.getWorldPosition(new Vector3()));
+  const anchors = {};
+  for (const [name, o] of Object.entries(slot.anchors)) {
+    const idx = parts.findIndex(([, obj]) => { let n = o; while (n) { if (n === obj) return true; n = n.parent; } return false; });
+    const a = px(o.getWorldPosition(new Vector3()));
+    anchors[name] = [+(a[0] / width).toFixed(4), +(a[1] / height).toFixed(4), parts[idx][0]];
+  }
+  // each part alone
+  const pics = [];
+  const all = parts.map(([, obj]) => obj);
+  for (const [, obj] of parts) {
+    all.forEach((o) => { o.visible = o === obj; });
+    // the medallion's own anchors and the mount are empty groups; the left outer slice keeps its B
+    renderer.render(rt.scene, cam);
+    const out = document.createElement('canvas');
+    out.width = width; out.height = height;
+    const g = out.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(renderer.domElement, 0, 0, width, height);
+    const d = g.getImageData(0, 0, width, height).data;
+    let x0 = width, y0 = height, x1 = -1, y1 = -1;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      if (d[(y * width + x) * 4 + 3] > 2) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    x0 = Math.max(0, x0 - 2); y0 = Math.max(0, y0 - 2); x1 = Math.min(width - 1, x1 + 2); y1 = Math.min(height - 1, y1 + 2);
+    const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+    const crop = document.createElement('canvas');
+    crop.width = cw; crop.height = ch;
+    crop.getContext('2d').drawImage(out, x0, y0, cw, ch, 0, 0, cw, ch);
+    pics.push({ canvas: crop, box: [x0, y0, cw, ch] });
+  }
+  all.forEach((o) => { o.visible = true; });
+
+  pose(0);
+  const rest = parts.map(([, obj, k]) => frameOf(obj, k === 'c'));
+  const mountRest = px(slot.mount.getWorldPosition(new Vector3()));
+  renderer.dispose();
+
+  const r4 = (v) => +v.toFixed(4);
+  const layers = parts.map(([name, , key], i) => {
+    const E = exp[i], R = rest[i];
+    // M maps the exploded look onto the assembled one: R.A = M . E.A
+    const [a, b, c, d] = E.A; // E = [[a, c], [b, d]]
+    const det = a * d - b * c;
+    const inv = [d / det, -b / det, -c / det, a / det]; // [[d, -c], [-b, a]] / det, column-major
+    const [ra, rb, rc, rd] = R.A;
+    const m = [ra * inv[0] + rc * inv[1], rb * inv[0] + rd * inv[1], ra * inv[2] + rc * inv[3], rb * inv[2] + rd * inv[3]];
+    let terms;
+    if (key === 'm') {
+      // ride the right outer slice out (its timing), then float free (the medallion's own)
+      terms = [[(mountRest[0] - mountExp[0]) / width, (mountRest[1] - mountExp[1]) / height, 's0'],
+        [(mountExp[0] - E.c[0]) / width, (mountExp[1] - E.c[1]) / height, 'm']];
+    } else terms = [[(R.c[0] - E.c[0]) / width, (R.c[1] - E.c[1]) / height, key]];
+    const [x0, y0, w, h] = pics[i].box;
+    return {
+      name, key, canvas: pics[i].canvas,
+      box: [r4(x0 / width), r4(y0 / height), r4(w / width), r4(h / height)],
+      o: [r4(E.c[0] / width), r4(E.c[1] / height)],
+      m: m.map(r4), mk: key === 'm' ? 'm' : key,
+      t: terms.map(([x, y, k]) => [r4(x), r4(y), k]),
+    };
+  });
+  return { layers, anchors, aspect: width / height };
 }
 
 /* ============================================================

@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <link rel="icon" href="assets/img/favicon.svg?v=built1" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png?v=built1">
-  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/story/world-640.webp 640w, assets/img/story/world.webp 1200w" imagesizes="(max-width: 620px) 100vw, min(100vw, calc(100vh - 204px))" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" imagesizes="(max-width: 620px) 76vw, min(62vh, 560px)" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap">
@@ -650,19 +650,35 @@
       .js .roadmap__card { opacity: 1; transform: none; }
     }
 
-    /* ---------- 3D slots ----------
-       Each [data-3d] slot gets its own canvas (.slot3d__c, added by assets/js/site-3d.min.js) that
-       the one 3D engine draws into, so the drawing scrolls and pins with its slot and never covers
-       copy. Each slot holds a still poster that shows until the live drawing has faded in over it,
-       and stays for good without WebGL, with Save-Data or with reduced motion. */
-    .slot3d { --ax: 0.5; --ay: 0.5; position: relative; pointer-events: none; }
-    .slot3d__c { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    .slot3d img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
-    .slot3d.is-3d-live img { visibility: hidden; }
+    /* ---------- Objects (DESIGN.md, "Objects (2D renders)") ----------
+       Every object is a still image rendered offline from the brand's 3D models
+       (scripts/render-hero-poster.mjs). The scroll loop at the end of the page moves them with
+       transform and opacity only, so nothing is drawn on the GPU per frame and no 3D library loads.
+       Without motion (reduced motion, no script) each one simply stands. */
+    .obj { --ax: 0.5; --ay: 0.5; position: relative; pointer-events: none; }
+    .obj > img, .obj > picture > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: calc(var(--ax) * 100%) calc(var(--ay) * 100%); }
+
+    /* The logo badge as a coin: a face on the front and the back (the same picture) and its edge
+       across the middle, in one 3D context, so turning it with rotateY reads as a coin turning.
+       --coin is its box; the disc fills 92% of it and is 11% of it thick. */
+    .coin { --coin: 200px; position: absolute; left: calc((100% - var(--coin)) * var(--ax)); top: calc((100% - var(--coin)) * var(--ay)); width: var(--coin); height: var(--coin); }
+    .coin__bob { position: absolute; inset: 0; perspective: calc(var(--coin) * 4); }
+    .coin__turn { position: absolute; inset: 0; transform-style: preserve-3d; }
+    .coin__face { position: absolute; inset: 0; width: 100%; height: 100%; backface-visibility: hidden; transform: translateZ(calc(var(--coin) * 0.055)); }
+    .coin__face--back { transform: rotateY(180deg) translateZ(calc(var(--coin) * 0.055)); }
+    .coin__edge { position: absolute; left: calc(50% - var(--coin) * 0.055); top: 3.96%; width: calc(var(--coin) * 0.11); height: 92.08%; transform: rotateY(90deg); opacity: 0; }
+    .coin__shadow { position: absolute; left: -5%; top: 96%; width: 110%; height: 22%; opacity: 0.55; }
+    .coin__shadow img { width: 100%; height: 100%; }
+    @keyframes coin-bob { from { transform: translate3d(0, -3px, 0); } to { transform: translate3d(0, 3px, 0); } }
+    @keyframes coin-shade { from { transform: scale(0.96); opacity: 0.85; } to { transform: scale(1.03); opacity: 1; } }
+    .fx .coin__bob { animation: coin-bob 3s ease-in-out infinite alternate paused; }
+    .fx .coin__shadow img { animation: coin-shade 3s ease-in-out infinite alternate paused; }
+    .fx .obj.is-on .coin__bob, .fx .ch--world.is-live .coin__bob, .fx .ch--world.is-live .coin__shadow img { animation-play-state: running; } /* only while on screen */
+    .fx .ch--world.is-live .coin__turn, .fx .obj.is-on .coin__turn { will-change: transform; }
 
     /* How it works: a small object rides in the corner of each step card */
-    .slot3d--step { float: right; width: 116px; height: 116px; margin: -14px -14px 6px 12px; }
-    @media (min-width: 1200px) { .slot3d--step { width: 148px; height: 148px; } }
+    .obj--step { float: right; width: 116px; height: 116px; margin: -14px -14px 6px 12px; }
+    @media (min-width: 1200px) { .obj--step { width: 148px; height: 148px; } }
 
     /* A head with its object beside it (features, progress) */
     .head-3d {
@@ -670,8 +686,8 @@
       gap: 24px clamp(32px, 5vw, 72px); margin-bottom: clamp(40px, 5vw, 64px);
     }
     .head-3d > .section-head { margin-bottom: 0; }
-    .head-3d > .slot3d { aspect-ratio: 1; }
-    .head-3d > .slot3d--wide { aspect-ratio: 1.15; }
+    .head-3d > .obj { aspect-ratio: 1; }
+    .head-3d > .obj--wide { aspect-ratio: 1.15; }
 
     /* Split showcases gain a narrow middle column for their object */
     .split--3d {
@@ -682,36 +698,38 @@
     .split--3d.split--reverse { grid-template-areas: 'media slot body'; }
     .split--3d > .split__body { grid-area: body; }
     .split--3d > .split__media { grid-area: media; }
-    .split--3d > .slot3d { grid-area: slot; align-self: center; height: clamp(320px, 34vw, 460px); }
+    .split--3d > .obj { grid-area: slot; align-self: center; height: clamp(320px, 34vw, 460px); }
 
-    /* Pricing: the medal above the heading */
-    .slot3d--medal { width: 200px; height: 200px; margin: 0 auto 8px; }
+    /* Pricing: the logo badge above the heading */
+    .obj--medal { width: 200px; height: 200px; margin: 0 auto 8px; }
+    .obj--medal .coin { --coin: 200px; }
 
-    /* Final call: the three objects orbit in the side margins, behind the copy */
+    /* Final call: the three objects in the side margins, behind the copy */
     .final { position: relative; }
     .final > .container { position: relative; z-index: 2; }
-    .slot3d--orbit { position: absolute; inset: 0; }
+    .obj--orbit { position: absolute; inset: 0; }
 
     @media (max-width: 1099px) {
       .split--3d { grid-template-areas: 'slot media' 'body media'; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(40px, 6vw, 88px); row-gap: 8px; }
       .split--3d.split--reverse { grid-template-areas: 'media slot' 'media body'; }
-      .split--3d > .slot3d { align-self: end; height: 180px; }
+      .split--3d > .obj { align-self: end; height: 180px; }
       .split--3d > .split__body { align-self: start; }
     }
 
     /* Phones and tablets: every object sits above its heading, centred */
     @media (max-width: 940px) {
       .head-3d { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-      .head-3d > .slot3d, .head-3d > .slot3d--wide { order: -1; aspect-ratio: auto; height: 180px; }
+      .head-3d > .obj, .head-3d > .obj--wide { order: -1; aspect-ratio: auto; height: 180px; }
       .split--3d, .split--3d.split--reverse { grid-template-areas: 'slot' 'body' 'media'; grid-template-columns: minmax(0, 1fr); }
-      .split--3d > .slot3d { align-self: auto; height: 180px; margin-bottom: calc(8px - clamp(40px, 6vw, 88px)); }
-      .slot3d--medal { width: auto; height: 180px; }
+      .split--3d > .obj { align-self: auto; height: 180px; margin-bottom: calc(8px - clamp(40px, 6vw, 88px)); }
+      .obj--medal { width: 180px; height: 180px; }
+      .obj--medal .coin { --coin: 180px; }
       .final { padding-top: 40px; }
-      .slot3d--orbit { position: relative; inset: auto; height: 200px; margin-bottom: 8px; }
+      .obj--orbit { position: relative; inset: auto; height: 200px; margin-bottom: 8px; }
     }
 
     @media (max-width: 620px) {
-      .slot3d--step { float: none; width: auto; height: 136px; margin: -8px 0 8px; }
+      .obj--step { float: none; width: auto; height: 136px; margin: -8px 0 8px; }
     }
 
     /* ---------- Scroll motion ----------
@@ -789,10 +807,10 @@
 
     /* ---------- Scroll story (DESIGN.md, "Scroll story") ----------
        Three chapters open the page. With motion (.fx) each chapter is tall and its content pins
-       (a sticky box one screen high) while the scroll loop and the 3D engine scrub everything by
-       the chapter's progress, so scrolling back plays it backwards. Without .fx (reduced motion,
-       no script) the same content stands as three plain sections, every word shown, posters in
-       place. Blur appears only inside a transition, never at rest. */
+       (a sticky box one screen high) while the scroll loop scrubs every word and image by the
+       chapter's progress, so scrolling back plays it backwards. Without .fx (reduced motion,
+       no script) the same content stands as three plain sections, every word shown, each object
+       standing still. Blur appears only inside a transition, never at rest. */
     .nav { background: var(--black); border-bottom-color: var(--line); } /* solid over the green world, so the white wordmark and the B read */
     .btn-ink { background: var(--black); color: var(--white); }
     .btn-ink:hover { background: var(--carbon); }
@@ -810,7 +828,8 @@
     }
     .world__line { display: block; }
     .world__line + .world__line { margin-top: 0.14em; }
-    .world__slot { flex: 1 0 auto; height: min(84vw, 44svh); }
+    .world__slot { flex: 1 0 auto; height: min(84vw, 44svh); container-type: size; }
+    .world__slot .coin { --coin: min(80cqh, 76cqw, 560px); }
     .world__foot { display: flex; align-items: center; gap: 16px 32px; padding-block: 24px max(32px, env(safe-area-inset-bottom)); }
     .world__lead { max-width: 34ch; font-size: 1.0625rem; font-weight: 500; line-height: 1.5; }
     .world__cue { display: none; }
@@ -824,7 +843,19 @@
       padding: calc(var(--nav-h) + 48px) var(--gutter) 64px;
     }
     .explode__copy { order: -1; }
-    .explode__slot { height: min(56vw, 60svh); }
+    .explode__slot { height: min(56vw, 60svh); container-type: size; }
+    /* the exploded dumbbell: one layer per part, stacked far to near on a stage in the render's aspect
+       (16:9, square on phones), contained in the slot. At rest each layer is drawn where it was
+       rendered, so the still is the exploded view; with motion the loop moves each one from its
+       assembled place and fits the stage between the labels (inline style). */
+    .xp { --sw: min(100cqw, 177.78cqh); position: absolute; left: calc(50% - var(--sw) / 2); top: calc(50% - var(--sw) * 0.28125); width: var(--sw); height: calc(var(--sw) * 0.5625); }
+    .xp__l { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); transform-origin: var(--o); }
+    .xp__l img { width: 100%; height: 100%; }
+    .fx .ch--explode.is-live .xp__l { will-change: transform; }
+    @media (max-width: 620px) {
+      .xp { --sw: min(100cqw, 100cqh); top: calc(50% - var(--sw) / 2); height: var(--sw); }
+      .xp__l { left: var(--nx); top: var(--ny); width: var(--nw); height: var(--nh); transform-origin: var(--no); }
+    }
     .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px 32px; counter-reset: part; }
     .part { position: relative; display: grid; align-content: start; gap: 4px; counter-increment: part; }
     .part::before { content: counter(part, decimal-leading-zero); font-family: var(--font-display); font-size: 0.8125rem; font-weight: 600; color: var(--faint); }
@@ -834,8 +865,8 @@
     .explode__copy p { margin-top: 14px; max-width: 36ch; color: var(--stone); }
     .explode__copy .btn { margin-top: 28px; }
     /* an elbowed 1px Stone line from the label to its part, a small green dot on the part; drawn only
-       over the live 3D. The engine writes the box (--lx, --ly, --lw, --lh), which two of its borders
-       draw the line (--lb), and the corner the dot sits on (--dx, --dy) every frame */
+       with motion. The scroll loop writes the box (--lx, --ly, --lw, --lh), which two of its borders
+       draw the line (--lb), and the corner the dot sits on (--dx, --dy), aimed at the part's layer */
     .leader { display: none; position: absolute; left: var(--lx, 0); top: var(--ly, 0); width: var(--lw, 0); height: var(--lh, 0); border: 0 solid rgba(233, 233, 233, 0.55); border-width: var(--lb, 0); pointer-events: none; }
     .leader::after { content: ''; position: absolute; left: calc(var(--dx, 100%) - 4px); top: calc(var(--dy, 100%) - 4px); width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--black); }
 
@@ -854,6 +885,20 @@
     .more__word .nw, .more__word .lw { white-space: nowrap; }
     .more__word .lt { display: inline-block; }
     .more__slot { order: 1; width: min(100%, 420px); aspect-ratio: 1; }
+    /* the plate: its face-on picture turned back toward edge-on with CSS 3D (perspective about the
+       render camera's), its true edge-on picture crossfading in at the start; a soft highlight masked
+       to the plate's face sweeps across it as the key light did */
+    .plate { position: absolute; inset: 0; perspective: calc(var(--plate, 420px) * 2); }
+    .plate__face, .plate__edge { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .plate__face img { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .plate__edge { opacity: 0; }
+    .plate__sweep { display: none; }
+    .fx .plate__sweep {
+      display: block; position: absolute; inset: 0; overflow: hidden; opacity: 0;
+      -webkit-mask: url(assets/img/story/plate-face.webp) center / contain no-repeat; mask: url(assets/img/story/plate-face.webp) center / contain no-repeat;
+    }
+    .plate__sweep i { position: absolute; top: 0; bottom: 0; left: 0; width: 45%; background: linear-gradient(100deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0)); transform: translate3d(-100%, 0, 0); }
+    .fx .ch--more.is-live .plate__face, .fx .ch--more.is-live .plate__edge { will-change: transform, opacity; }
 
     /* Motion allowed: tall chapters, content pinned one screen high */
     .fx .ch--world { height: 300vh; }
@@ -867,17 +912,21 @@
     .fx .world__line + .world__line { opacity: 0; }
     .fx .ch--world.is-live .world__line { will-change: transform, opacity; }
     .fx .world__slot { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: var(--foot); height: auto; }
+    .fx .world__slot .coin { --coin: min(66cqh, 76cqw, 560px); }
     .fx .world__foot { position: absolute; left: 0; right: 0; bottom: 0; min-height: var(--foot); align-items: flex-end; padding-block: 0 36px; }
     .fx .world__cue { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; min-height: 56px; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; }
 
-    .fx .ch--explode .ch__pin { z-index: 2; display: block; max-width: none; margin: 0; padding: 0; } /* labels and leaders sit over the live drawing */
+    /* labels and leaders sit over the object; the object fills the pin behind them */
+    .fx .ch--explode .ch__pin { z-index: 2; display: flex; flex-direction: column; max-width: none; margin: 0; padding: calc(var(--nav-h) + 3svh) var(--gutter) 40px; }
     .fx .explode__slot { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: 0; height: auto; }
     /* wide screens (1200px and 17:10, or 1400px and 8:5): a column of labels either side of the object,
-       stacked from the nav down so the left column always clears the title block under it. The left column runs from the innermost
-       part (the grip) at the top to the outer plates at the bottom, so its leaders fan out without
-       crossing and land on each part from above. */
+       stacked from the nav down. The title, line and button follow the left column in the same flow
+       (pushed to the bottom when there is room), so they can never land on a label. The left column
+       runs from the innermost part (the grip) at the top to the outer plates at the bottom, so its
+       leaders fan out without crossing and land on each part from above. The scroll loop fits the
+       object between the two columns. */
     .fx .parts {
-      position: absolute; top: calc(var(--nav-h) + 3svh); left: var(--gutter); right: var(--gutter);
+      position: relative; flex: none;
       display: grid; grid-template-columns: clamp(220px, 19vw, 280px) minmax(0, 1fr) clamp(220px, 19vw, 280px);
       align-items: start; gap: 18px 24px;
     }
@@ -888,8 +937,8 @@
     .fx .part[data-anchor='head-l'] { grid-area: 3 / 1; }
     .fx .part[data-anchor='mark'] { grid-area: 1 / 3; }
     .fx .part[data-anchor='head-r'] { grid-area: 3 / 3; }
-    .fx .explode__slot.is-3d-live ~ .parts .leader { display: block; }
-    .fx .explode__copy { position: absolute; left: var(--gutter); bottom: 40px; max-width: 480px; }
+    .fx .parts .leader { display: block; }
+    .fx .explode__copy { order: 0; position: relative; margin-top: auto; padding-top: 24px; max-width: 480px; }
     .fx .explode__copy .btn { margin-top: 24px; }
     .fx .explode__title { font-size: clamp(2.25rem, 1.2rem + 2.4vw, 3.5rem); }
 
@@ -921,11 +970,28 @@
       .fx .part[data-anchor='collar-l'] { grid-area: e; }
       .fx .part[data-anchor='head-r'] { grid-area: f; } /* from below, clear of the floating B */
       .fx .part::before { content: none; }
-      .fx .explode__copy { order: 0; position: relative; left: auto; bottom: auto; margin-top: 24px; }
+      .fx .explode__copy { margin-top: 24px; padding-top: 0; }
+    }
+
+    /* short desktop windows (under 860px tall, like a laptop with its browser bars): the labels'
+       lines step down a size, the gaps tighten and the title steps down, so the left column and the
+       title block fit one screen; under 680px the labels keep their names only (the line stays for
+       screen readers). */
+    @media (min-width: 621px) and (max-height: 860px) {
+      .fx .ch--explode .ch__pin { padding-top: calc(var(--nav-h) + 16px); padding-bottom: 28px; }
+      .fx .parts { gap: 12px 24px; }
+      .fx .part { gap: 2px; }
+      .fx .part span { font-size: 0.875rem; line-height: 1.45; }
+      .fx .explode__title { font-size: clamp(2rem, 1rem + 1.8vw, 2.75rem); }
+      .fx .explode__copy p { margin-top: 10px; }
+      .fx .explode__copy .btn { margin-top: 18px; }
+    }
+    @media (min-width: 621px) and (max-height: 679px) {
+      .fx .part span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     }
 
     @media (max-width: 940px) {
-      /* the headline takes the top, the dumbbell sits lower and overlaps its last line */
+      /* the headline takes the top, the badge sits lower and overlaps its last line */
       .fx .world__h { place-content: start center; padding-top: clamp(16px, 4svh, 40px); font-size: min(18.5vw, 24svh); }
       .fx .world__slot { --ay: 0.82; left: 8vw; right: 8vw; }
 
@@ -953,7 +1019,7 @@
       .fx .part b { font-size: 1rem; }
       .fx .part span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 1rem; color: var(--stone); opacity: 0; }
       .fx .ch--explode.is-live .parts .part { will-change: opacity; } /* a transform hint would make each row the line's containing block */
-      .fx .explode__slot.is-3d-live ~ .parts .leader { display: none; }
+      .fx .parts .leader { display: none; }
       .fx .explode__copy { margin-top: 16px; }
       .part span { font-size: 1rem; }
       .explode__title, .fx .explode__title { font-size: 1.75rem; }
@@ -990,8 +1056,8 @@
 
     /* How it works (#how): with motion, the steps play as a pinned sequence under the section head.
        Each step's card, its object and a big light step word take the screen in turn; a soft green glow
-       behind the object deepens step by step and never rests above 12% alpha. The engine scrubs the
-       objects (data-3d-step, set by the scroll loop). Without motion the roadmap stands as before. */
+       behind the object deepens step by step and never rests above 12% alpha. The scroll loop moves
+       the step images (scale, turn, opacity). Without motion the roadmap stands as before. */
     .how__stage, .how__words { display: none; }
     .fx #how { padding-bottom: 0; }
     .fx #how .section-head { margin-bottom: 0; }
@@ -1009,7 +1075,7 @@
     .fx .ch--how.is-live .how__w, .fx .ch--how.is-live .roadmap__card { will-change: transform, opacity; }
     .fx .how__stage { display: block; grid-area: 1 / 2 / 3 / 3; position: relative; }
     .how__glow { position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(163, 255, 61, 0.12), rgba(163, 255, 61, 0.04) 55%, rgba(163, 255, 61, 0)); opacity: 0; }
-    .fx .how__stage .slot3d--step { position: absolute; inset: 0; width: auto; height: auto; margin: 0; float: none; }
+    .fx .how__stage .obj--step { position: absolute; inset: 0; width: auto; height: auto; margin: 0; float: none; }
 
     /* Section headlines below the story: word by word out of a soft blur, line after line */
     .fx .wb { display: inline-block; opacity: 0; }
@@ -1029,7 +1095,7 @@
     }
 
     @media print {
-      .nav, .mobile-menu, .slot3d, .switcher__bar, .world__cue, .leader { display: none !important; }
+      .nav, .mobile-menu, .obj, .switcher__bar, .world__cue, .leader { display: none !important; }
       body { background: #fff; color: #000; }
     }
   </style>
@@ -1141,7 +1207,7 @@
 <main id="main">
 
   <!-- ===== Scroll story: three pinned chapters (DESIGN.md, "Scroll story") ===== -->
-  <!-- Chapter 1, the green world: the dumbbell turns while the headlines swap behind it -->
+  <!-- Chapter 1, the green world: the logo badge turns like a coin while the headlines swap behind it -->
   <section class="ch ch--world" id="home" data-story="world" aria-labelledby="world-title">
     <div class="ch__pin">
       <h1 class="world__h" id="world-title">
@@ -1149,8 +1215,17 @@
         <span class="world__line">Eat with a plan</span>
         <span class="world__line">Built around you</span>
       </h1>
-      <div class="slot3d world__slot" data-3d="story-world" data-3d-track="#home" data-3d-scrub aria-hidden="true">
-        <img src="assets/img/story/world.webp" srcset="assets/img/story/world-640.webp 640w, assets/img/story/world.webp 1200w" sizes="(max-width: 620px) 100vw, min(100vw, calc(100vh - 204px))" width="1200" height="1200" alt="" fetchpriority="high">
+      <div class="obj world__slot" data-obj="world" aria-hidden="true">
+        <div class="coin">
+          <span class="coin__shadow"><img src="assets/img/story/shadow.webp" alt="" width="480" height="96" decoding="async"></span>
+          <div class="coin__bob">
+            <div class="coin__turn">
+              <img class="coin__face" src="assets/img/story/badge-960.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 620px) 76vw, min(62vh, 560px)" width="960" height="960" alt="" fetchpriority="high">
+              <img class="coin__face coin__face--back" src="assets/img/story/badge-960.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 620px) 76vw, min(62vh, 560px)" width="960" height="960" alt="" decoding="async">
+              <img class="coin__edge" src="assets/img/story/badge-edge.webp" width="138" height="884" alt="" decoding="async">
+            </div>
+          </div>
+        </div>
       </div>
       <div class="container world__foot">
         <p class="world__lead">An all-in-one fitness and nutrition platform powered by AI coaching.</p>
@@ -1163,12 +1238,21 @@
   <!-- Chapter 2, the exploded view: the dumbbell comes apart, each part names a feature -->
   <section class="ch ch--explode" id="inside" data-story="explode" aria-labelledby="explode-title">
     <div class="ch__pin">
-      <div class="slot3d explode__slot" data-3d="story-exploded" data-3d-track="#inside" data-3d-scrub data-3d-anchors="#inside [data-anchor]" aria-hidden="true">
-        <picture>
-          <source media="(max-width: 620px)" srcset="assets/img/story/exploded-sm.webp" width="720" height="720">
-          <img src="assets/img/story/exploded.webp?v=2" alt="" width="1600" height="900" loading="lazy" decoding="async">
-        </picture>
+      <div class="obj explode__slot" data-obj="exploded" aria-hidden="true">
+        <div class="xp">
+          <span class="xp__l" style="--x:21.35%;--y:36.85%;--w:8.39%;--h:21.39%;--o:50.42% 50.30%;--nx:13.22%;--ny:65.89%;--nw:16.78%;--nh:17.89%;--no:49.76% 51.03%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/l0.webp"><img src="assets/img/story/parts/wide/l0.webp" width="161" height="231" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:26.35%;--y:38.89%;--w:8.65%;--h:21.76%;--o:51.91% 50.09%;--nx:19.78%;--ny:61.22%;--nw:17.44%;--nh:18.11%;--no:51.43% 49.64%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/l1.webp"><img src="assets/img/story/parts/wide/l1.webp" width="166" height="235" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:31.61%;--y:40.09%;--w:8.44%;--h:22.04%;--o:53.44% 50.41%;--nx:26.44%;--ny:56.44%;--nw:17.22%;--nh:17.44%;--no:52.96% 47.88%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/l2.webp"><img src="assets/img/story/parts/wide/l2.webp" width="162" height="238" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:37.03%;--y:47.69%;--w:3.49%;--h:8.89%;--o:48.71% 49.72%;--nx:35.33%;--ny:58.78%;--nw:7.22%;--nh:7.11%;--no:51.11% 49.23%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/cl.webp"><img src="assets/img/story/parts/wide/cl.webp" width="67" height="96" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:41.98%;--y:50.46%;--w:12.86%;--h:6.57%;--o:49.38% 49.32%;--nx:43.33%;--ny:44.67%;--nw:17.44%;--nh:17.89%;--no:49.43% 50.64%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/grip.webp"><img src="assets/img/story/parts/wide/grip.webp" width="247" height="71" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:54.17%;--y:47.59%;--w:2.97%;--h:9.44%;--o:48.48% 50.21%;--nx:54.44%;--ny:38.56%;--nw:7.44%;--nh:7.22%;--no:50.40% 49.45%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/cr.webp"><img src="assets/img/story/parts/wide/cr.webp" width="57" height="102" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:54.90%;--y:39.17%;--w:7.34%;--h:24.26%;--o:50.54% 50.45%;--nx:52.67%;--ny:28.67%;--nw:17.00%;--nh:18.22%;--no:49.06% 50.99%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/r2.webp"><img src="assets/img/story/parts/wide/r2.webp" width="141" height="262" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:61.25%;--y:37.22%;--w:7.50%;--h:25.09%;--o:52.13% 50.54%;--nx:58.33%;--ny:20.11%;--nw:18.33%;--nh:18.44%;--no:49.32% 49.78%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/r1.webp"><img src="assets/img/story/parts/wide/r1.webp" width="144" height="271" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:68.44%;--y:34.26%;--w:7.24%;--h:25.93%;--o:53.31% 50.21%;--nx:64.11%;--ny:11.11%;--nw:18.78%;--nh:17.33%;--no:50.64% 47.84%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/r0.webp"><img src="assets/img/story/parts/wide/r0.webp" width="139" height="280" alt="" loading="lazy" decoding="async"></picture></span>
+          <span class="xp__l" style="--x:58.44%;--y:7.50%;--w:12.86%;--h:22.96%;--o:49.61% 50.57%;--nx:39.11%;--ny:7.44%;--nw:19.11%;--nh:19.44%;--no:50.08% 50.26%"><picture><source media="(max-width: 620px)" srcset="assets/img/story/parts/narrow/medal.webp"><img src="assets/img/story/parts/wide/medal.webp" width="247" height="248" alt="" loading="lazy" decoding="async"></picture></span>
+        </div>
       </div>
+      <script type="application/json" id="xp-data">{"wide":{"l":[["s0",[0.2558,0.4761],[1.0633,-0.113,0.0722,1.0397],[[0.0896,0.0445,"s0"]],[0.2135,0.3685,0.0839,0.2139]],["s1",[0.3084,0.4979],[1.0472,-0.0545,0.0332,1.0275],[[0.0612,0.0229,"s1"]],[0.2635,0.3889,0.0865,0.2176]],["s2",[0.3612,0.512],[1.0288,0.0023,-0.0062,1.0128],[[0.0332,0.0091,"s2"]],[0.3161,0.4009,0.0844,0.2204]],["c",[0.3873,0.5211],[1.0201,0.0001,-0.0042,1.01],[[0.0228,0.0003,"c"]],[0.3703,0.4769,0.0349,0.0889]],["g",[0.4833,0.537],[1.0208,-0.0036,0.0026,1.0284],[[-0.0146,-0.0148,"g"]],[0.4198,0.5046,0.1286,0.0657]],["c",[0.5561,0.5233],[0.979,-0.0001,0.0043,0.9895],[[-0.0258,-0.0003,"c"]],[0.5417,0.4759,0.0297,0.0944]],["s2",[0.5861,0.5141],[0.9686,0.002,0.0063,0.9829],[[-0.0381,0.0091,"s2"]],[0.549,0.3917,0.0734,0.2426]],["s1",[0.6516,0.499],[0.9415,0.0547,-0.0342,0.9626],[[-0.0748,0.0246,"s1"]],[0.6125,0.3722,0.075,0.2509]],["s0",[0.723,0.4728],[0.9086,0.1047,-0.0735,0.9385],[[-0.1167,0.0511,"s0"]],[0.6844,0.3426,0.0724,0.2593]],["m",[0.6482,0.1911],[0.2358,0.1479,-0.0427,0.7527],[[-0.1184,0.0553,"s0"],[0.0959,0.2778,"m"]],[0.5844,0.075,0.1286,0.2296]]],"a":{"head-l":[0.2889,0.4532,1],"head-r":[0.6373,0.4471,7],"collar-l":[0.3991,0.5135,3],"grip":[0.4595,0.5424,4],"mark":[0.677,0.087,9]}},"narrow":{"l":[["s0",[0.2157,0.7502],[1.0545,-0.1444,0.0844,1.0442],[[0.1259,-0.0763,"s0"]],[0.1322,0.6589,0.1678,0.1789]],["s1",[0.2875,0.7021],[1.0394,-0.0753,0.0411,1.0292],[[0.0822,-0.0578,"s1"]],[0.1978,0.6122,0.1744,0.1811]],["s2",[0.3556,0.6479],[1.0234,-0.0088,-0.0021,1.0139],[[0.0428,-0.0337,"s2"]],[0.2644,0.5644,0.1722,0.1744]],["c",[0.3902,0.6228],[1.0145,-0.007,-0.0012,1.0091],[[0.0263,-0.0276,"c"]],[0.3533,0.5878,0.0722,0.0711]],["g",[0.5195,0.5373],[1.0106,-0.0032,0.0015,1.02],[[-0.0361,-0.0125,"g"]],[0.4333,0.4467,0.1744,0.1789]],["c",[0.5819,0.4213],[0.985,0.0072,0.0013,0.9906],[[-0.0289,0.0304,"c"]],[0.5444,0.3856,0.0744,0.0722]],["s2",[0.6101,0.3796],[0.9804,0.012,0.0016,0.9869],[[-0.0373,0.0513,"s2"]],[0.5267,0.2867,0.17,0.1822]],["s1",[0.6737,0.2929],[0.9629,0.0761,-0.042,0.9744],[[-0.0686,0.1041,"s1"]],[0.5833,0.2011,0.1833,0.1844]],["s0",[0.7362,0.194],[0.9419,0.1395,-0.0852,0.9603],[[-0.0983,0.1685,"s0"]],[0.6411,0.1111,0.1878,0.1733]],["m",[0.4868,0.1721],[0.4664,0.2094,0.3767,0.5326],[[-0.0973,0.1724,"s0"],[0.2697,-0.0044,"m"]],[0.3911,0.0744,0.1911,0.1944]]],"a":{"head-l":[0.2327,0.6713,1],"head-r":[0.6157,0.2548,7],"collar-l":[0.4083,0.6178,3],"grip":[0.4889,0.5596,4],"mark":[0.5269,0.0852,9]}}}</script>
       <ol class="parts" aria-label="What each part of BUILT does">
         <li class="part" data-anchor="grip" data-at="0.18"><b>AI training plan</b> <span>A weekly plan from your goal, your days and your equipment.</span><i class="leader" aria-hidden="true"></i></li>
         <li class="part" data-anchor="head-r" data-at="0.26"><b>AI meal plan</b> <span>Daily meals around your diet and allergies. Swap any of them.</span><i class="leader" aria-hidden="true"></i></li>
@@ -1190,8 +1274,14 @@
       <p class="more__cap">Isn&rsquo;t just a workout app.</p>
       <p class="more__para">BUILT plans your training and your meals, reads your food photos and checks in with you every week. One coach that knows your whole day.</p>
       <h2 class="more__word" id="more-word">Powered by <span class="nw"><span class="hl">AI</span>.</span></h2>
-      <div class="slot3d more__slot" data-3d="story-plate" data-3d-track="#more" data-3d-scrub aria-hidden="true">
-        <img src="assets/img/story/plate.webp" srcset="assets/img/story/plate-480.webp 480w, assets/img/story/plate.webp 800w" sizes="(max-width: 620px) 100vw, min(62vh, 46vw)" alt="" width="800" height="800" loading="lazy" decoding="async">
+      <div class="obj more__slot" data-obj="plate" aria-hidden="true">
+        <div class="plate">
+          <img class="plate__edge" src="assets/img/story/plate-edge.webp" srcset="assets/img/story/plate-edge-480.webp 480w, assets/img/story/plate-edge.webp 800w" sizes="(max-width: 620px) 100vw, min(62vh, 46vw)" alt="" width="800" height="800" loading="lazy" decoding="async">
+          <div class="plate__face">
+            <img src="assets/img/story/plate-face.webp" srcset="assets/img/story/plate-face-480.webp 480w, assets/img/story/plate-face.webp 800w" sizes="(max-width: 620px) 100vw, min(62vh, 46vw)" alt="" width="800" height="800" loading="lazy" decoding="async">
+            <span class="plate__sweep"><i></i></span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1229,7 +1319,7 @@
             <article class="roadmap__step is-left">
               <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>1</div>
               <div class="roadmap__card">
-                <div class="slot3d slot3d--step" data-3d="how-phone" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-phone.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <div class="obj obj--step" data-obj="how-phone" aria-hidden="true"><img src="assets/img/3d/how-phone.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
                 <h3 class="h-3">Tell us about you</h3>
                 <p>A short setup that captures what actually matters for your plan.</p>
                 <ul class="step-list">
@@ -1243,7 +1333,7 @@
             <article class="roadmap__step is-right">
               <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>2</div>
               <div class="roadmap__card">
-                <div class="slot3d slot3d--step" data-3d="how-tape" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-tape.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <div class="obj obj--step" data-obj="how-tape" aria-hidden="true"><img src="assets/img/3d/how-tape.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
                 <h3 class="h-3">AI builds your plan</h3>
                 <p>Your nutrition targets and training approach are generated around your goal, not a template.</p>
                 <ul class="step-list">
@@ -1257,7 +1347,7 @@
             <article class="roadmap__step is-left">
               <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>3</div>
               <div class="roadmap__card">
-                <div class="slot3d slot3d--step" data-3d="how-pair" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-pair.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <div class="obj obj--step" data-obj="how-pair" aria-hidden="true"><img src="assets/img/3d/how-pair.webp?v=2" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
                 <h3 class="h-3">Follow your daily plan</h3>
                 <p>Open the app and know exactly what to eat, when to train and what to hit today.</p>
                 <ul class="step-list">
@@ -1271,7 +1361,7 @@
             <article class="roadmap__step is-right">
               <div class="roadmap__marker" aria-hidden="true"><svg class="roadmap__ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="28" pathLength="100"/></svg>4</div>
               <div class="roadmap__card">
-                <div class="slot3d slot3d--step" data-3d="how-ring" data-3d-gate=".is-seen" aria-hidden="true"><img src="assets/img/3d/how-ring.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
+                <div class="obj obj--step" data-obj="how-ring" aria-hidden="true"><img src="assets/img/3d/how-ring.webp" alt="" width="256" height="256" loading="lazy" decoding="async"></div>
                 <h3 class="h-3">Track. Improve. Repeat.</h3>
                 <p>Log progress and the plan keeps adjusting as your body and habits change.</p>
                 <ul class="step-list">
@@ -1296,7 +1386,7 @@
           <h2 class="h-1" data-words="blur">Everything You Need to Build You.</h2>
           <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
         </div>
-        <div class="slot3d" data-3d="features" aria-hidden="true"><img src="assets/img/3d/features.webp?v=2" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
+        <div class="obj" data-obj="features" data-float="24,5" aria-hidden="true"><img src="assets/img/3d/features.webp?v=2" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="feature-group">
@@ -1361,7 +1451,7 @@
         </ul>
       </div>
 
-      <div class="slot3d" data-3d="diet" aria-hidden="true"><img src="assets/img/3d/diet.webp?v=2" alt="" width="330" height="600" loading="lazy" decoding="async"></div>
+      <div class="obj" data-obj="diet" data-float="24,5" aria-hidden="true"><img src="assets/img/3d/diet.webp?v=2" alt="" width="330" height="600" loading="lazy" decoding="async"></div>
 
       <div class="split__media switcher" data-tabs>
         <div class="switcher__bar">
@@ -1488,7 +1578,7 @@
         </div>
       </div>
 
-      <div class="slot3d" data-3d="training" aria-hidden="true"><img src="assets/img/3d/training.webp?v=2" alt="" width="310" height="500" loading="lazy" decoding="async"></div>
+      <div class="obj" data-obj="training" data-float="20,3" aria-hidden="true"><img src="assets/img/3d/training.webp?v=2" alt="" width="310" height="500" loading="lazy" decoding="async"></div>
 
       <div class="split__media">
         <div class="workout">
@@ -1526,7 +1616,7 @@
         <h2 class="h-1" data-words="blur">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
       </div>
-      <div class="slot3d" data-3d="accountability" aria-hidden="true">
+      <div class="obj" data-obj="accountability" data-float="20,2" aria-hidden="true">
         <picture>
           <source media="(max-width: 1099px)" srcset="assets/img/3d/accountability-wide.webp?v=3" width="756" height="360">
           <img src="assets/img/3d/accountability.webp?v=3" alt="" width="300" height="500" loading="lazy" decoding="async">
@@ -1559,7 +1649,7 @@
           <h2 class="h-1" data-words="blur">See exactly how far you&rsquo;ve come.</h2>
           <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
         </div>
-        <div class="slot3d slot3d--wide" data-3d="progress" aria-hidden="true"><img src="assets/img/3d/progress.webp?v=2" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
+        <div class="obj obj--wide" data-obj="progress" data-float="20,3" aria-hidden="true"><img src="assets/img/3d/progress.webp?v=2" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
       </div>
 
       <div class="dash">
@@ -1607,7 +1697,17 @@
   <!-- ===== Pricing ===== -->
   <section class="section band" id="pricing">
     <div class="container">
-      <div class="slot3d slot3d--medal" data-3d="pricing" aria-hidden="true"><img src="assets/img/3d/pricing.webp" alt="" width="440" height="440" loading="lazy" decoding="async"></div>
+      <div class="obj obj--medal" data-obj="pricing" aria-hidden="true">
+        <div class="coin">
+          <div class="coin__bob">
+            <div class="coin__turn">
+              <img class="coin__face" src="assets/img/story/badge-960.webp" width="960" height="960" alt="" loading="lazy" decoding="async">
+              <img class="coin__face coin__face--back" src="assets/img/story/badge-960.webp" width="960" height="960" alt="" loading="lazy" decoding="async">
+              <img class="coin__edge" src="assets/img/story/badge-edge.webp" width="138" height="884" alt="" loading="lazy" decoding="async">
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="section-head section-head--center">
         <h2 class="h-1" data-words="blur">Your health, for about $1 a day.</h2>
         <p class="lead">One subscription. Everything included. No tiers to compare, no upsells.</p>
@@ -1810,7 +1910,7 @@
   <!-- ===== Final CTA ===== -->
   <section class="final" id="start" data-final>
     <div class="final__panel" aria-hidden="true"></div>
-    <div class="slot3d slot3d--orbit" data-3d="final" data-3d-avoid="#start h2, #start .lead, #start .btn, #start .soon" aria-hidden="true">
+    <div class="obj obj--orbit" data-obj="final" data-float="16,0" aria-hidden="true">
       <picture>
         <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
         <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
@@ -2001,8 +2101,8 @@
        Every effect is a function of the scroll position, so scrolling back plays it backwards.
        Heights are the small viewport (svh, V.h) and the large one (lvh, V.hl), read from two hidden
        probes, never the live innerHeight: a phone's toolbar sliding in and out changes neither, so
-       it moves nothing. Once the 3D engine is up it joins this loop: it reads its layout before any
-       write here and draws after them, so the page runs one rAF and never forces a layout. */
+       it moves nothing. The objects are still images: this loop moves them too, with transform and
+       opacity only, so the page runs one rAF and draws nothing on the GPU per frame. */
     var docEl = document.documentElement;
     var probe = function (unit) {
       var d = document.createElement('div');
@@ -2013,13 +2113,9 @@
     };
     var svh = probe('svh'), lvh = probe('lvh');
     var V = { y: 0, h: svh.offsetHeight || window.innerHeight, hl: 0, w: docEl.clientWidth, max: 1 };
-    var engine = null; // the 3D engine once it has loaded: { read(now), draw(now) }
-    var storyChapter = function () { return null; }; // the story's chapter record for an element, once built
     var fx = []; // { measure(), update(now) -> true while it needs another frame }
     var motion = !reduceMotion;
     if (motion) docEl.classList.add('fx');
-    // set once it is clear the 3D engine will not draw: the story's posters then get a light CSS scrub
-    var posterScrub = false;
     var clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
     var outCubic = function (t) { return 1 - Math.pow(1 - t, 3); };
     var docTop = function (el) { var y = 0; while (el) { y += el.offsetTop; el = el.offsetParent; } return y; };
@@ -2047,9 +2143,7 @@
       if (needMeasure) measure();
       V.y = window.scrollY;
       var more = false;
-      if (engine && engine.read(now)) more = true; // layout reads, before any write
       for (var i = 0; i < fx.length; i++) if (fx[i].update(now)) more = true;
-      if (engine && engine.draw(now)) more = true; // the 3D, with the same progress the words just used
       if (more) tick();
     };
     var tick = function () { if (!fxRaf) fxRaf = requestAnimationFrame(frame); };
@@ -2161,9 +2255,9 @@
       /* Scroll story: pinned chapters. A chapter's progress p runs from 0, as its top meets the top
          of the screen, to 1, as its bottom meets the bottom, over its pinned scroll (the chapter's
          height less its pin's, which is one small viewport high). It is eased here once per frame and
-         the 3D engine draws with this same value (engine.chapter), so words and objects never drift
-         apart. The ease is a critically damped spring stepped with its exact solution (the engine's
-         `follow`, same OMEGA): framerate independent, 0.18s behind a steady scroll, and without the
+         the words and the object images move with this same value, so they never drift apart. The
+         ease is a critically damped spring stepped with its exact solution: framerate independent,
+         0.18s behind a steady scroll, and without the
          kink a plain ease gets on every coarse step of a touch fling. Every value below is a function
          of p, so scrolling back plays it backwards. Blur is only ever set inside a transition; at rest
          the filter is cleared. */
@@ -2190,7 +2284,12 @@
         if (live !== c.live) { c.live = live; c.el.classList.toggle('is-live', live); }
         return c.u !== target;
       };
-      storyChapter = function (el) { for (var i = 0; i < chapters.length; i++) if (chapters[i].el === el) return chapters[i]; return null; };
+      var easeIO = function (t) { return 0.5 - 0.5 * Math.cos(Math.PI * t); };
+      var DEG = 180 / Math.PI;
+      // an element's offset inside an ancestor (layout boxes, transforms ignored)
+      var offIn = function (n, root) { var x = 0, y = 0; while (n && n !== root) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; } return [x, y]; };
+      // the coin's edge shows only near edge-on, where the faces have turned away
+      var coinEdge = function (el, deg) { var cs = Math.abs(Math.cos(deg / DEG)); put(el, 'opacity', (1 - smooth(clamp01(cs / 0.3))).toFixed(3)); return cs; };
 
       // a line of the green world's headline: a = 0 at rest, 1 gone; dir -1 leaves upward, +1 arrives from below
       var swapLine = function (el, a, dir) {
@@ -2232,14 +2331,15 @@
       chapters.forEach(function (c) {
         var el = c.el, step;
         if (c.kind === 'world') {
-          var lines = $$('.world__line', el), cue = $('.world__cue b', el), wPoster = $('.world__slot img', el), foot = $('.world__foot', el);
+          var lines = $$('.world__line', el), cue = $('.world__cue b', el), foot = $('.world__foot', el);
+          var coin = $('.world__slot .coin', el), cTurn = coin && $('.coin__turn', coin), cEdge = coin && $('.coin__edge', coin), cShadow = coin && $('.coin__shadow', coin);
           step = function () {
             var p = clamp01(c.u);
             // the lines swap at p = 0.33 and 0.66, each over a seventh of the chapter, eased at both ends
             swapLine(lines[0], smoother(win(0.26, 0.36, p)), -1);
             swapLine(lines[1], p < 0.5 ? 1 - smoother(win(0.30, 0.40, p)) : smoother(win(0.59, 0.69, p)), p < 0.5 ? 1 : -1);
-            // the last 15%: the camera flies into the dumbbell (the engine) while the green fades to the
-            // Deep Black of the exploded view, so the hand-off to it is one continuous move
+            // the last 15%: the badge swells toward the viewer and sweeps out under the frame while the
+            // green fades to the Deep Black of the exploded view, so the hand-over is one continuous move
             var z = smooth(win(0.85, 1, p));
             if (z > 0) {
               put(lines[2], 'opacity', z >= 1 ? '0' : (1 - z).toFixed(3));
@@ -2250,19 +2350,75 @@
             put(el, 'backgroundColor', z > 0 ? 'rgb(' + Math.round(8 + 155 * k) + ',' + Math.round(8 + 247 * k) + ',' + Math.round(8 + 53 * k) + ')' : '');
             if (foot) { put(foot, 'opacity', f >= 1 ? '' : f.toFixed(3)); put(foot, 'visibility', f > 0 ? '' : 'hidden'); }
             if (cue) put(cue, 'transform', 'scaleX(' + p.toFixed(4) + ')');
-            if (posterScrub && wPoster) {
-              put(wPoster, 'transform', 'rotate(' + (-8 + 16 * p).toFixed(2) + 'deg)' + (z > 0 ? ' scale(' + (1 + 2.6 * z * z).toFixed(4) + ')' : ''));
-              put(wPoster, 'opacity', z > 0 ? (1 - z).toFixed(3) : '');
+            if (cTurn) {
+              // one coin turn across the chapter (face-on at the start and through the zoom), leaning a
+              // little as it goes; its edge shows as it passes edge-on, its shadow narrows with it
+              var th = 360 * smoother(win(0.03, 0.83, p)), s1 = Math.sin(p * Math.PI);
+              put(cTurn, 'transform', 'rotateZ(' + (-7 * s1).toFixed(2) + 'deg) rotateX(' + (6 * Math.sin(p * Math.PI * 2)).toFixed(2) + 'deg) rotateY(' + th.toFixed(2) + 'deg)');
+              var cs = coinEdge(cEdge, th);
+              put(cShadow, 'transform', 'scaleX(' + (0.2 + 0.8 * cs).toFixed(3) + ')');
+              put(cShadow, 'opacity', z > 0 ? (0.55 * (1 - z)).toFixed(3) : '');
+              var g = 1 - smooth(win(0.9, 0.98, p));
+              put(coin, 'transform', z > 0 ? 'translate3d(0,' + (80 * z * z).toFixed(2) + '%,0) scale(' + (1 + 2.6 * z * z).toFixed(4) + ')' : '');
+              put(coin, 'opacity', g >= 1 ? '' : g.toFixed(3));
             }
           };
         } else if (c.kind === 'explode') {
-          var parts = $$('.part', el).map(function (li) { return { el: li, at: parseFloat(li.getAttribute('data-at')) || 0, line: $('span', li) }; });
+          var parts = $$('.part', el).map(function (li) { return { el: li, at: parseFloat(li.getAttribute('data-at')) || 0, line: $('span', li), leader: $('.leader', li), anchor: li.getAttribute('data-anchor') }; });
+          // the object: one image layer per part (scripts/exploded-parts.json, inline as #xp-data). Each
+          // layer was rendered exploded; at k = 0 it sits on its assembled place, moved there by its own
+          // offset and a 2D map of its assembled look, both eased away on the old explode timeline
+          var XP = {}, xData = document.getElementById('xp-data');
+          try { XP = JSON.parse(xData.textContent); } catch (e) { XP = {}; }
+          var xSlot = $('.explode__slot', el), xStage = $('.xp', el), xLayers = $$('.xp__l', el), xCopy = $$('.explode__copy > *', el);
+          var colsMq = window.matchMedia('(min-width: 1200px) and (min-aspect-ratio: 17/10), (min-width: 1400px) and (min-aspect-ratio: 8/5)');
+          var KW = { s0: [0.12, 0.4], s1: [0.18, 0.47], s2: [0.24, 0.55], c: [0.2, 0.5], g: [0.22, 0.55], m: [0.18, 0.5] };
+          var XD = null, xs = { x: 0, y: 0, w: 0, h: 0 }, xLab = [], xCx = 0.5, xCols = false;
+          c.measure = function () {
+            XD = XP[V.w <= 620 ? 'narrow' : 'wide'] || null;
+            if (!XD || !xSlot || !xStage) return;
+            var A = V.w <= 620 ? 1 : 16 / 9, so = offIn(xSlot, c.pin), sw = xSlot.clientWidth, sh = xSlot.clientHeight;
+            var bx0 = 1, by0 = 1, bx1 = 0, by1 = 0;
+            XD.l.forEach(function (l) { var b = l[4]; bx0 = Math.min(bx0, b[0]); by0 = Math.min(by0, b[1]); bx1 = Math.max(bx1, b[0] + b[2]); by1 = Math.max(by1, b[1] + b[3]); });
+            xCx = (bx0 + bx1) / 2;
+            xCols = colsMq.matches && V.w > 620;
+            xLab = parts.map(function (pt) { var o = offIn(pt.el, c.pin); return { x: o[0], y: o[1], w: pt.el.offsetWidth, h: pt.el.offsetHeight, left: /^(grip|collar-l|head-l)$/.test(pt.anchor) }; });
+            var avoid = V.w <= 620 ? [] : xLab.concat(xCopy.map(function (e) { var o = offIn(e, c.pin); return { x: o[0], y: o[1], w: e.offsetWidth, h: e.offsetHeight }; }));
+            var L = 0, R = V.w;
+            xLab.forEach(function (b) { if (b.left) L = Math.max(L, b.x + b.w); else R = Math.min(R, b.x); });
+            // the largest stage (at most the slot's contain size) whose object clears every label and
+            // the title block by 16px. It starts centred (between the two columns on wide screens); when
+            // that is blocked it may rise to clear the title block or step right past it before it shrinks
+            var W0 = Math.min(sw, sh * A), fit = null, cTop = Infinity, cRight = 0;
+            xCopy.forEach(function (e) { var o = offIn(e, c.pin); if (e.offsetWidth) { cTop = Math.min(cTop, o[1]); cRight = Math.max(cRight, o[0] + e.offsetWidth); } });
+            var clear = function (x, y, w, h) {
+              var o = { x0: x + bx0 * w - 16, y0: y + by0 * h - 16, x1: x + bx1 * w + 16, y1: y + by1 * h + 16 };
+              return o.x1 <= V.w && !avoid.some(function (b) { return b.w && b.x < o.x1 && b.x + b.w > o.x0 && b.y < o.y1 && b.y + b.h > o.y0; });
+            };
+            for (var f = 1; f >= 0.4 && !fit; f -= 0.03) {
+              var w = W0 * f, h = w / A, x = so[0] + (sw - w) / 2, y = so[1] + (sh - h) / 2;
+              if (xCols) x = (L + R) / 2 - xCx * w;
+              var tries = [[x, y]];
+              if (V.w > 620) {
+                tries.push([x, Math.max(so[1] - by0 * h, Math.min(y, cTop - 32 - by1 * h))]);
+                tries.push([Math.max(x, cRight + 32 - bx0 * w), y]);
+              }
+              for (var t = 0; t < tries.length && !fit; t++) if (clear(tries[t][0], tries[t][1], w, h)) fit = { x: tries[t][0], y: tries[t][1], w: w, h: h };
+              if (!fit && f - 0.03 < 0.4) fit = { x: x, y: y, w: w, h: h };
+            }
+            xs = fit;
+            put(xStage, 'left', (xs.x - so[0]).toFixed(1) + 'px');
+            put(xStage, 'top', (xs.y - so[1]).toFixed(1) + 'px');
+            put(xStage, 'width', xs.w.toFixed(1) + 'px');
+            put(xStage, 'height', xs.h.toFixed(1) + 'px');
+          };
           step = function () {
             var p = clamp01(c.u), phone = V.w <= 620;
             // each part's reveal runs over 0.12 of the chapter from its data-at, eased at both ends
-            var r = parts.map(function (pt) { return clamp01((p - pt.at) / 0.12); });
+            var r = parts.map(function (pt) { return clamp01((p - pt.at) / 0.12); }), dys = [];
             parts.forEach(function (pt, i) {
               var k = smoother(r[i]), next = i < parts.length - 1 ? r[i + 1] : 0;
+              dys.push(phone || k >= 1 ? 0 : 12 * (1 - k));
               if (phone) {
                 // a numbered list: every row readable, the current part lit and its line shown. The row
                 // dims as the next one lights; its line leaves in the first half of the next reveal and
@@ -2282,9 +2438,47 @@
                 put(pt.line, 'transform', '');
               }
             });
+            if (!XD || !xs) return;
+            // the old timeline: outer slices first, the collars and the grip, the medallion floating
+            // free; the quarter turn at the start and the drift at the end are a horizontal squeeze
+            // and stretch of the whole object about its middle (the medallion keeps facing the viewer)
+            var K = {}; for (var key in KW) K[key] = easeIO(win(KW[key][0], KW[key][1], p));
+            var Y = 1 + 0.11 * (1 - easeIO(win(0.05, 0.15, p))) + 0.09 * easeIO(win(0.55, 1, p));
+            var W = xs.w, H = xs.h, mid = xCx * W;
+            var cur = XD.l.map(function (l, i) {
+              var q = 1 - K[l[0]], o = l[1], m = l[2], tx = 0, ty = 0;
+              l[3].forEach(function (t) { var u = 1 - K[t[2]]; tx += u * t[0] * W; ty += u * t[1] * H; });
+              var ox = o[0] * W, oy = o[1] * H, ys = l[0] === 'm' ? 1 : Y;
+              tx += (Y - 1) * (ox + tx - mid);
+              var a = ys * (1 + q * (m[0] - 1)), b = q * m[1], cc = ys * q * m[2], d = 1 + q * (m[3] - 1);
+              if (xLayers[i]) put(xLayers[i], 'transform', 'translate3d(' + tx.toFixed(2) + 'px,' + ty.toFixed(2) + 'px,0) matrix(' + a.toFixed(4) + ',' + b.toFixed(4) + ',' + cc.toFixed(4) + ',' + d.toFixed(4) + ',0,0)');
+              return [ox + tx, oy + ty, a, b, cc, d, ox, oy];
+            });
+            if (phone) return;
+            // leaders: from the label, flat then straight onto its part's point on the layer, where the
+            // layer is now. Side columns start at the label's first line; rows start past the whole row
+            parts.forEach(function (pt, i) {
+              var an = XD.a[pt.anchor], lr = xLab[i];
+              if (!an || !pt.leader || !lr) return;
+              var T = cur[an[2]], ax = an[0] * W - T[6], ay = an[1] * H - T[7];
+              var sx = xs.x + T[0] + T[2] * ax + T[4] * ay, sy = xs.y + T[1] + T[3] * ax + T[5] * ay;
+              var top = lr.y + dys[i], x0, y0;
+              if (xCols) { x0 = sx > lr.x + lr.w / 2 ? lr.x + lr.w + 12 : lr.x - 12; y0 = top + 12; }
+              else {
+                var t0 = top, b0 = top + lr.h;
+                xLab.forEach(function (m, j) { var mt = m.y + dys[j]; if (Math.abs(mt - top) < 24) { t0 = Math.min(t0, mt); b0 = Math.max(b0, mt + m.h); } });
+                x0 = Math.min(lr.x + lr.w - 8, Math.max(lr.x + 8, sx));
+                y0 = sy > b0 ? b0 + 10 : t0 - 10;
+              }
+              var right = sx >= x0, down = sy >= y0;
+              var v = '--lx:' + (Math.min(x0, sx) - lr.x).toFixed(0) + 'px;--ly:' + (Math.min(y0, sy) - top).toFixed(0) + 'px;--lw:' + Math.abs(sx - x0).toFixed(0) + 'px;--lh:' + Math.abs(sy - y0).toFixed(0) + 'px;' +
+                '--lb:' + (down ? 1 : 0) + 'px ' + (right ? 1 : 0) + 'px ' + (down ? 0 : 1) + 'px ' + (right ? 0 : 1) + 'px;--dx:' + (right ? 100 : 0) + '%;--dy:' + (down ? 100 : 0) + '%';
+              if (pt.leader._fxV !== v) { pt.leader._fxV = v; pt.leader.setAttribute('style', v); }
+            });
           };
         } else if (c.kind === 'more') {
-          var cap = $('.more__cap', el), para = $('.more__para', el), word = $('.more__word', el), mPoster = $('.more__slot img', el);
+          var cap = $('.more__cap', el), para = $('.more__para', el), word = $('.more__word', el);
+          var plate = $('.plate', el), pFace = $('.plate__face', el), pEdge = $('.plate__edge', el), pSweep = $('.plate__sweep', el), pStripe = pSweep && $('i', pSweep);
           var letters = word ? splitLetters(word) : [];
           step = function () {
             var p = clamp01(c.u);
@@ -2304,10 +2498,21 @@
               put(l, 'filter', k > 0 && k < 1 ? blur(14 * (1 - k)) : '');
               put(l, 'transform', k >= 1 ? '' : 'translate3d(0,' + (0.25 * (1 - k)).toFixed(3) + 'em,0)');
             });
-            if (posterScrub && mPoster) {
-              // no live drawing: the still plate fakes its flip and its drop
-              var f = smooth(win(0.05, 0.45, p)), d = smooth(win(0.5, 0.95, p)), sc = 1 - 0.2 * d;
-              put(mPoster, 'transform', 'translate3d(0,' + (9 * d).toFixed(2) + '%,0) scale(' + sc.toFixed(4) + ',' + (sc * (0.08 + 0.92 * f)).toFixed(4) + ')');
+            if (pFace) {
+              // the flip, as the render camera saw it: the face-on picture turned back by the same three
+              // rotations (CSS axes: y down), the true edge-on picture taking over near edge-on
+              var f = easeIO(win(0.05, 0.45, p)), q = 1 - f, d = easeIO(win(0.5, 0.95, p)), A0 = Math.PI / 2 - 0.24;
+              var tilt = 'rotateY(' + (0.4 * q * DEG).toFixed(2) + 'deg) rotateZ(' + (0.55 * q * DEG).toFixed(2) + 'deg) ';
+              put(pFace, 'transform', q > 0 ? tilt + 'rotateX(' + (A0 * q * DEG).toFixed(2) + 'deg)' : '');
+              put(pEdge, 'transform', tilt + 'rotateX(' + (-A0 * f * DEG).toFixed(2) + 'deg) rotateZ(' + (-0.55 * DEG).toFixed(2) + 'deg) rotateY(' + (-0.4 * DEG).toFixed(2) + 'deg)');
+              var fo = smooth(win(0.02, 0.16, f)); // a flat edge-on picture cannot open up: the face takes over early
+              put(pFace, 'opacity', fo >= 1 ? '' : fo.toFixed(3));
+              put(pEdge, 'opacity', (1 - fo).toFixed(3));
+              // then it eases down and a little smaller under the typed word
+              put(plate, 'transform', d > 0 ? 'translate3d(0,' + (12.8 * d).toFixed(2) + '%,0) scale(' + (1 - 0.2 * d).toFixed(4) + ')' : '');
+              // the key light sweeping across the face, left to right
+              var sw = easeIO(win(0.25, 0.6, p));
+              if (pSweep) { put(pSweep, 'opacity', Math.sin(sw * Math.PI).toFixed(3)); put(pStripe, 'transform', 'translate3d(' + (-100 + 322 * sw).toFixed(1) + '%,0,0)'); }
             }
           };
         } else if (c.kind === 'goals') {
@@ -2342,16 +2547,11 @@
           // the steps in turn: step k owns x in [k, k+1] and hands over to the next across 2H; its card,
           // its step word and its object come and go together, and the glow behind deepens step by step
           var hSteps = $$('.roadmap__step', el), hWords = $$('.how__w', el), hGlow = $('.how__glow', el), hStage = $('.how__stage', el);
-          var hSlots = hSteps.map(function (s, k) {
-            var slot = $('.slot3d', s);
+          var hSlots = hSteps.map(function (s) {
+            var slot = $('.obj', s);
             if (!slot || !hStage) return null;
-            // the step's object moves out of its card onto the shared stage; the engine scrubs it by this
-            // chapter's progress and its place in the sequence instead of by its card being seen
+            // the step's object moves out of its card onto the shared stage, at the stage's size
             hStage.appendChild(slot);
-            slot.removeAttribute('data-3d-gate');
-            slot.setAttribute('data-3d-track', '.ch--how');
-            slot.setAttribute('data-3d-scrub', '');
-            slot.setAttribute('data-3d-step', k + '/' + hSteps.length);
             var img = $('img', slot);
             if (img) {
               img.setAttribute('srcset', img.getAttribute('src') + ' 256w, ' + img.getAttribute('src').replace(/\.webp.*$/, '-640.webp') + ' 640w');
@@ -2359,7 +2559,7 @@
             }
             return slot;
           });
-          var GLOW = [0.05, 0.075, 0.1, 0.12], HH = 0.22; // the engine's STEP_HAND
+          var GLOW = [0.05, 0.075, 0.1, 0.12], HH = 0.22; // the hand-over, half its width
           var hImgs = hSlots.map(function (sl) { return sl && $('img', sl); });
           step = function () {
             var n = hSteps.length, x = clamp01(c.u) * n, glow = 0;
@@ -2379,9 +2579,12 @@
                 put(w, 'filter', mid ? blur(14 * (1 - v)) : '');
                 put(w, 'transform', mid ? 'translate3d(0,' + (dir * 10 * (1 - v)).toFixed(2) + '%,0) scale(1,' + (1 + 0.2 * (1 - v)).toFixed(4) + ')' : '');
               }
-              // the posters crossfade the same way (they show until the live drawing takes over); only the
-              // poster, so the live drawing in the slot's canvas keeps its own grow and shrink
-              if (hImgs[k]) put(hImgs[k], 'opacity', v >= 1 ? '' : v.toFixed(3));
+              // the object grows in turning one way, holds, and shrinks away turning the other
+              if (hImgs[k]) {
+                var own = clamp01((x - k + HH) / (1 + 2 * HH));
+                put(hImgs[k], 'opacity', v >= 1 ? '' : v.toFixed(3));
+                put(hImgs[k], 'transform', 'rotate(' + ((own - 0.5) * 8 + (1 - vin) * 18 - vout * 18).toFixed(2) + 'deg) scale(' + (0.45 + 0.55 * outCubic(v)).toFixed(4) + ')');
+              }
             });
             if (hGlow) put(hGlow, 'opacity', (glow / 0.12).toFixed(3));
           };
@@ -2624,6 +2827,61 @@
           }
         });
       }
+
+      /* Section objects: each image floats a few px against the scroll and leans a degree or two as it
+         crosses the screen (data-float="px,deg"), 0 as its middle meets the bottom of the screen and 1
+         at the top, so scrolling back plays it backwards */
+      var floats = $$('[data-float]').map(function (el) {
+        var a = el.getAttribute('data-float').split(',');
+        return { el: el, img: $('img', el), y: parseFloat(a[0]) || 0, r: parseFloat(a[1]) || 0, top: 0, h: 0 };
+      });
+      if (floats.length) {
+        fx.push({
+          measure: function () { floats.forEach(function (f) { f.top = docTop(f.el); f.h = f.el.offsetHeight; }); },
+          update: function () {
+            floats.forEach(function (f) {
+              var cy = f.top + f.h / 2 - V.y;
+              if (!f.img || cy < -f.h || cy > V.h + f.h) return;
+              var q = clamp01((V.h - cy) / V.h) - 0.5;
+              put(f.img, 'transform', 'translate3d(0,' + (-q * f.y).toFixed(1) + 'px,0)' + (f.r ? ' rotate(' + (q * f.r).toFixed(2) + 'deg)' : ''));
+            });
+          }
+        });
+      }
+
+      /* Pricing: the logo badge flips face up as the pricing head arrives (a half turn, growing from 62%),
+         then leans toward a mouse pointer (up to 17 degrees, damped) */
+      var pr = $('[data-obj="pricing"]'), prCoin = pr && $('.coin', pr), prTurn = pr && $('.coin__turn', pr), prEdge = pr && $('.coin__edge', pr);
+      if (prTurn) {
+        var prTop = 0, prH = 0, prX = 0, lean = { x: 0, y: 0, at: 0 }, ptr = { x: 0, y: 0, on: false };
+        var fineMq = window.matchMedia('(hover: hover) and (pointer: fine)');
+        window.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse') return; ptr.x = e.clientX; ptr.y = e.clientY; ptr.on = true; tick(); }, { passive: true });
+        docEl.addEventListener('pointerleave', function () { ptr.on = false; tick(); });
+        fx.push({
+          measure: function () { prTop = docTop(pr); prH = pr.offsetHeight; var r = pr.getBoundingClientRect(); prX = r.left + r.width / 2; },
+          update: function (now) {
+            var cy = prTop + prH / 2 - V.y, on = cy > -prH && cy < V.h + prH;
+            if (on !== pr._fxOn) { pr._fxOn = on; pr.classList.toggle('is-on', on); }
+            if (!on) { lean.x = lean.y = 0; lean.at = 0; return false; }
+            var e = outCubic(win(0.04, 0.34, clamp01((V.h - cy) / V.h)));
+            var tx = 0, ty = 0;
+            if (fineMq.matches && ptr.on && e >= 1) {
+              ty = Math.max(-1, Math.min(1, (ptr.x - prX) / (V.w / 2))) * 17;
+              tx = -Math.max(-1, Math.min(1, (ptr.y - cy) / (V.h / 2))) * 12.6;
+            }
+            var dt = lean.at ? Math.min(0.05, Math.max(0, (now - lean.at) / 1000)) : 0.016, k = 1 - Math.exp(-dt * 3.5);
+            lean.at = now;
+            lean.x += (tx - lean.x) * k; lean.y += (ty - lean.y) * k;
+            var still = Math.abs(tx - lean.x) < 0.02 && Math.abs(ty - lean.y) < 0.02;
+            if (still) { lean.x = tx; lean.y = ty; lean.at = 0; }
+            var th = 180 * (1 - e) + lean.y;
+            put(prTurn, 'transform', 'rotateX(' + lean.x.toFixed(2) + 'deg) rotateY(' + th.toFixed(2) + 'deg)');
+            put(prCoin, 'transform', e >= 1 ? '' : 'scale(' + (0.62 + 0.38 * e).toFixed(4) + ')');
+            coinEdge(prEdge, th);
+            return !still;
+          }
+        });
+      }
     }
 
     window.addEventListener('scroll', tick, { passive: true });
@@ -2766,39 +3024,6 @@
         });
         el.addEventListener('pointerleave', function () { tgt.x = 0; tgt.y = 0; kick(); });
       });
-    }
-
-    /* ---------- 3D: one shared canvas draws every [data-3d] slot once the page has loaded ---------- */
-    // Kept on the still posters: reduced motion, Save-Data, no WebGL2, or any failure loading the
-    // engine. The hero poster stays the LCP image; the engine only loads after the load event.
-    var slots3d = $$('[data-3d]');
-    var saveData = navigator.connection && navigator.connection.saveData;
-    var stills = function () { posterScrub = true; remeasure(); };
-    if (!(slots3d.length && !reduceMotion && !saveData && 'IntersectionObserver' in window)) stills();
-    else {
-      var start3d = function () {
-        // The capability probe is the context the engine draws with, so the page opens exactly one.
-        var canvas = document.createElement('canvas');
-        var gl = null;
-        try {
-          gl = canvas.getContext('webgl2', { alpha: true, depth: true, stencil: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' });
-        } catch (e) { gl = null; }
-        if (!gl) { stills(); return; }
-        import('./assets/js/site-3d.min.js?v=5').then(function (m) {
-          // the engine joins the scroll loop: one rAF, and the story's eased progress, shared
-          engine = m.mount({ canvas: canvas, context: gl, slots: slots3d, loop: {
-            wake: tick,
-            chapter: function (el) { return storyChapter(el); },
-            viewport: function () { return { s: V.h, l: V.hl }; }
-          } });
-          tick();
-        }).catch(stills); // the posters stay
-      };
-      var whenIdle = function () {
-        if ('requestIdleCallback' in window) requestIdleCallback(start3d, { timeout: 2000 });
-        else setTimeout(start3d, 200);
-      };
-      if (document.readyState === 'complete') whenIdle(); else window.addEventListener('load', whenIdle);
     }
 
     /* ---------- Footer year ---------- */
