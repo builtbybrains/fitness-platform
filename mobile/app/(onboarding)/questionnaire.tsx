@@ -545,7 +545,7 @@ function FinishStep({ onFix, onDone, applyProfile }: { onFix: (code: string) => 
           ? () => void requestReminderPermission().then((granted) => setRemind(granted ? 'on' : 'off'))
           : undefined
       }
-      lead={<StepObject screen="finish" fallback={<BuiltMark size={40} />} />}
+      lead={<BuiltMark size={40} />}
     >
       <View style={{ flexDirection: 'row', backgroundColor: C.card, borderRadius: R.card, padding: 20 }}>
         <View style={{ flex: 1, gap: 2 }}>

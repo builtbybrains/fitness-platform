@@ -1,95 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  arcAngles,
-  arcLength,
   arcSweep,
-  clockPoint,
   donutSegments,
   latestEarned,
+  liftOffset,
+  objectFrame,
   PLATE_CAP,
-  plateDrop,
   plateRadius,
   plateSlots,
   plateThickness,
   plateY,
-  retarget,
+  revealSegments,
   segmentAt,
-  settle,
   sharePercents,
-  softClamp,
-  stepTween,
+  sliceAt,
+  slicePath,
   swapPose,
   TAU,
-  tween,
-  tweenDone,
-  tweenValue,
   visiblePlates,
-} from '../components/three/layout';
-import { spinAtRest, stepSpring } from '../components/three/pose';
+} from '../lib/objects/layout';
 import { objectForScreen } from '../components/onboarding/objects';
 
-describe('tween', () => {
-  it('eases from the current value to the target and reports done', () => {
-    let t = retarget(tween(0), 0.6, 0.4);
-    expect(tweenValue(t)).toBe(0);
-    t = stepTween(t, 0.2);
-    // ease-out quart at halfway is 1 - 0.5^4
-    expect(tweenValue(t)).toBeCloseTo(0.6 * (1 - 0.0625), 6);
-    expect(tweenDone(t)).toBe(false);
-    t = stepTween(t, 0.5);
-    expect(tweenValue(t)).toBe(0.6);
-    expect(tweenDone(t)).toBe(true);
-  });
-
-  it('retargets from where it is mid-way, and settles at once', () => {
-    let t = stepTween(retarget(tween(0), 1, 0.4), 0.1);
-    const mid = tweenValue(t);
-    t = retarget(t, 0, 0.25);
-    expect(tweenValue(t)).toBeCloseTo(mid, 9);
-    expect(tweenValue(settle(t))).toBe(0);
-  });
-
-  it('holds its start value through a negative (delay) elapsed', () => {
-    const t = { from: 1, to: 0, elapsed: -0.2, duration: 0.35 };
-    expect(tweenValue(t)).toBe(1);
-    expect(tweenDone(t)).toBe(false);
-  });
-});
-
-describe('Today ring arc', () => {
+describe('arcs', () => {
   it('sweeps a share of a full turn, clamped', () => {
     expect(arcSweep(0.25)).toBeCloseTo(Math.PI / 2, 9);
     expect(arcSweep(1.4)).toBeCloseTo(TAU, 9);
     expect(arcSweep(-1)).toBe(0);
-  });
-
-  it('arc length is sweep times radius', () => {
-    expect(arcLength(0.5, 1)).toBeCloseTo(Math.PI, 9);
-    expect(arcLength(0.25, 96)).toBeCloseTo(48 * Math.PI, 9);
-  });
-
-  it('starts at 12 o clock and runs clockwise', () => {
-    const [x0, y0] = clockPoint(0, 1);
-    expect(x0).toBeCloseTo(0, 9);
-    expect(y0).toBeCloseTo(1, 9);
-    const [x1, y1] = clockPoint(Math.PI / 2, 1);
-    expect(x1).toBeCloseTo(1, 9); // 3 o'clock is to the right
-    expect(y1).toBeCloseTo(0, 9);
-  });
-
-  it('spaces arc samples evenly to the end of the fill', () => {
-    const a = arcAngles(0.5, 4);
-    expect(a).toHaveLength(5);
-    expect(a[0]).toBe(0);
-    expect(a[4]).toBeCloseTo(Math.PI, 9);
-    expect(a[2]).toBeCloseTo(Math.PI / 2, 9);
-  });
-
-  it('limits the drag tilt softly', () => {
-    expect(softClamp(0.01, 0.6)).toBeCloseTo(0.01, 4);
-    expect(softClamp(50, 0.6)).toBeLessThanOrEqual(0.6);
-    expect(softClamp(-50, 0.6)).toBeGreaterThanOrEqual(-0.6);
   });
 });
 
@@ -188,12 +125,6 @@ describe('plate stack', () => {
     expect(plateY(3, 0.2, 0.05)).toBeCloseTo(3 * 0.25 + 0.1, 9);
     expect(plateY(3, 0.2, 0) - plateY(2, 0.2, 0)).toBeCloseTo(0.2, 9);
   });
-
-  it('drops in from above and lands at 0.35s', () => {
-    expect(plateDrop(0)).toBeCloseTo(1.2, 9);
-    expect(plateDrop(0.35)).toBe(0);
-    expect(plateDrop(0.1)).toBeLessThan(plateDrop(0.05));
-  });
 });
 
 describe('trophy shelf', () => {
@@ -232,7 +163,15 @@ describe('questionnaire object', () => {
     expect(inn.phase).toBe('in');
     expect(inn.spin).toBeLessThan(0);
     const rest = swapPose(0.56);
-    expect(rest).toEqual({ phase: 'rest', scale: 1, spin: 0 });
+    expect(rest).toEqual({ phase: 'rest', scale: 1, spin: 0, opacity: 1 });
+  });
+
+  it('fades out as it leaves and is fully up before it lands', () => {
+    expect(swapPose(0).opacity).toBe(1);
+    expect(swapPose(0.249).opacity).toBeLessThan(0.05);
+    expect(swapPose(0.25).opacity).toBeCloseTo(0, 6);
+    expect(swapPose(0.45).opacity).toBe(1);
+    for (let t = 0.25; t < 0.55; t += 0.01) expect(swapPose(t).scale).toBeLessThanOrEqual(1);
   });
 
   it('only comes in on first mount', () => {
@@ -251,21 +190,90 @@ describe('questionnaire object', () => {
   });
 });
 
-describe('drag spring', () => {
-  it('springs back to rest without crossing zero', () => {
-    let s = { angle: 0.6, velocity: 0, dragging: false };
-    let crossed = false;
-    for (let i = 0; i < 60; i++) {
-      s = stepSpring(s, 1 / 60);
-      if (s.angle < -1e-6) crossed = true;
-    }
-    expect(crossed).toBe(false);
-    expect(spinAtRest(s, true)).toBe(true);
+describe('macro donut drawing', () => {
+  const segs = donutSegments({ protein: 100, carbs: 100, fat: 0 }, 0.1);
+  const nums = (d: string) => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+
+  it('draws a slice from its outer start, round the outer edge, back round the inner edge', () => {
+    // A quarter from 12 o'clock to 3 o'clock on a 100 box, radii 30 and 50.
+    const d = slicePath(50, 50, 30, 50, 0, Math.PI / 2);
+    expect(d.startsWith('M50 0A50 50 0 0 1 100 50L80 50A30 30 0 0 0 50 20Z')).toBe(true);
   });
 
-  it('holds still while dragging', () => {
-    const s = { angle: 0.4, velocity: 0, dragging: true };
-    expect(stepSpring(s, 0.1)).toBe(s);
-    expect(spinAtRest(s, true)).toBe(false);
+  it('uses the large-arc flag past half a turn', () => {
+    const d = slicePath(50, 50, 30, 50, 0, Math.PI * 1.5);
+    expect(d).toContain('A50 50 0 1 1');
+    expect(d).toContain('A30 30 0 1 0');
+  });
+
+  it('draws a whole ring as two circles and nothing for no sweep', () => {
+    const ring = slicePath(50, 50, 30, 50, 0, TAU);
+    expect(ring.match(/M/g)).toHaveLength(2);
+    for (const n of nums(ring)) expect(Math.abs(n)).toBeLessThanOrEqual(100);
+    expect(slicePath(50, 50, 30, 50, 1, 1)).toBe('');
+  });
+
+  it('keeps every point inside the box', () => {
+    for (const s of segs) {
+      const xs = nums(slicePath(70, 70, 37, 63, s.start, s.end));
+      for (const n of xs) expect(n).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('sweeps the slices in clockwise, cutting the one it is crossing', () => {
+    expect(revealSegments(segs, 0)).toEqual([]);
+    const half = revealSegments(segs, Math.PI / 2);
+    expect(half).toHaveLength(1);
+    expect(half[0].key).toBe('protein');
+    expect(half[0].end).toBeCloseTo(Math.PI / 2, 9);
+    expect(half[0].mid).toBeCloseTo((half[0].start + Math.PI / 2) / 2, 9);
+    expect(revealSegments(segs, TAU)).toEqual(segs);
+    // The input is never changed.
+    expect(segs[0].end).toBeGreaterThan(Math.PI / 2);
+  });
+
+  it('pops a slice out along its middle, y down', () => {
+    const up = liftOffset(0, 6);
+    expect(up.dx).toBeCloseTo(0, 9);
+    expect(up.dy).toBeCloseTo(-6, 9);
+    const right = liftOffset(Math.PI / 2, 6);
+    expect(right.dx).toBeCloseTo(6, 9);
+    expect(right.dy).toBeCloseTo(0, 9);
+  });
+
+  it('finds the slice under a tap, and nothing in the hole or far outside', () => {
+    // Protein runs from 12 to about 6 o'clock on the right, carbs on the left.
+    expect(sliceAt(segs, 90, 50, 50, 50, 30, 50)).toBe('protein');
+    expect(sliceAt(segs, 10, 50, 50, 50, 30, 50)).toBe('carbs');
+    expect(sliceAt(segs, 50, 50, 50, 50, 30, 50)).toBeNull();
+    expect(sliceAt(segs, 50 + 70, 50, 50, 50, 30, 50)).toBeNull();
+    // Within the slack just outside the ring still counts.
+    expect(sliceAt(segs, 50 + 55, 50, 50, 50, 30, 50)).toBe('protein');
+  });
+});
+
+describe('object image framing', () => {
+  const wide = { left: 0.1, top: 0.3, right: 0.9, bottom: 0.7 }; // 0.8 x 0.4
+  const tall = { left: 0.3, top: 0.1, right: 0.7, bottom: 0.9 }; // 0.4 x 0.8
+
+  it('gives a long object and a tall one the same visual mass', () => {
+    const a = objectFrame(wide, 80, 1000, 1000);
+    const b = objectFrame(tall, 80, 1000, 1000);
+    expect(a.side).toBeCloseTo(b.side, 6);
+    expect(Math.sqrt(0.8 * a.side * 0.4 * a.side)).toBeCloseTo(80, 0);
+  });
+
+  it('never lets the object outgrow the box', () => {
+    const f = objectFrame(tall, 80, 1000, 100);
+    expect(f.side * 0.8).toBeLessThanOrEqual(100.05);
+    const g = objectFrame(wide, 80, 100, 1000);
+    expect(g.side * 0.8).toBeLessThanOrEqual(100.05);
+  });
+
+  it('shifts an off-centre object onto the middle', () => {
+    const f = objectFrame({ left: 0.2, top: 0.2, right: 1, bottom: 0.6 }, 100, 1000, 1000);
+    expect(f.dx).toBeLessThan(0); // its middle is right of centre: move it left
+    expect(f.dy).toBeGreaterThan(0); // and above centre: move it down
+    expect(objectFrame(wide, 80, 1000, 1000)).toMatchObject({ dx: 0, dy: 0 });
   });
 });

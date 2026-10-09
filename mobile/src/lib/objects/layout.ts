@@ -1,62 +1,17 @@
-/* Pure layout and motion math for the data-driven 3D scenes: the Today ring
-   arc, the macro donut segments, the workout plate stack, the trophy shelf
-   and the questionnaire object swap. No three.js here, so it runs in tests
-   and on any platform. Angles are radians measured clockwise from 12
-   o'clock (the way the 2D ring fills); times are seconds. */
+/* Pure layout and motion math for the object views: the macro donut's
+   slices, the workout plate stack, the trophy shelf and the questionnaire
+   object swap. No React Native here, so it runs in tests and on any
+   platform. Angles are radians measured clockwise from 12 o'clock (the
+   way the ring fills); times are seconds. */
 
 import { clamp01, easeOutQuart } from './pose';
 
 export const TAU = Math.PI * 2;
 
-// ─────────────────────────────── tween ───────────────────────────────
+// ─────────────────────────────── arcs ───────────────────────────────
 
-/** A value easing toward a target (ease-out quart), stepped by frame time. */
-export type Tween = { from: number; to: number; elapsed: number; duration: number };
-
-export const tween = (value: number): Tween => ({ from: value, to: value, elapsed: 0, duration: 0 });
-
-/** Head for `to` over `duration` seconds, starting from wherever it is now. */
-export function retarget(t: Tween, to: number, duration: number): Tween {
-  if (to === t.to && tweenDone(t)) return t;
-  return { from: tweenValue(t), to, elapsed: 0, duration };
-}
-
-export function tweenValue(t: Tween): number {
-  if (t.duration <= 0) return t.to;
-  return t.from + (t.to - t.from) * easeOutQuart(t.elapsed / t.duration);
-}
-
-export const tweenDone = (t: Tween) => t.duration <= 0 || t.elapsed >= t.duration;
-
-export function stepTween(t: Tween, dt: number): Tween {
-  if (tweenDone(t)) return t;
-  return { ...t, elapsed: Math.min(t.duration, t.elapsed + dt) };
-}
-
-/** Jump straight to the target (Reduce Motion stills, first frames). */
-export const settle = (t: Tween): Tween => ({ from: t.to, to: t.to, elapsed: 0, duration: 0 });
-
-// ─────────────────────────────── ring ───────────────────────────────
-
-/** The angle a progress share sweeps, clamped to one full turn. */
+/** The angle a share of the way round sweeps, clamped to one full turn. */
 export const arcSweep = (progress: number) => TAU * clamp01(progress);
-
-/** Length of the filled arc along a ring of `radius`. */
-export const arcLength = (progress: number, radius: number) => arcSweep(progress) * radius;
-
-/** A point on a circle of radius `r`, `theta` clockwise from 12 o'clock, y up. */
-export function clockPoint(theta: number, r: number): [number, number] {
-  return [r * Math.sin(theta), r * Math.cos(theta)];
-}
-
-/** `segments + 1` evenly spaced angles from 12 o'clock to the end of the arc. */
-export function arcAngles(progress: number, segments: number): number[] {
-  const sweep = arcSweep(progress);
-  return Array.from({ length: segments + 1 }, (_, i) => (sweep * i) / segments);
-}
-
-/** Drag tilt for the ring: follows the finger, never past `max` radians. */
-export const softClamp = (x: number, max: number) => max * Math.tanh(x / max);
 
 // ─────────────────────────────── donut ───────────────────────────────
 
@@ -120,6 +75,63 @@ export function sharePercents(segs: readonly DonutSegment[]): Partial<Record<Mac
   return Object.fromEntries(segs.map((s, i) => [s.key, floor[i]]));
 }
 
+/** A point on screen (SVG, y down) `r` from (cx, cy), `theta` clockwise from 12 o'clock. */
+function screenPoint(cx: number, cy: number, r: number, theta: number): string {
+  const x = cx + r * Math.sin(theta);
+  const y = cy - r * Math.cos(theta);
+  return `${+x.toFixed(3)} ${+y.toFixed(3)}`;
+}
+
+/**
+ * An SVG path for a ring slice from `start` to `end` between radii
+ * `inner` and `outer`, centred on (cx, cy). A sweep of a full turn (or
+ * more) is the whole ring, drawn as two circles filled even-odd. Empty
+ * when the sweep is zero or less.
+ */
+export function slicePath(cx: number, cy: number, inner: number, outer: number, start: number, end: number): string {
+  const sweep = end - start;
+  if (!(sweep > 1e-6)) return '';
+  if (sweep >= TAU - 1e-6) {
+    const circle = (r: number) => `M${screenPoint(cx, cy, r, 0)}A${r} ${r} 0 1 1 ${screenPoint(cx, cy, r, Math.PI)}A${r} ${r} 0 1 1 ${screenPoint(cx, cy, r, 0)}Z`;
+    return circle(outer) + circle(inner);
+  }
+  const large = sweep > Math.PI ? 1 : 0;
+  return (
+    `M${screenPoint(cx, cy, outer, start)}` +
+    `A${outer} ${outer} 0 ${large} 1 ${screenPoint(cx, cy, outer, end)}` +
+    `L${screenPoint(cx, cy, inner, end)}` +
+    `A${inner} ${inner} 0 ${large} 0 ${screenPoint(cx, cy, inner, start)}Z`
+  );
+}
+
+/**
+ * The slices as the donut sweeps in: everything clockwise of `sweep`
+ * (radians from 12 o'clock) is not drawn yet. A slice the sweep has not
+ * reached is left out; the one it is crossing is cut at the sweep.
+ */
+export function revealSegments(segs: readonly DonutSegment[], sweep: number): DonutSegment[] {
+  if (sweep >= TAU) return segs.slice();
+  return segs.filter((s) => s.start < sweep).map((s) => (s.end <= sweep ? s : { ...s, end: sweep, mid: (s.start + sweep) / 2 }));
+}
+
+/** How far a lifted slice moves on screen (SVG, y down): `px` out along its middle. */
+export function liftOffset(mid: number, px: number): { dx: number; dy: number } {
+  return { dx: px * Math.sin(mid) + 0, dy: -px * Math.cos(mid) + 0 };
+}
+
+/**
+ * The slice under a tap at (x, y), measured in the donut's own box with
+ * its centre at (cx, cy). Null in the hole, outside the ring (`slack` px
+ * of grace either side, so a slice is easy to hit) or in a gap.
+ */
+export function sliceAt(segs: readonly DonutSegment[], x: number, y: number, cx: number, cy: number, inner: number, outer: number, slack = 8): MacroKey | null {
+  const dx = x - cx;
+  const dy = y - cy;
+  const r = Math.hypot(dx, dy);
+  if (r < inner - slack || r > outer + slack) return null;
+  return segmentAt(segs, Math.atan2(dx, -dy));
+}
+
 // ─────────────────────────────── plates ───────────────────────────────
 
 /** Most plates the stack shows: past it, each plate stands for more than one set. */
@@ -152,9 +164,6 @@ export function plateThickness(total: number, height: number, max: number, cap =
 /** Centre height of plate `i` (0 at the bottom) with `gap` between plates. */
 export const plateY = (i: number, thickness: number, gap: number) => i * (thickness + gap) + thickness / 2;
 
-/** A plate dropping in: height above its rest place, 0 once landed. */
-export const plateDrop = (t: number, duration = 0.35, from = 1.2) => from * (1 - easeOutQuart(t / duration));
-
 // ─────────────────────────────── shelf ───────────────────────────────
 
 /** The milestone the shelf shows: the latest one earned. By the day it was
@@ -169,26 +178,52 @@ export function latestEarned<T extends { earned: boolean; earnedAt: string | nul
   return best;
 }
 
+// ─────────────────────────────── image framing ───────────────────────────────
+
+/** Where an object sits in its square image: its opaque bounds, as shares of the side. */
+export type ImageBounds = { left: number; top: number; right: number; bottom: number };
+
+/**
+ * Size and nudge a square object image so the object inside it has a given
+ * visual mass (the square root of its width times its height, in px), never
+ * wider than `maxW` or taller than `maxH`, and its middle on the box's
+ * middle. A long, low dumbbell and a tall, thin shaker then read as the
+ * same size. Returns the image's side and the shift that centres the
+ * object (add it to the image's centred position).
+ */
+export function objectFrame(b: ImageBounds, mass: number, maxW: number, maxH: number): { side: number; dx: number; dy: number } {
+  const w = Math.max(0.01, b.right - b.left);
+  const h = Math.max(0.01, b.bottom - b.top);
+  const side = Math.min(mass / Math.sqrt(w * h), maxW / w, maxH / h);
+  return {
+    side: Math.round(side * 10) / 10,
+    dx: Math.round((0.5 - (b.left + b.right) / 2) * side * 10) / 10 + 0,
+    dy: Math.round((0.5 - (b.top + b.bottom) / 2) * side * 10) / 10 + 0,
+  };
+}
+
 // ─────────────────────────────── object swap ───────────────────────────────
 
-export type SwapPose = { phase: 'out' | 'in' | 'rest'; scale: number; spin: number };
+/** `spin` is radians about the vertical axis (the image turns edge-on at a quarter turn). */
+export type SwapPose = { phase: 'out' | 'in' | 'rest'; scale: number; spin: number; opacity: number };
 
 /**
  * The questionnaire object changing: the old one shrinks and spins away
  * (`out` seconds, ease-in), the new one grows and spins in (`inn` seconds,
- * ease-out quart, no overshoot). `t` is seconds since the change; with
- * `skipOut` (first mount) only the way in plays.
+ * ease-out quart, no overshoot), fading out and in on the way. `t` is
+ * seconds since the change; with `skipOut` (first mount) only the way in
+ * plays.
  */
 export function swapPose(t: number, skipOut = false, out = 0.25, inn = 0.3): SwapPose {
   const o = skipOut ? 0 : out;
   if (t < o) {
     const p = clamp01(t / o);
     const e = p * p * p; // ease-in cubic: leaves gently, then goes
-    return { phase: 'out', scale: Math.max(0.001, 1 - e), spin: e * (Math.PI / 2) };
+    return { phase: 'out', scale: Math.max(0.001, 1 - e), spin: e * (Math.PI / 2), opacity: 1 - e };
   }
   if (t < o + inn) {
     const e = easeOutQuart((t - o) / inn);
-    return { phase: 'in', scale: Math.max(0.001, e), spin: -(1 - e) * (Math.PI / 2) };
+    return { phase: 'in', scale: Math.max(0.001, e), spin: -(1 - e) * (Math.PI / 2), opacity: clamp01(e * 1.5) };
   }
-  return { phase: 'rest', scale: 1, spin: 0 };
+  return { phase: 'rest', scale: 1, spin: 0, opacity: 1 };
 }

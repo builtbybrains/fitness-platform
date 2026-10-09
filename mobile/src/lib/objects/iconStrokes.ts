@@ -1,12 +1,37 @@
-/* The milestone icons as stroke centre lines, so a medal can carry its
-   badge's icon in 3D. The shapes are the ones Icon.tsx draws for the
+/* The milestone icons as stroke centre lines, and MedalIcon, the names the
+   trophy shelf and the milestone grid share. The shapes are the ones Icon.tsx draws for the
    milestones (dumbbell, flame, bars, scale, medal) on its 24px grid; keep
    the two in step when an icon changes. The path reader handles the
    commands these icons use (M L H V C S A Z, absolute and relative, with
    implicit repeats); rects and circles are written out as closed paths.
-   Pure math, no three.js, so it is unit tested. */
+   Pure math, so it is unit tested. */
 
-import { arcPoints, type Pt } from './outline';
+export type Pt = [number, number];
+
+/** Points along an SVG arc (rotation 0, rx = ry) from (x1, y1) to (x2, y2),
+    converted from endpoint to centre form (SVG spec, appendix F.6.5). */
+export function arcPoints(x1: number, y1: number, r: number, large: boolean, sweep: boolean, x2: number, y2: number, steps: number): Pt[] {
+  const dx = (x1 - x2) / 2;
+  const dy = (y1 - y2) / 2;
+  let rr = r;
+  const d2 = dx * dx + dy * dy;
+  if (d2 > rr * rr) rr = Math.sqrt(d2); // radius too small for the chord: SVG scales it up
+  const sign = large === sweep ? -1 : 1;
+  const k = sign * Math.sqrt(Math.max(0, (rr * rr - d2) / d2));
+  const cx = k * dy + (x1 + x2) / 2;
+  const cy = -k * dx + (y1 + y2) / 2;
+  const a1 = Math.atan2(y1 - cy, x1 - cx);
+  let da = Math.atan2(y2 - cy, x2 - cx) - a1;
+  if (sweep && da < 0) da += Math.PI * 2;
+  if (!sweep && da > 0) da -= Math.PI * 2;
+  const pts: Pt[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const a = a1 + (da * i) / steps;
+    pts.push([cx + rr * Math.cos(a), cy + rr * Math.sin(a)]);
+  }
+  pts[pts.length - 1] = [x2, y2];
+  return pts;
+}
 
 export type MedalIcon = 'dumbbell' | 'flame' | 'bars' | 'scale' | 'medal';
 

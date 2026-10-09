@@ -1,5 +1,5 @@
 /* The day's food against target: calories as the big number, then
-   protein, carbs and fat. When the macro donut shows above it (3D), the
+   protein, carbs and fat. On Food the macro donut shows above it, so the
    protein, carbs and fat row is left out (`macros={false}`): the donut's
    chips carry those numbers. Off-plan food and activity are named so the
    person sees where the numbers come from. The numbers and bar count up

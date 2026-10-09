@@ -21,7 +21,6 @@ import { Icon } from '../../src/components/Icon';
 import { MacroLine, StateBlock } from '../../src/components/training/Controls';
 import { DayTotals } from '../../src/components/food/DayTotals';
 import { MacroDonut } from '../../src/components/food/MacroDonut';
-import { useCan3D } from '../../src/components/three/support';
 import { MealSwapSheet } from '../../src/components/food/MealSwapSheet';
 import { MealImage } from '../../src/components/food/MealImage';
 import { Bone, Skeleton } from '../../src/components/Skeleton';
@@ -40,11 +39,6 @@ export default function FoodTab() {
   const { session, profileLoaded, profileError } = useAuth();
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
-  // With the 3D donut on screen, its chips carry protein, carbs and fat, so
-  // the totals card drops its macros row. Without it, the totals keep it.
-  const can3D = useCan3D();
-  const [donutFailed, setDonutFailed] = useState(false);
-  const donut = can3D && !donutFailed;
   const [swapSlot, setSwapSlot] = useState<string | null>(null);
   // The meal ticked last: its row re-mounts as eaten, and its tick pops in.
   const [justAte, setJustAte] = useState<string | null>(null);
@@ -119,9 +113,9 @@ export default function FoodTab() {
 
         <OfflineNotice />
 
-        <MacroDonut eaten={summary.eaten} onFail={() => setDonutFailed(true)} />
+        <MacroDonut eaten={summary.eaten} />
 
-        <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} macros={!donut} />
+        <DayTotals eaten={summary.eaten} offPlan={summary.offPlan.kcal} burned={summary.burned} targets={targets} macros={false} />
 
         <View style={[cardStyle, { gap: 4 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 8 }}>

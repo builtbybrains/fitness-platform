@@ -11,7 +11,7 @@ import { router } from 'expo-router';
 import { screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { BuiltLogo } from '../../src/components/BuiltLogo';
-import { AuthHero } from '../../src/components/three/AuthHero';
+import { AuthHero } from '../../src/components/objects/AuthHero';
 import { Button } from '../../src/components/Button';
 import { Field } from '../../src/components/Field';
 import { Notice } from '../../src/components/Bits';

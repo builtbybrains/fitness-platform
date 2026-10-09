@@ -1,5 +1,5 @@
-/* The data each data-driven 3D scene takes. Types only, so screens can
-   import them without pulling three.js in. */
+/* The objects the app shows as images, and the data each data-driven view
+   takes. Types only. */
 
 import type { MedalIcon } from './iconStrokes';
 import type { MacroKey } from './layout';
@@ -9,7 +9,7 @@ export type ObjectKind = 'dumbbell' | 'kettlebell' | 'shaker' | 'medal';
 export type SceneParams = {
   /** Today: the day's progress, 0..1. */
   ring: { progress: number };
-  /** Food: grams eaten today and the segment lifted out, if any. */
+  /** Food: grams eaten today and the slice lifted out, if any. */
   donut: { protein: number; carbs: number; fat: number; selected: MacroKey | null };
   /** Progress: the latest milestone's medal, carrying its badge icon. */
   shelf: { icon: MedalIcon };

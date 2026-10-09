@@ -2,20 +2,20 @@
    milestone earned on the Progress tab. Any screen can trigger it; the
    overlay renders above everything and optionally calls onDone when it
    closes (used to navigate back to the Plan tab). Tap to dismiss early.
-   It fades and settles in over 300ms; with Reduce Motion it just appears.
-   The visual is 3D: for a workout the BUILT dumbbell drops in with a spin
-   and settles, for a milestone the medal flips in face-on. Under Reduce
-   Motion both are a still pose. If 3D cannot run, the green icon disc
-   shows instead (the badge's own icon for a milestone). Native gets a
-   success haptic; no confetti, no sound. */
+   It fades and settles in over 300ms and closes itself at 2.2s; with
+   Reduce Motion it just appears. The visual is a BUILT object image
+   (components/objects/CelebrationObject): for a workout the dumbbell
+   drops in with a turn and settles, for a milestone the medal flips in
+   face-on; under Reduce Motion both are still. Native gets a success
+   haptic; no confetti, no sound. */
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, Text } from 'react-native';
 
 import { C, FONT, T } from './design';
-import { Icon, type IconName } from './components/Icon';
+import type { IconName } from './components/Icon';
 import { useReduceMotion } from './components/motion';
-import { Lazy3D, preload3D } from './components/three/Lazy3D';
+import { CelebrationObject } from './components/objects/CelebrationObject';
 import { haptic } from './lib/haptics';
 
 export type CelebrationOpts =
@@ -83,27 +83,7 @@ function Overlay({ opts, onPress }: { opts: CelebrationOpts; onPress: () => void
         }}
       >
         <Animated.View style={{ transform: [{ scale }], alignItems: 'center', gap: 12 }}>
-          <Lazy3D
-            kind={milestone ? 'medal' : 'dumbbell'}
-            motion="drop"
-            width={240}
-            height={200}
-            focusAware={false}
-            fallback={
-              <View
-                style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: 48,
-                  backgroundColor: C.green,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon name={milestone ? (opts.icon ?? 'medal') : 'check'} size={52} color={C.onGreen} strokeWidth={milestone ? 2.2 : 2.6} />
-              </View>
-            }
-          />
+          <CelebrationObject kind={milestone ? 'medal' : 'dumbbell'} icon={milestone ? opts.icon : undefined} />
           <Text style={[T.hero, { textAlign: 'center' }]}>{heading}</Text>
           <Text style={{ fontFamily: FONT.displayMedium, fontSize: 16, color: C.green, textAlign: 'center' }}>{line}</Text>
           {milestone ? <Text style={[T.body, { color: C.stone, textAlign: 'center', maxWidth: 320 }]}>{opts.detail}</Text> : null}
@@ -133,7 +113,6 @@ export function CelebrationProvider({ children }: { children: React.ReactNode })
   const show = useCallback(
     (o: CelebrationOpts) => {
       if (timer.current) clearTimeout(timer.current);
-      void preload3D();
       haptic.success();
       optsRef.current = o;
       setOpts(o);
@@ -141,14 +120,6 @@ export function CelebrationProvider({ children }: { children: React.ReactNode })
     },
     [dismiss],
   );
-
-  // Fetch the 3D code once the app has settled, so the first celebration
-  // does not wait on it. On web it is a separate download, kept off the
-  // first paint; on native it is already in the bundle.
-  useEffect(() => {
-    const id = setTimeout(() => void preload3D().catch(() => {}), 5000);
-    return () => clearTimeout(id);
-  }, []);
 
   const value = useMemo(() => ({ show }), [show]);
 

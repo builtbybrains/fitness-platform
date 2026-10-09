@@ -1,34 +1,91 @@
-/* Today's protein, carbs and fat as a 3D donut, sized by each one's share
-   of calories: protein in Built Green, carbs mid grey (#A3A3A3), fat dark
-   grey (#5A5A5A), so a lifted slice is the brightest thing in the card. It turns
-   once when it first shows (1.2s), then rests. Tap a slice, or one of the
-   chips under it, to lift that slice out and read its grams beside the
-   donut; tap it again to put it back. Nothing eaten yet: a grey ring and
-   a line saying how to fill it.
+/* Today's protein, carbs and fat as a donut, sized by each one's share of
+   calories: protein in Built Green, carbs mid grey (#A3A3A3), fat dark grey
+   (#5A5A5A), so the green is the one bright thing in the card. Drawn with
+   react-native-svg. On first view the slices sweep in clockwise from 12
+   o'clock over 1.2s (ease-out quart), then rest. Tap a slice, or one of
+   the chips under it, to pop that slice out 6px (0.22s) and read its grams
+   beside the donut; tap it again, or the hole, to put it back. Nothing
+   eaten yet: a grey ring and a line saying how to fill it. Under Reduce
+   Motion the donut shows whole and a slice moves out at once.
 
-   The donut itself is hidden from screen readers; the chips carry the
-   numbers and are the same choice as a tap on the donut. Under Reduce
-   Motion, without WebGL, or if the 3D cannot load, the card is not shown
-   and the day's totals below stand alone, as before (`onFail` tells the
-   screen, which then shows the macros row in the totals again). */
+   Screen readers hear the donut as one image with each share of calories
+   in its label; the chips carry the grams and are the same choice as a tap
+   on a slice. */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import Svg, { G, Path } from 'react-native-svg';
 
 import { C, card as cardStyle, FONT, R, T } from '../../design';
 import { haptic } from '../../lib/haptics';
-import { donutSegments, MACRO_KEYS, sharePercents, type MacroKey } from '../three/layout';
-import { Lazy3DScene } from '../three/Lazy3D';
-import { useCan3D } from '../three/support';
+import { arcSweep, donutSegments, liftOffset, MACRO_KEYS, revealSegments, sharePercents, sliceAt, slicePath, TAU, type MacroKey } from '../../lib/objects/layout';
+import { useTween } from '../motion';
 import type { Macros } from '../../stats';
 
 const NAME: Record<MacroKey, string> = { protein: 'Protein', carbs: 'Carbs', fat: 'Fat' };
-/** The legend dots match the donut's slice colours (meshes.ts DONUT_COLOR). */
+/** The slice colours; the legend dots match them. */
 const SWATCH: Record<MacroKey, string> = { protein: C.green, carbs: '#A3A3A3', fat: '#5A5A5A' };
 
-export function MacroDonut({ eaten, onFail }: { eaten: Macros; onFail?: () => void }) {
-  const can3D = useCan3D();
-  const [failed, setFailed] = useState(false);
+/** A popped slice moves this far out from the centre. */
+const LIFT = 6;
+/** The hole, as a share of the outer radius. */
+const HOLE = 0.6;
+
+function Donut({ grams, size, lifted, onPick }: { grams: Record<MacroKey, number>; size: number; lifted: MacroKey | null; onPick: (key: MacroKey | null) => void }) {
+  const segs = useMemo(() => donutSegments(grams), [grams]);
+  const pct = useMemo(() => sharePercents(segs), [segs]);
+  const start = useRef({ x: 0, y: 0 });
+  const sweep = arcSweep(useTween(1, 1200));
+  const lift: Record<MacroKey, number> = {
+    protein: useTween(lifted === 'protein' ? 1 : 0, 220, 220),
+    carbs: useTween(lifted === 'carbs' ? 1 : 0, 220, 220),
+    fat: useTween(lifted === 'fat' ? 1 : 0, 220, 220),
+  };
+  const c = size / 2;
+  const outer = c - LIFT - 1;
+  const inner = outer * HOLE;
+  const shown = revealSegments(segs, sweep);
+  const label = segs.length
+    ? `Share of calories: ${segs.map((s) => `${NAME[s.key].toLowerCase()} ${pct[s.key] ?? 0} percent`).join(', ')}`
+    : 'Share of calories: nothing logged yet';
+
+  return (
+    <View style={{ width: size, height: size }} accessible accessibilityRole="image" accessibilityLabel={label}>
+      <Svg width={size} height={size} style={{ pointerEvents: 'none' }}>
+        {segs.length === 0 ? (
+          <Path d={slicePath(c, c, inner, outer, 0, Math.min(TAU, sweep))} fill={C.raised} fillRule="evenodd" />
+        ) : (
+          shown.map((s) => {
+            const { dx, dy } = liftOffset(s.mid, LIFT * lift[s.key]);
+            return (
+              <G key={s.key} transform={`translate(${dx.toFixed(2)} ${dy.toFixed(2)})`}>
+                <Path d={slicePath(c, c, inner, outer, s.start, s.end)} fill={SWATCH[s.key]} fillRule="evenodd" />
+              </G>
+            );
+          })
+        )}
+      </Svg>
+      {/* The tap area: an empty view, so the tap is measured in the donut's
+          own box. A responder rather than a button: it is not a stop for
+          the keyboard or a screen reader (the chips are), and it reads the
+          tap's place from touch and mouse alike. A drag is not a tap. */}
+      <View
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+        }}
+        onResponderRelease={(e) => {
+          const { locationX, locationY, pageX, pageY } = e.nativeEvent;
+          if (Math.hypot(pageX - start.current.x, pageY - start.current.y) > 10) return;
+          onPick(sliceAt(segs, locationX, locationY, c, c, inner, outer));
+        }}
+        style={{ position: 'absolute', left: 0, top: 0, width: size, height: size }}
+      />
+    </View>
+  );
+}
+
+export function MacroDonut({ eaten }: { eaten: Macros }) {
   const [selected, setSelected] = useState<MacroKey | null>(null);
   const { height } = useWindowDimensions();
   // Same breakpoint as Today's ring: below 900px tall the card is shorter.
@@ -44,10 +101,9 @@ export function MacroDonut({ eaten, onFail }: { eaten: Macros; onFail?: () => vo
   // A slice that is gone (its macro went back to zero) cannot stay lifted.
   const lifted = selected && segs.some((s) => s.key === selected) ? selected : null;
 
-  if (!can3D || failed) return null;
-
   const choose = (key: MacroKey | null) => {
-    if (empty) return;
+    // A tap in the hole or a gap with nothing popped out changes nothing.
+    if (empty || (key === null && !lifted)) return;
     haptic.select();
     setSelected((cur) => (key === null || cur === key ? null : key));
   };
@@ -55,17 +111,7 @@ export function MacroDonut({ eaten, onFail }: { eaten: Macros; onFail?: () => vo
   return (
     <View style={[cardStyle, { gap: 16 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <Lazy3DScene
-          kind="donut"
-          params={{ ...grams, selected: lifted }}
-          width={size}
-          height={size}
-          onPick={(id) => choose(id === 'protein' || id === 'carbs' || id === 'fat' ? id : null)}
-          onFail={() => {
-            setFailed(true);
-            onFail?.();
-          }}
-        />
+        <Donut grams={grams} size={size} lifted={lifted} onPick={choose} />
         <View style={{ flex: 1, gap: 4 }} accessibilityLiveRegion="polite">
           {empty ? (
             <>

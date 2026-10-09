@@ -1,5 +1,5 @@
 /* Sign in, create an account, or continue without one. The BUILT dumbbell
-   floats above the lockup (src/components/three/AuthHero.tsx). */
+   floats above the lockup (src/components/objects/AuthHero.tsx). */
 
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
@@ -9,7 +9,7 @@ import { router } from 'expo-router';
 import { C, FONT, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { BuiltLogo } from '../../src/components/BuiltLogo';
-import { AuthHero } from '../../src/components/three/AuthHero';
+import { AuthHero } from '../../src/components/objects/AuthHero';
 import { Button, LinkButton } from '../../src/components/Button';
 import { Field } from '../../src/components/Field';
 import { Notice } from '../../src/components/Bits';

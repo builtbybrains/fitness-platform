@@ -16,7 +16,6 @@
     "expo-constants": "~57.0.19",
     "expo-device": "~57.0.2",
     "expo-font": "~57.0.4",
-    "expo-gl": "~57.0.2",
     "expo-haptics": "~57.0.3",
     "expo-image-manipulator": "~57.0.19",
     "expo-image-picker": "~57.0.19",
@@ -36,12 +35,10 @@
     "react-native-svg": "15.15.4",
     "react-native-url-polyfill": "^4.0.0",
     "react-native-web": "~0.21.0",
-    "react-native-webview": "13.16.1",
-    "three": "^0.186.1"
+    "react-native-webview": "13.16.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "@types/three": "^0.186.0",
     "typescript": "~6.0.3",
     "vitest": "^5.0.2"
   },
