@@ -916,6 +916,19 @@
     .fx .world__slot .coin { --coin: min(66cqh, 76cqw, 560px); }
     .fx .world__foot { position: absolute; left: 0; right: 0; bottom: 0; min-height: var(--foot); align-items: flex-end; padding-block: 0 36px; }
     .fx .world__cue { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; min-height: 56px; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; }
+    /* wide screens: headline in the left column, badge in the right, so the badge never covers a word.
+       The headline starts on the same line as the lead text below; it is sized so its longest line fits
+       the column and three lines fit the screen's height */
+    @media (min-width: 941px) {
+      .fx .world__h {
+        right: 42%; place-content: center start; justify-items: start; text-align: left;
+        padding-inline: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter))) 0;
+        font-size: min(7.4vw, 14svh, 11rem);
+      }
+      .fx .world__line { transform-origin: 0 50%; }
+      .fx .world__slot { left: 58%; right: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter))); --ax: 0.5; --ay: 0.5; }
+      .fx .world__slot .coin { --coin: min(78cqh, 92cqw, 480px); }
+    }
 
     /* labels and leaders sit over the object; the object fills the pin behind them */
     .fx .ch--explode .ch__pin { z-index: 2; display: flex; flex-direction: column; max-width: none; margin: 0; padding: calc(var(--nav-h) + 3svh) var(--gutter) 40px; }
