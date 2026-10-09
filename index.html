@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://builtbybrains.github.io/fitness-platform/assets/img/og-cover.png">
   <link rel="icon" href="assets/img/favicon.svg?v=built1" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png?v=built1">
-  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" imagesizes="(max-width: 620px) 76vw, min(62vh, 560px)" fetchpriority="high">
+  <link rel="preload" as="image" type="image/webp" imagesrcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" imagesizes="(max-width: 940px) min(62vw, 300px), min(62vh, 560px)" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap">
@@ -810,7 +810,8 @@
        (a sticky box one screen high) while the scroll loop scrubs every word and image by the
        chapter's progress, so scrolling back plays it backwards. Without .fx (reduced motion,
        no script) the same content stands as three plain sections, every word shown, each object
-       standing still. Blur appears only inside a transition, never at rest. */
+       standing still. No filters: every transition is transform and opacity only (blur measured too
+       costly while scrolling fast, on phones and desktops alike). */
     .nav { background: var(--black); border-bottom-color: var(--line); } /* solid over the green world, so the white wordmark and the B read */
     .btn-ink { background: var(--black); color: var(--white); }
     .btn-ink:hover { background: var(--carbon); }
@@ -991,8 +992,12 @@
     }
 
     @media (max-width: 940px) {
-      /* the headline takes the top, the badge sits lower and overlaps its last line */
+      /* the headline takes the top, the badge sits in the gap between its tallest version and the
+         foot. The scroll loop measures that gap and sizes the badge into it with 16px clear above and
+         below (inline style on the slot and the coin), its shadow included; when even 120px would not
+         fit, the headline steps down (.is-snug) first, so the text is never covered */
       .fx .world__h { place-content: start center; padding-top: clamp(16px, 4svh, 40px); font-size: min(18.5vw, 24svh); }
+      .fx .world__h.is-snug { font-size: min(15.5vw, 17svh); } /* a landscape phone: one line */
       .fx .world__slot { --ay: 0.82; left: 8vw; right: 8vw; }
 
       /* phones and tablets: caption over the plate, paragraph under it; the word then takes the caption's place */
@@ -1005,7 +1010,7 @@
       .world__foot .btn { width: 100%; }
       .fx .ch--world .ch__pin { --foot: 220px; }
       .fx .world__slot { left: 0; right: 0; }
-      .fx .world__foot { flex-direction: column; align-items: stretch; gap: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      .fx .world__foot { flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
       .fx .world__cue { margin: 0 auto; min-height: 24px; }
       .world__foot { flex-direction: column; align-items: stretch; }
 
@@ -1077,7 +1082,7 @@
     .how__glow { position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(163, 255, 61, 0.12), rgba(163, 255, 61, 0.04) 55%, rgba(163, 255, 61, 0)); opacity: 0; }
     .fx .how__stage .obj--step { position: absolute; inset: 0; width: auto; height: auto; margin: 0; float: none; }
 
-    /* Section headlines below the story: word by word out of a soft blur, line after line */
+    /* Section headlines below the story: word by word, sliding in as they fade up, line after line */
     .fx .wb { display: inline-block; opacity: 0; }
     .js .is-pending > [data-words], .js .is-revealed > [data-words] { opacity: 1; animation: none; }
 
@@ -1220,8 +1225,8 @@
           <span class="coin__shadow"><img src="assets/img/story/shadow.webp" alt="" width="480" height="96" decoding="async"></span>
           <div class="coin__bob">
             <div class="coin__turn">
-              <img class="coin__face" src="assets/img/story/badge-960.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 620px) 76vw, min(62vh, 560px)" width="960" height="960" alt="" fetchpriority="high">
-              <img class="coin__face coin__face--back" src="assets/img/story/badge-960.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 620px) 76vw, min(62vh, 560px)" width="960" height="960" alt="" decoding="async">
+              <img class="coin__face" src="assets/img/story/badge-960.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 940px) min(62vw, 300px), min(62vh, 560px)" width="960" height="960" alt="" fetchpriority="high">
+              <img class="coin__face coin__face--back" src="assets/img/story/badge-960.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 940px) min(62vw, 300px), min(62vh, 560px)" width="960" height="960" alt="" decoding="async">
               <img class="coin__edge" src="assets/img/story/badge-edge.webp" width="138" height="884" alt="" decoding="async">
             </div>
           </div>
@@ -2257,22 +2262,22 @@
          height less its pin's, which is one small viewport high). It is eased here once per frame and
          the words and the object images move with this same value, so they never drift apart. The
          ease is a critically damped spring stepped with its exact solution: framerate independent,
-         0.18s behind a steady scroll, and without the
-         kink a plain ease gets on every coarse step of a touch fling. Every value below is a function
-         of p, so scrolling back plays it backwards. Blur is only ever set inside a transition; at rest
-         the filter is cleared. */
+         0.18s behind a steady wheel scroll, smoothing the coarse steps of a mouse wheel. On touch
+         screens the scroll is already smooth (the browser's own fling), so p follows it exactly
+         and nothing trails a fast flick. Every value below is a function of p, so scrolling back
+         plays it backwards. Transform and opacity only, no filters. */
       var smooth = function (t) { return t * t * (3 - 2 * t); };
       var smoother = function (t) { return t * t * t * (t * (t * 6 - 15) + 10); }; // flat at both ends
       var win = function (a, b, v) { return clamp01((v - a) / (b - a)); };
-      var blur = function (v) { return v > 0.02 ? 'blur(' + v.toFixed(2) + 'px)' : ''; };
-      var OMEGA = 11;
+      var OMEGA = 11, touchMq = window.matchMedia('(hover: none) and (pointer: coarse)');
       var chapters = $$('[data-story]').map(function (el) { return { el: el, kind: el.dataset.story, pin: $('.ch__pin', el), top: 0, h: 0, pinH: 0, u: null, v: 0, at: 0, live: null }; });
       var chapterStep = function (c, now) {
         var target = (V.y - c.top) / Math.max(1, c.h - c.pinH);
         if (c.at !== now) {
           var dt = c.at ? Math.min(Math.max((now - c.at) / 1000, 0), 0.05) : 0.016;
           c.at = now;
-          if (c.u === null || Math.abs(target - c.u) > 2) { c.u = target; c.v = 0; } // a jump (a link, a reload) lands at once
+          // a jump (a link, a reload) lands at once; on a touch screen p is the scroll itself
+          if (c.u === null || Math.abs(target - c.u) > 2 || touchMq.matches) { c.u = target; c.v = 0; }
           else {
             var x = c.u - target, k = (c.v + OMEGA * x) * dt, e = Math.exp(-OMEGA * dt);
             c.v = (c.v - OMEGA * k) * e;
@@ -2293,9 +2298,8 @@
 
       // a line of the green world's headline: a = 0 at rest, 1 gone; dir -1 leaves upward, +1 arrives from below
       var swapLine = function (el, a, dir) {
-        if (a <= 0) { put(el, 'opacity', '1'); put(el, 'filter', ''); put(el, 'transform', ''); return; }
+        if (a <= 0) { put(el, 'opacity', '1'); put(el, 'transform', ''); return; }
         put(el, 'opacity', a >= 1 ? '0' : (1 - a).toFixed(3));
-        put(el, 'filter', a >= 1 ? '' : blur(16 * a));
         put(el, 'transform', a >= 1 ? '' : 'translate3d(0,' + (dir * 8 * a).toFixed(2) + '%,0) scale(' + (1 - 0.03 * a).toFixed(4) + ',' + (1 + 0.45 * a).toFixed(4) + ')');
       };
       // split a heading into letters, kept whole per word; the heading keeps its text as its name
@@ -2333,19 +2337,43 @@
         if (c.kind === 'world') {
           var lines = $$('.world__line', el), cue = $('.world__cue b', el), foot = $('.world__foot', el);
           var coin = $('.world__slot .coin', el), cTurn = coin && $('.coin__turn', coin), cEdge = coin && $('.coin__edge', coin), cShadow = coin && $('.coin__shadow', coin);
+          var wHead = $('.world__h', el), wSlot = $('.world__slot', el), wFit = window.matchMedia('(max-width: 940px)');
+          // phones and tablets: the badge fits the gap between the tallest headline (the three share one
+          // place) and the top of the foot, 16px clear of each: at most 62vw and 300px, with its contact
+          // shadow (a tenth of the badge below its box) inside the gap too, the pair centred in it.
+          // Under 120px the headline steps down first; only then does the badge shrink further.
+          // Offsets ignore transforms, so the swaps and the bob never move the measure.
+          c.measure = function () {
+            if (!coin || !wSlot || !wHead) return;
+            var ss = wSlot.style;
+            wHead.classList.remove('is-snug');
+            if (!wFit.matches) { ss.top = ss.bottom = ss.height = ''; ss.removeProperty('--ay'); coin.style.removeProperty('--coin'); return; }
+            var gap = function () {
+              var a = 0, b = c.pinH;
+              lines.forEach(function (l) { a = Math.max(a, offIn(l, c.pin)[1] + l.offsetHeight); });
+              if (foot) Array.prototype.forEach.call(foot.children, function (n) { if (n.offsetHeight) b = Math.min(b, offIn(n, c.pin)[1]); });
+              return [a, b, Math.min((b - a - 32) / 1.1, V.w * 0.62, 300)];
+            };
+            var g = gap();
+            if (g[2] < 120) { wHead.classList.add('is-snug'); g = gap(); }
+            var h = Math.max(0, g[1] - g[0]), s = Math.max(0, Math.floor(g[2]));
+            ss.top = g[0] + 'px'; ss.bottom = 'auto'; ss.height = h + 'px';
+            ss.setProperty('--ay', h > s ? ((h - s * 1.1) / 2 / (h - s)).toFixed(4) : '0.5');
+            coin.style.setProperty('--coin', s + 'px');
+          };
           step = function () {
             var p = clamp01(c.u);
-            // the lines swap at p = 0.33 and 0.66, each over a seventh of the chapter, eased at both ends
-            swapLine(lines[0], smoother(win(0.26, 0.36, p)), -1);
-            swapLine(lines[1], p < 0.5 ? 1 - smoother(win(0.30, 0.40, p)) : smoother(win(0.59, 0.69, p)), p < 0.5 ? 1 : -1);
+            // the lines swap at p = 0.33 and 0.66: the old line leaves before the new one arrives (no overlap,
+            // so the stretch-fade never shows two headlines at once), eased at both ends
+            swapLine(lines[0], smoother(win(0.25, 0.325, p)), -1);
+            swapLine(lines[1], p < 0.5 ? 1 - smoother(win(0.335, 0.41, p)) : smoother(win(0.58, 0.655, p)), p < 0.5 ? 1 : -1);
             // the last 15%: the badge swells toward the viewer and sweeps out under the frame while the
             // green fades to the Deep Black of the exploded view, so the hand-over is one continuous move
             var z = smooth(win(0.85, 1, p));
             if (z > 0) {
               put(lines[2], 'opacity', z >= 1 ? '0' : (1 - z).toFixed(3));
-              put(lines[2], 'filter', z < 1 ? blur(10 * z) : '');
               put(lines[2], 'transform', 'scale(' + (1 + 0.14 * z).toFixed(4) + ')');
-            } else swapLine(lines[2], 1 - smoother(win(0.63, 0.73, p)), 1);
+            } else swapLine(lines[2], 1 - smoother(win(0.665, 0.74, p)), 1);
             var k = 1 - z, f = 1 - smooth(win(0.85, 0.93, p));
             put(el, 'backgroundColor', z > 0 ? 'rgb(' + Math.round(8 + 155 * k) + ',' + Math.round(8 + 247 * k) + ',' + Math.round(8 + 53 * k) + ')' : '');
             if (foot) { put(foot, 'opacity', f >= 1 ? '' : f.toFixed(3)); put(foot, 'visibility', f > 0 ? '' : 'hidden'); }
@@ -2427,13 +2455,11 @@
                 var line = smoother(clamp01(r[i] * 2 - 1)) * (1 - smoother(clamp01(next * 2)));
                 put(pt.el, 'opacity', (0.45 + 0.55 * lit).toFixed(3));
                 put(pt.el, 'transform', '');
-                put(pt.el, 'filter', '');
                 put(pt.line, 'opacity', line.toFixed(3));
                 put(pt.line, 'transform', line < 1 ? px(8 * (1 - line)) : '');
               } else {
                 put(pt.el, 'opacity', k >= 1 ? '1' : k.toFixed(3));
                 put(pt.el, 'transform', k >= 1 ? '' : px(12 * (1 - k)));
-                put(pt.el, 'filter', k > 0 && k < 1 ? blur(6 * (1 - k)) : '');
                 put(pt.line, 'opacity', '');
                 put(pt.line, 'transform', '');
               }
@@ -2482,20 +2508,18 @@
           var letters = word ? splitLetters(word) : [];
           step = function () {
             var p = clamp01(c.u);
-            // caption and paragraph: in as the chapter arrives, held, then blurred away for the word
+            // caption and paragraph: in as the chapter arrives, held, then faded away for the word
             var inA = smoother(clamp01((c.u + 0.35) / 0.35)), outA = smoother(win(0.44, 0.56, p));
             var o = inA * (1 - outA);
             [cap, para].forEach(function (t, i) {
               put(t, 'opacity', o >= 1 ? '' : o.toFixed(3));
-              put(t, 'filter', outA > 0 && outA < 1 ? blur(10 * outA) : '');
               put(t, 'transform', inA < 1 ? px((1 - inA) * (i ? 28 : 16)) : '');
             });
-            // the word types in letter by letter: each from a blur, a quarter of a line low
+            // the word types in letter by letter: each fading up from a quarter of a line low
             var n = letters.length;
             letters.forEach(function (l, i) {
               var k = smoother(clamp01((p - (0.5 + (i / n) * 0.35)) / 0.12));
               put(l, 'opacity', k >= 1 ? '1' : k.toFixed(3));
-              put(l, 'filter', k > 0 && k < 1 ? blur(14 * (1 - k)) : '');
               put(l, 'transform', k >= 1 ? '' : 'translate3d(0,' + (0.25 * (1 - k)).toFixed(3) + 'em,0)');
             });
             if (pFace) {
@@ -2533,13 +2557,11 @@
               var k = clamp01(1 - Math.abs(i - a));
               put(w, 'opacity', (0.18 + 0.82 * k).toFixed(3));
               put(w, 'transform', ty + ' scale(' + (0.82 + 0.18 * k).toFixed(4) + ')');
-              put(w, 'filter', k > 0 && k < 1 ? blur(16 * k * (1 - k)) : '');
             });
             gDescs.forEach(function (d, i) {
               var o = clamp01(1 - Math.abs(a - i) * 2.2);
               put(d, 'opacity', o >= 1 ? '1' : o.toFixed(3));
               put(d, 'pointerEvents', o > 0.5 ? '' : 'none'); // hidden lines stay in the reading order
-              put(d, 'filter', o > 0 && o < 1 ? blur(6 * (1 - o)) : '');
               put(d, 'transform', o < 1 ? px(14 * Math.max(-1, Math.min(1, i - a)) * (1 - o)) : '');
             });
           };
@@ -2571,12 +2593,10 @@
               var card = $('.roadmap__card', s);
               put(card, 'opacity', v >= 1 ? '1' : v.toFixed(3));
               put(card, 'pointerEvents', v > 0.5 ? '' : 'none'); // every step stays in the reading order
-              put(card, 'filter', mid ? blur(8 * (1 - v)) : '');
               put(card, 'transform', mid ? px(dir * 18 * (1 - v)) : '');
               var w = hWords[k];
               if (w) {
                 put(w, 'opacity', v >= 1 ? '1' : v.toFixed(3));
-                put(w, 'filter', mid ? blur(14 * (1 - v)) : '');
                 put(w, 'transform', mid ? 'translate3d(0,' + (dir * 10 * (1 - v)).toFixed(2) + '%,0) scale(1,' + (1 + 0.2 * (1 - v)).toFixed(4) + ')' : '');
               }
               // the object grows in turning one way, holds, and shrinks away turning the other
@@ -2594,21 +2614,27 @@
           measure: function () { c.top = docTop(el); c.h = el.offsetHeight; c.pinH = c.pin ? c.pin.clientHeight : V.h; if (c.measure) c.measure(); c.parked = undefined; },
           update: function (now) {
             var more = chapterStep(c, now);
-            // far from the screen: settle once at the nearest end, then skip
-            var near = c.u > -1.5 && c.u < 2.5;
-            if (near || c.parked !== (c.u < 0)) { c.parked = near ? null : c.u < 0; if (step) step(); }
+            // two screens ahead, its images load and decode, so a fast fling never meets a blank or a
+            // decode on arrival
+            if (!c.warm && c.top - V.y < V.hl * 2 && c.top + c.h - V.y > -V.hl) {
+              c.warm = true;
+              $$('img', el).forEach(function (im) { if (im.loading === 'lazy') im.loading = 'eager'; if (im.decode) im.decode().catch(function () {}); });
+            }
+            // off the screen and settled: step once at the nearest end, then skip until it is back
+            var on = c.live || more;
+            if (on || c.parked !== (c.u < 0)) { c.parked = on ? null : c.u < 0; if (step) step(); }
             return more;
           }
         });
       });
 
       /* Key headings: word by word, each rises out of its mask as the heading crosses the lower third */
-      /* Section headlines (data-words="blur"): line after line, each word comes out of a soft blur,
-         left to right, as the heading rises through the lower part of the screen. One helper writes a
-         word at k (0 hidden, 1 at rest); at rest the filter is cleared. */
+      /* Section headlines (data-words="blur", the name kept from the first version): line after line,
+         each word fades in sliding from a quarter of a letter to the right, left to right, as the
+         heading rises through the lower part of the screen. One helper writes a word at k (0 hidden,
+         1 at rest). */
       var wipe = function (w, k) {
         put(w, 'opacity', k >= 1 ? '1' : k.toFixed(3));
-        put(w, 'filter', k > 0 && k < 1 ? blur(12 * (1 - k)) : '');
         put(w, 'transform', k > 0 && k < 1 ? 'translate3d(' + (0.28 * (1 - k)).toFixed(3) + 'em,0,0)' : '');
       };
       var heads = $$('[data-words]').map(function (el) {

@@ -210,7 +210,7 @@ Each section moves its own way, never the same fade-up twice:
 - Key headings (How it works and the final call): word by word, each word rises out of its own mask
   with a 4-degree settle as the heading crosses the lower third of the screen.
 - Section headlines (Features, Nutrition, Train, AI Coach, Progress, Pricing, About): line after line,
-  each word comes out of a soft blur from a quarter of a letter to the right, as the heading rises
+  each word fades in sliding from a quarter of a letter to the right, as the heading rises
   from the bottom of the screen to 60% up. The words stay real text; the filter is cleared at rest.
 - How it works: a pinned step sequence (see Scroll story). Without motion the roadmap stands as before:
   every step reached, the rail drawn green, each number lit.
@@ -235,17 +235,18 @@ Each section moves its own way, never the same fade-up twice:
 Owner request, 2026-10-08, modelled on a reference video: three pinned chapters replace the old hero.
 Each chapter is tall (300, 400 and 250vh) and its content pins one screen high (`svh`) while the
 scroll scrubs it. Progress p runs 0 to 1 across the pinned scroll; the inline scroll loop eases it once
-per frame and moves the words and the object images with that one value, so they move together, and
+per frame (wheel only; on touch it follows the scroll exactly) and moves the words and the object images with that one value, so they move together, and
 scrolling back plays everything backwards. Native touch scroll, no hijacking.
 
 1. Green world (`#home`): the one full-bleed Built Green surface on the site. The logo badge (the
    green B on a black disc, no ring; it replaced the dumbbell on 2026-10-09) faces the viewer at first
    paint, then makes one coin turn across the chapter (p 0.03 to 0.83, eased at both ends) with a few
    degrees of lean, its edge showing as it passes edge-on, over a soft contact shadow that narrows with
-   it; it bobs about 6px every 6s while the chapter is on screen. Behind it, three headlines in Sora 800 caps swap at p 0.33 and 0.66
-   with a blur-stretch (blur 16px, scaleY 1.45, 8% slide). Text on green is Deep Black; buttons on
+   it; it bobs about 6px every 6s while the chapter is on screen. Behind it, three headlines in Sora 800 caps swap at p 0.33 and 0.66 (the old line leaves before the new one arrives)
+   with a stretch-fade (scaleY 1.45, 8% slide, opacity). Text on green is Deep Black; buttons on
    green are ink pills (`.btn-ink`: Deep Black, white label); the scroll cue's fill is p. The nav is
    always solid Deep Black so the white wordmark and the green B read over the green.
+   Up to 940px the badge never touches the words (owner report 2026-10-09): it sits in the gap between the tallest headline and the foot, 16px clear of each with its shadow, at most 62vw and 300px; under 120px the headline steps down first.
 2. Exploded view (`#inside`, Deep Black): the dumbbell (one image layer per part, one camera) settles
    from a slightly wider side view to three-quarters, then comes apart along its bar (slices outer
    first, the collars slide out, the grip drops back, the B medallion floats up and turns to face the
@@ -255,19 +256,20 @@ scrolling back plays everything backwards. Native touch scroll, no hijacking.
    small green dot on it, below that in a row above and a row below the object, and on phones they
    become a numbered list under it with the current part lit and its line shown. Title in Sora Light.
 3. More than an app (`#more`): one plate flips from nearly edge-on to face the viewer while a soft
-   highlight, masked to the plate, sweeps across it like the key light. The caption and paragraph blur away, then "Powered by
-   AI." types in letter by letter from a blur, and the plate settles under it.
+   highlight, masked to the plate, sweeps across it like the key light. The caption and paragraph fade away, then "Powered by
+   AI." types in letter by letter, each fading up from a quarter of a line low, and the plate settles under it.
 
 Recorded exceptions to the rules above, scoped to the story only:
 
-- Motion dial 8/10 here (pinning, blur-stretch swaps, letter reveal); the rest of the page stays at 6.
-- Blur is allowed as a transition state only (headline swaps, label and letter reveals, the caption
-  leaving), never at rest: the filter is cleared outside each window.
+- Motion dial 8/10 here (pinning, stretch-fade swaps, letter reveal); the rest of the page stays at 6.
+- No blur anywhere, not even in transitions (owner report 2026-10-09, "laggy when scrolling fast";
+  measured: blur cost the frames over 50ms on phones and desktops alike). Every move is transform and
+  opacity. On touch screens p is the scroll position itself, no easing, so nothing trails a fling;
+  a mouse wheel keeps the 0.18s spring. A chapter is stepped only while on screen, and its images
+  load and decode two screens ahead.
 - Chapter 3 carries a gradient: Deep Black to Carbon (ending in the band colour so it meets the goals
   without a seam), with a green glow at 6% alpha at most. How it works carries the other: the radial
   glow behind its object, green at 12% alpha at most. No other gradients on the site.
-- Blur also appears in the section headline reveals and the goal and step swaps, always as a
-  transition state, cleared at rest.
 - Sora 800 for the world headlines only.
 - Full-bleed green for chapter 1 only.
 
@@ -289,13 +291,13 @@ Second wave (owner request, 2026-10-08, two more reference videos), after chapte
 
 4. Pick your goal (`#goals`, `#121212`, 300vh): the five goals from PRODUCT.md in Sora 800, stacked
    and rolling past a fixed line like a rolodex. The goal on the line is white and full size, the rest
-   sit at 18% and 82% size; blur appears only between goals. A short green bar marks the line (the
+   sit at 18% and 82% size, fading between goals. A short green bar marks the line (the
    section's only green). Left column (under the words on phones): the kicker "Pick your goal" and one
    or two lines on what BUILT does for that goal, crossfading. No medical or result promises. Words are
    sized so "Sports performance" fits one line from 941px; on phones it wraps, the rest fit 320px.
 5. How it works (`#how`): the section head scrolls in as before, then the four steps play pinned
    (340vh). Each step's card, its object (moved onto one shared stage) and a big Sora Light step word
-   (Answer, Plan, Follow, Track) take the screen in turn: card and word swap with a blur, the object
+   (Answer, Plan, Follow, Track) take the screen in turn: card and word swap with a slide and fade, the object
    grows in turning one way and shrinks away turning the other. Behind the object a soft green radial
    glow deepens step by step: 5, 7.5, 10 and 12% alpha, never more. Desktop: card left, word bottom
    left, object right. Phones: object on top, word under it, card at the bottom.
