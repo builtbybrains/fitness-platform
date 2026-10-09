@@ -6,8 +6,8 @@
    gets the celebration overlay and every new one carries a "New" tag on
    its ring for this visit. Seen ids are kept per person on this device.
    A badge tilts toward the finger while it is held (components/Tilt).
-   Above the grid, the latest one earned stands as a 3D medal with its
-   icon on a shelf (TrophyShelf), when 3D is available. */
+   Above the grid, the latest one earned stands as a medal with its icon
+   on a shelf (TrophyShelf). */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -18,8 +18,8 @@ import { useCelebration } from '../../celebration';
 import { loadLocal, saveLocal } from '../../lib/localFallback';
 import { newlyEarned, nextMilestone, type Milestone, type MilestoneId } from '../../lib/milestones';
 import { Icon } from '../Icon';
-import type { MedalIcon } from '../three/iconStrokes';
-import { latestEarned } from '../three/layout';
+import type { MedalIcon } from '../../lib/objects/iconStrokes';
+import { latestEarned } from '../../lib/objects/layout';
 import { TiltPressable } from '../Tilt';
 import { useTween } from '../motion';
 import { TrophyShelf } from './TrophyShelf';

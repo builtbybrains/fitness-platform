@@ -1,29 +1,30 @@
-/* BUILT website 3D: one WebGL renderer, one canvas, every [data-3d] slot on the page.
+/* BUILT objects: the offline image generator. The website no longer runs this file.
  *
- * Source for assets/js/site-3d.min.js. Rebuild after editing:
- *   node scripts/build-site-3d.mjs
- * The still posters (assets/img/dumbbell-hero*.webp and assets/img/3d/*.webp) are rendered
- * from this same file:
- *   node scripts/render-hero-poster.mjs
+ * The page shows every object as a pre-rendered image and moves it with CSS transforms from its
+ * own scroll loop (index.html, DESIGN.md "Objects (2D renders)"). This file holds the 3D models,
+ * the studio light and the scenes those images are rendered from, once, on a developer's machine:
+ *   node scripts/build-site-3d.mjs           bundles this file to assets/js/site-3d.min.js
+ *   node scripts/render-hero-poster.mjs      renders the website images (assets/img/3d, story)
+ *   node scripts/render-hero-poster.mjs --app   renders the app images (mobile/assets/images/objects)
+ * The bundle is never requested by the page; only the render script loads it, in headless
+ * Chromium.
  *
- * How it draws (the three.js "multiple elements" technique): a single transparent canvas the
- * size of the viewport sits above the page sections (z-index 1, pointer-events none). Each
- * frame it is cleared, then every slot that intersects the viewport is drawn into its own
- * bounding rect with setViewport + setScissor. Nothing is drawn outside a slot's rect, so copy
- * is never covered. The canvas is moved with the page (translateY) in the same frame it is
- * drawn, so objects stay glued to their slots while the compositor scrolls.
+ * Exports used by the render script: still() renders one scene as a transparent image, and
+ * explodedLayers() renders each part of the exploded dumbbell on its own, at one shared camera,
+ * with the numbers the page needs to put the parts back together and move them apart.
+ * mount() (the old live engine, one WebGL context drawing every [data-3d] slot) is kept so the
+ * scenes can still be checked live, but no page calls it.
  *
- * Look (DESIGN.md, "3D"): matte black rubber, brushed steel, Carbon metal, matte Stone, and
- * Built Green as one accent per object: a collar, a ring, the latest bar, the B on the last streak tile. One studio light set
- * for every object: warm-neutral key top left, cool fill right, a faint green rim (0.2) from
- * behind, low sky, softbox reflections. No bloom, no glow.
+ * Look (DESIGN.md): matte black rubber, brushed steel, Carbon metal, matte Stone, and Built Green
+ * as one accent per object. The logo badge is the green B on a black disc, no ring. One studio
+ * light set for every object: warm-neutral key top left, cool fill right, a faint green rim (0.2)
+ * from behind, low sky, softbox reflections. No bloom, no glow.
  *
- * Framing works like CSS `object-fit: contain`: each scene is composed in a fixed aspect,
- * fitted inside its slot and aligned by --ax / --ay on the slot, so the live drawing lands
- * exactly on top of the poster image that uses the same alignment.
+ * Framing works like CSS `object-fit: contain`: each scene is composed in a fixed aspect and
+ * fitted inside the requested size, aligned by ax / ay.
  *
- * Motion: every pose is a function of the slot's scroll progress (0 when the slot's centre meets
- * the bottom of the viewport, 1 when it reaches the top), plus a tiny bob while in view. Scrolling back plays it backwards. The hero keeps its own slow ambient loop.
+ * Poses: every scene's pose is a function of a progress p (0 to 1). The render script picks the p
+ * for each image; the page reproduces the motion between images with transforms.
  */
 import {
   ACESFilmicToneMapping,
@@ -50,6 +51,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   PMREMGenerator,
+  Quaternion,
   RepeatWrapping,
   Scene,
   ShaderMaterial,
@@ -76,9 +78,12 @@ const win = (a, b, x) => clamp01((x - a) / (b - a));
 const outCubic = (x) => 1 - Math.pow(1 - x, 3);
 const outQuart = (x) => 1 - Math.pow(1 - x, 4);
 const easeInOut = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
+/** smootherstep: flat at both ends, so a window eased with it never starts or lands with a kink */
+const smoother = (x) => x * x * x * (x * (x * 6 - 15) + 10);
 const damp = (rate, dt) => 1 - Math.exp(-dt * rate);
-/** a tiny vertical bob that only runs while the slot is drawn; zero for posters */
-const bob = (c, amp, period, phase = 0) => (c.still ? 0 : Math.sin((c.t / period) * TAU + phase) * amp);
+/** a tiny vertical bob, time based, that only runs while the slot is drawn; zero for posters. It
+ *  fades out while the scroll moves the pose (c.calm, 0 to 1) so it never fights the scrub */
+const bob = (c, amp, period, phase = 0) => (c.still ? 0 : Math.sin((c.t / period) * TAU + phase) * amp * (c.calm ?? 1));
 
 /* ---------- hero dumbbell dimensions (scene units, roughly decimetres) ---------- */
 const HEAD_R = 0.62;      // hex circumradius
@@ -306,8 +311,26 @@ function contactShadow(rt, w, d, y, opacity = 0.85) {
    Objects
    ============================================================ */
 
-/* ---------- the hero hex dumbbell, unchanged ---------- */
-function buildDumbbell() {
+/* ---------- the hex dumbbell ----------
+   buildDumbbell() is the hero dumbbell, unchanged. Options:
+     collar: 'green' (default) or 'ink' (satin near-black metal, for the green world where a green
+             collar would vanish into the page)
+     split:  true builds each head as three slices and puts the right head's B on a thin rubber
+             medallion, so the exploded view can take it apart
+   The group's userData.parts = { slices: [[outer, middle, inner] left, [..] right] (split only),
+   heads (whole heads, not split), collars: [left, right], grip (group: knurl and shoulders),
+   shoulders, medal (split only), marks } */
+function headProfile(len, R, cIn, cOut) {
+  // a hex slice along the lathe's Y axis: -len/2 is the inner end, +len/2 the outer end
+  const h = len / 2;
+  return [
+    new Vector2(0, -h), new Vector2(R - cIn, -h), new Vector2(R, -h + cIn),
+    new Vector2(R, h - cOut), new Vector2(R - cOut, h), new Vector2(0, h),
+  ];
+}
+
+function buildDumbbell(opts = {}) {
+  const { collar: collarKind = 'green', split = false } = opts;
   const dumbbell = new Group();
 
   const rubber = new MeshStandardMaterial({ color: 0x262626, roughness: 0.52, metalness: 0, flatShading: false, envMapIntensity: 1.1 });
@@ -317,16 +340,14 @@ function buildDumbbell() {
     bumpMap: knurl, bumpScale: 1.6, roughnessMap: knurl, envMapIntensity: 1.6,
   });
   const steelSmooth = new MeshStandardMaterial({ color: 0xd4d7db, metalness: 0.9, roughness: 0.3, envMapIntensity: 1.6 });
-  const green = M.green();
+  const collarMat = collarKind === 'ink'
+    ? new MeshStandardMaterial({ color: 0x111111, metalness: 0.6, roughness: 0.4, envMapIntensity: 1.2 })
+    : M.green();
   const mark = M.mark();
 
   // hex head: a 6-sided lathe with chamfered rims, axis along X
   const h = HEAD_L / 2, R = HEAD_R, c = CHAMFER;
-  const profile = [
-    new Vector2(0, -h), new Vector2(R - c, -h), new Vector2(R, -h + c),
-    new Vector2(R, h - c), new Vector2(R - c, h), new Vector2(0, h),
-  ];
-  const headGeo = new LatheGeometry(profile, 6, Math.PI / 6);
+  const headGeo = new LatheGeometry(headProfile(HEAD_L, R, c, c), 6, Math.PI / 6);
   headGeo.rotateZ(-Math.PI / 2);
 
   const markGeo = new ShapeGeometry(markShape(), 6);
@@ -334,33 +355,90 @@ function buildDumbbell() {
   markGeo.scale(markScale, markScale, 1);
   markGeo.rotateZ(-0.38); // undo the diagonal pose so the B stands upright in the first frame
 
+  const parts = { slices: [], heads: [], collars: [], shoulders: [], marks: [], grip: null, medal: null };
+
+  // split heads: three slices, the outer one carries the big chamfer, the cut faces a small one
+  const SL = HEAD_L / 3, cut = 0.022;
+  const sliceGeo = split ? [
+    new LatheGeometry(headProfile(SL, R, cut, c), 6, Math.PI / 6),   // outer
+    new LatheGeometry(headProfile(SL, R, cut, cut), 6, Math.PI / 6), // middle
+    new LatheGeometry(headProfile(SL, R, c, cut), 6, Math.PI / 6),   // inner
+  ] : null;
+  if (sliceGeo) sliceGeo.forEach((g) => g.rotateZ(-Math.PI / 2)); // lathe +Y becomes -X; flipped per side below
+
   for (const side of [-1, 1]) {
-    const head = new Mesh(headGeo, rubber);
-    head.position.x = side * HEAD_X;
-    dumbbell.add(head);
+    if (split) {
+      const row = [];
+      for (let i = 0; i < 3; i++) {
+        const slice = new Group();
+        const m = new Mesh(sliceGeo[i], rubber);
+        // rotateZ(-PI/2) sends the lathe's outer end to +X; the left side mirrors it
+        if (side < 0) m.rotation.y = Math.PI;
+        slice.add(m);
+        slice.position.x = side * (HEAD_X + h - SL / 2 - i * SL);
+        slice.userData.rest = slice.position.x;
+        dumbbell.add(slice);
+        row.push(slice);
+      }
+      parts.slices.push(row);
+      if (side < 0) {
+        const m = new Mesh(markGeo, mark);
+        m.rotation.y = side * Math.PI / 2;
+        m.position.x = side * (SL / 2 + 0.002);
+        row[0].add(m);
+        parts.marks.push(m);
+      } else {
+        // the medallion: the B on a thin rubber disc, flush on the right head's outer face
+        const medal = new Group();
+        const disc = new Mesh(new CylinderGeometry((R - c) * 0.8, (R - c) * 0.8, 0.04, 48), rubber);
+        disc.rotation.x = Math.PI / 2;
+        disc.position.z = -0.02;
+        medal.add(disc);
+        const m = new Mesh(markGeo, mark);
+        m.position.z = 0.002;
+        medal.add(m);
+        medal.rotation.y = Math.PI / 2;
+        medal.position.x = SL / 2 + 0.04;
+        row[0].add(medal);
+        parts.medal = medal;
+        parts.marks.push(m);
+      }
+    } else {
+      const head = new Mesh(headGeo, rubber);
+      head.position.x = side * HEAD_X;
+      dumbbell.add(head);
+      parts.heads.push(head);
 
-    // the B sits on the outer face, upright, reading correctly from outside
-    const m = new Mesh(markGeo, mark);
-    m.rotation.y = side * Math.PI / 2;
-    m.position.x = side * (HEAD_X + h + 0.002);
-    dumbbell.add(m);
+      // the B sits on the outer face, upright, reading correctly from outside
+      const m = new Mesh(markGeo, mark);
+      m.rotation.y = side * Math.PI / 2;
+      m.position.x = side * (HEAD_X + h + 0.002);
+      dumbbell.add(m);
+      parts.marks.push(m);
+    }
 
-    const collar = new Mesh(new CylinderGeometry(COLLAR_R, COLLAR_R, COLLAR_L, 40), green);
+    const collar = new Mesh(new CylinderGeometry(COLLAR_R, COLLAR_R, COLLAR_L, 40), collarMat);
     collar.rotation.z = Math.PI / 2;
     collar.position.x = side * (GRIP_L / 2 + COLLAR_L / 2);
+    collar.userData.rest = collar.position.x;
     dumbbell.add(collar);
+    parts.collars.push(collar);
 
     // short smooth shoulder of the bar between knurl and collar
     const shoulder = new Mesh(new CylinderGeometry(GRIP_R, GRIP_R, 0.12, 40), steelSmooth);
     shoulder.rotation.z = Math.PI / 2;
     shoulder.position.x = side * (GRIP_L / 2 - 0.06);
-    dumbbell.add(shoulder);
+    parts.shoulders.push(shoulder);
   }
 
   const grip = new Mesh(new CylinderGeometry(GRIP_R, GRIP_R, GRIP_L - 0.24, 48, 1, true), steel);
   grip.rotation.z = Math.PI / 2;
-  dumbbell.add(grip);
+  const gripGroup = new Group();
+  gripGroup.add(grip, ...parts.shoulders);
+  dumbbell.add(gripGroup);
+  parts.grip = gripGroup;
 
+  dumbbell.userData.parts = parts;
   return dumbbell;
 }
 
@@ -495,33 +573,49 @@ function buildStreakTiles(rt) {
   });
 }
 
-/* ---------- medal: Carbon disc, green rings, the raised B ---------- */
-function buildMedal() {
+/* ---------- the logo badge: the green B on a black disc, no ring ----------
+   The brand's logo is a green B with black all around it, so the disc carries no outline ring. A
+   soft rounded bevel catches the key light so it still reads as an object. Options:
+     disc: 'black' (the logo badge, default) or 'carbon' (the app's trophy medal, a step lighter)
+     mark: false leaves the face blank (the app draws a milestone's icon on top)
+   Radius 1, facing +Z, about 0.24 thick. */
+const BADGE_T = 0.12;
+function buildBadge({ disc = 'black', mark = true } = {}) {
   const g = new Group();
-  const t = 0.12;
-  const profile = [
-    [0, t], [0.9, t], [0.955, t - 0.012], [0.99, t - 0.04], [1.0, t - 0.07],
-    [1.0, -(t - 0.07)], [0.99, -(t - 0.04)], [0.955, -(t - 0.012)], [0.9, -t], [0, -t],
-  ].map(([r, y]) => new Vector2(r, y));
-  const disc = new LatheGeometry(profile.slice().reverse(), 64);
-  disc.rotateX(Math.PI / 2);
-  g.add(new Mesh(disc, new MeshStandardMaterial({ color: 0x1f1f1f, metalness: 0.8, roughness: 0.42, envMapIntensity: 0.9 })));
-  const ringGeo = new TorusGeometry(0.84, 0.03, 8, 72);
-  const ringMat = M.green();
-  for (const side of [1, -1]) {
-    const ring = new Mesh(ringGeo, ringMat);
-    ring.position.z = side * t;
-    g.add(ring);
+  const t = BADGE_T;
+  // flat face, then a soft quarter-round bevel into the edge, sampled finely so it shades smoothly
+  const profile = [[0, t]];
+  const bev = 0.085;
+  for (let i = 0; i <= 10; i++) {
+    const a = (i / 10) * (Math.PI / 2);
+    profile.push([1 - bev + Math.sin(a) * bev, t - bev + Math.cos(a) * bev]);
   }
-  // the B raised on the front: exact green face, lit sides
-  const geo = new ExtrudeGeometry(markShape(), { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
-  const s = 1.06 / 127.5;
-  geo.scale(s, s, 1);
-  const face = new MeshBasicMaterial({ color: GREEN, toneMapped: false });
-  const side = new MeshStandardMaterial({ color: GREEN, roughness: 0.55, metalness: 0.05, emissive: GREEN, emissiveIntensity: 0.12, toneMapped: false });
-  const mark = new Mesh(geo, [face, side]);
-  mark.position.z = t - 0.005;
-  g.add(mark);
+  for (let i = 10; i >= 0; i--) {
+    const a = (i / 10) * (Math.PI / 2);
+    profile.push([1 - bev + Math.sin(a) * bev, -(t - bev + Math.cos(a) * bev)]);
+  }
+  profile.push([0, -t]);
+  const geo = new LatheGeometry(profile.reverse().map(([r, y]) => new Vector2(r, y)), 96);
+  geo.rotateX(Math.PI / 2);
+  const mat = disc === 'carbon'
+    ? new MeshStandardMaterial({ color: 0x1f1f1f, metalness: 0.8, roughness: 0.42, envMapIntensity: 0.9 })
+    : new MeshStandardMaterial({ color: 0x0c0c0c, metalness: 0.35, roughness: 0.38, envMapIntensity: 1.1 });
+  g.add(new Mesh(geo, mat));
+  if (mark) {
+    // the B raised on both faces (a coin reads the same from either side): exact green face, lit sides
+    const mg = new ExtrudeGeometry(markShape(), { depth: 0.035, bevelEnabled: false, curveSegments: 1 });
+    const s = 1.12 / 127.5;
+    mg.scale(s, s, 1);
+    const face = new MeshBasicMaterial({ color: GREEN, toneMapped: false });
+    const side = new MeshStandardMaterial({ color: GREEN, roughness: 0.55, metalness: 0.05, emissive: GREEN, emissiveIntensity: 0.12, toneMapped: false });
+    const front = new Mesh(mg, [face, side]);
+    front.position.z = t - 0.004;
+    g.add(front);
+    const back = new Mesh(mg, [face, side]);
+    back.rotation.y = Math.PI;
+    back.position.z = -(t - 0.004);
+    g.add(back);
+  }
   return g;
 }
 
@@ -610,6 +704,12 @@ function heroSlot(rt) {
 /* ---------- how it works: four small objects, each with its own entrance as its step arrives ----------
    The phone flips up from flat, the tape turns in on its coil, the dumbbell and shaker slide
    together from either side, the progress ring fills. `e` is the eased entrance (0 to 1). */
+/* In the pinned step sequence (data-3d-step="k/n", how it works with motion) the four objects share
+   one stage and are scrubbed by the sequence's progress p: step k owns x = p * n in [k, k + 1] and
+   hands over to the next across 2 * STEP_HAND. Its object grows in turning one way, plays its entrance
+   while it holds, and shrinks away turning the other, as the page's card and step word swap. The
+   hand-over window and its curve (smootherstep) are the page's (index.html, HH), so they stay in step. */
+const STEP_HAND = 0.22;
 function stepSlot(rt, build, phase) {
   const root = new Group();
   const holder = new Group();
@@ -617,15 +717,33 @@ function stepSlot(rt, build, phase) {
   holder.add(inner.group);
   root.add(holder);
   const camera = cam(5.7, 1.0);
-  return {
-    root, camera, aspect: 1,
+  let staged = false;
+  const slot = {
+    root, camera, aspect: 1, idle: false,
     update(c) {
+      holder.position.y = bob(c, 0.035, 5, phase);
+      if (c.step) {
+        // on the stage the camera comes in closer: the object fills its box rather than a card's corner
+        if (!staged) { staged = true; camera.position.set(0, 0.85, 4.6); camera.lookAt(0, -0.02, 0); }
+        const [k, n] = c.step, H = STEP_HAND, x = c.p * n;
+        const vin = k ? smoother(win(k - H, k + H, x)) : 1;
+        const vout = k < n - 1 ? smoother(win(k + 1 - H, k + 1 + H, x)) : 0;
+        const v = vin * (1 - vout);
+        holder.visible = v > 0.002;
+        slot.idle = !holder.visible; // off the stage: the engine skips the draw
+        holder.scale.setScalar(outCubic(v));
+        const own = clamp01((x - k + H) / (1 + 2 * H)); // through its own turn, hand-overs included
+        holder.rotation.y = (own - 0.5) * 0.6 + (1 - vin) * 1.3 - vout * 1.3;
+        // the first step is on screen as the stage arrives: it starts part way into its entrance
+        inner.update(c, k ? outCubic(win(k - H, k + 0.5, x)) : 0.35 + 0.65 * outCubic(win(0, 0.45, x)));
+        return;
+      }
       const e = outCubic(win(0.06, 0.42, c.p));
       holder.rotation.y = (c.p - 0.5) * 0.5;
-      holder.position.y = bob(c, 0.035, 5, phase);
       inner.update(c, e);
     },
   };
+  return slot;
 }
 
 function howPhone() {
@@ -992,12 +1110,12 @@ function progressSlot(rt) {
   };
 }
 
-/* ---------- pricing: the B medal flips in, then leans toward the pointer ---------- */
+/* ---------- pricing: the logo badge flips in, then leans toward the pointer ---------- */
 function pricingSlot() {
   const root = new Group();
   const lean = new Group();
   const flip = new Group();
-  flip.add(buildMedal());
+  flip.add(buildBadge());
   lean.add(flip);
   root.add(lean);
   const camera = cam(6.0, 0.25);
@@ -1115,8 +1233,351 @@ function finalSlot() {
   return slot;
 }
 
+/* ============================================================
+   Scroll story: three pinned chapters at the top of the page. Each slot is scrubbed by its
+   chapter's pinned progress (data-3d-scrub: 0 as the chapter's top meets the top of the screen,
+   1 as its bottom meets the bottom), so every pose plays backwards on the way up.
+   ============================================================ */
+
+/* ---------- chapter 1, the green world: the dumbbell turns 1.25 times as the headlines swap ---------- */
+function storyWorldSlot(rt) {
+  const root = new Group();
+  const camera = new PerspectiveCamera(28, 1, 0.1, 50);
+  camera.position.set(0, 0.7, 8.25);
+  camera.lookAt(0, 0.05, 0);
+  // rig: float (bob) > turn (yaw about the vertical) > pose (the diagonal lean) > roll (about the bar)
+  const float = new Group();
+  const turn = new Group();
+  const pose = new Group();
+  const roll = new Group();
+  roll.add(buildDumbbell({ collar: 'ink' }));
+  pose.add(roll);
+  turn.add(pose);
+  float.add(turn);
+  root.add(float);
+  pose.rotation.x = 0.12;
+  const shadow = contactShadow(rt, 3.1, 0.95, -1.45, 0.5);
+  root.add(shadow);
+  // the zoom-through: over the last 15% the camera flies in low over the dumbbell, so it swells
+  // toward the viewer and sweeps out under the frame, while the page fades the green to Deep Black
+  const CAM0 = new Vector3(0, 0.7, 8.25), LOOK0 = new Vector3(0, 0.05, 0);
+  const aim = new Vector3(0, 1.2, 0), dir = new Vector3(), look = new Vector3();
+  const slot = {
+    root, camera, aspect: 1, mBottom: 0,
+    update(c) {
+      const p = c.p;
+      turn.rotation.y = -0.62 + p * 1.25 * TAU;
+      pose.rotation.z = 0.46 - 0.14 * Math.sin(p * Math.PI);
+      roll.rotation.x = p * 0.9;
+      const z = easeInOut(win(0.85, 1, p));
+      const b = bob(c, 0.045, 6) * (1 - z);
+      float.position.y = b;
+      shadow.scale.set(1 - b * 1.5, 1, 1 - b * 1.5);
+      shadow.material.opacity = (0.5 - b * 2) * (1 - z);
+      if (z > 0) {
+        // end 1.6 units past the aim point, on the line from the start through it
+        dir.copy(aim).sub(CAM0).normalize();
+        const zl = win(0.85, 1, p), f = zl * zl; // slow, then rushing at the camera
+        camera.position.copy(CAM0).lerp(aim.clone().addScaledVector(dir, 1.6), f);
+        look.copy(LOOK0).lerp(aim.clone().addScaledVector(dir, 4), Math.min(1, z * 1.4));
+        camera.lookAt(look);
+      } else {
+        camera.position.copy(CAM0);
+        camera.lookAt(LOOK0);
+      }
+      // the slot's lower edge fades while the object outgrows it, so its bottom is never a hard cut
+      slot.mBottom = 0.22 * Math.min(1, z * 3);
+    },
+  };
+  return slot;
+}
+
+/* ---------- chapter 2, the exploded view: the dumbbell comes apart along its bar ----------
+   0.05 to 0.15 a quarter turn to a three-quarter view; 0.12 to 0.55 the slices leave the bar
+   (outer first), the collars slide out spinning, the grip drops back and the medallion floats
+   forward and turns to face the camera; 0.55 to 1 it holds, drifting 15 degrees.
+   Wide slots lay it across the screen with labels either side; phones stand it near vertical. */
+const EXPLODE_OUT = [1.08, 0.72, 0.38];            // how far each slice leaves along the bar: outer, middle, inner
+const EXPLODE_WIN = [[0.12, 0.4], [0.18, 0.47], [0.24, 0.55]];
+const EXPLODE_RISE = [0.26, 0.13, 0.05];
+function storyExplodedSlot(rt) {
+  const root = new Group();
+  const view = new Group();   // the quarter turn and the drift, about the vertical
+  const pose = new Group();   // the lean: slight on wide slots, near vertical on phones
+  const db = buildDumbbell({ split: true });
+  const P = db.userData.parts;
+  pose.add(db);
+  view.add(pose);
+  root.add(view);
+
+  // a set screw on each collar, so its spin reads
+  const screwGeo = new CylinderGeometry(0.035, 0.035, 0.05, 16);
+  const screwMat = M.steel(0.3);
+  for (const collar of P.collars) {
+    const s = new Mesh(screwGeo, screwMat);
+    s.rotation.x = Math.PI / 2;
+    s.position.z = COLLAR_R + 0.012;
+    collar.add(s);
+  }
+
+  // the medallion leaves its head: it lives in root space, placed each frame between its mount
+  // on the head and a spot in front, turned to face the camera
+  const medal = P.medal;
+  const mount = new Group();
+  medal.parent.add(mount);
+  mount.position.copy(medal.position);
+  mount.rotation.copy(medal.rotation);
+  medal.parent.remove(medal);
+  root.add(medal);
+  const face = new Group();
+  root.add(face);
+  const upright = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), 0.38);
+  const qa = new Quaternion(), qb = new Quaternion(), va = new Vector3(), vb = new Vector3();
+
+  // leader-line anchors, one per label (data-anchor on the page)
+  const anchor = (parent, x, y, z) => { const o = new Group(); o.position.set(x, y, z); parent.add(o); return o; };
+  const anchors = {
+    'head-l': anchor(P.slices[0][1], 0, HEAD_R * 0.5, HEAD_R * 0.5),
+    'head-r': anchor(P.slices[1][1], 0, HEAD_R * 0.5, HEAD_R * 0.5),
+    'collar-l': anchor(P.collars[0], 0, 0, COLLAR_R),
+    grip: anchor(P.grip, -0.18, 0, GRIP_R),
+    mark: anchor(medal, 0.32, 0.3, 0.04),
+  };
+
+  const camera = new PerspectiveCamera(28, 1, 0.1, 60);
+  let mode = '';
+  let float = { x: 0, y: 0, z: 0 };
+  const slot = {
+    // the slices' faces turn straight toward the green rim as they part: no rim for this slot, and a
+    // slightly softer environment, keep the rubber black
+    root, camera, aspect: 16 / 9, anchors, rim: 0, env: 0.8, parts: P, mount,
+    layout(W, H, vw) {
+      const next = (vw || W) <= 620 ? 'narrow' : 'wide';
+      if (next === mode) return;
+      mode = next;
+      if (mode === 'wide') {
+        slot.aspect = 16 / 9;
+        camera.position.set(0, 2.2, 10.6);
+        camera.lookAt(0.3, 0.12, 0);
+        pose.rotation.set(0, 0, 0.08);
+        float = { x: -1.0, y: 1.36, z: 0.9 }; // high enough that the right column's flat leader passes under it
+      } else {
+        slot.aspect = 1;
+        camera.position.set(0, 1.2, 12);
+        camera.lookAt(0.1, 0.15, 0);
+        pose.rotation.set(0, 0, 0.78);
+        float = { x: -1.5, y: -0.1, z: 1.0 };
+      }
+    },
+    update(c) {
+      const p = c.p;
+      const turn = easeInOut(win(0.05, 0.15, p));
+      const drift = easeInOut(win(0.55, 1, p));
+      // c.view pins the turn (the layer renders hold one camera angle for every pose)
+      view.rotation.y = c.view ?? (-0.06 - 0.4 * turn + 0.26 * drift);
+      view.position.y = bob(c, 0.03, 6);
+
+      P.slices.forEach((row, s) => {
+        const side = s ? 1 : -1;
+        row.forEach((slice, i) => {
+          const k = easeInOut(win(EXPLODE_WIN[i][0], EXPLODE_WIN[i][1], p));
+          slice.position.x = slice.userData.rest + side * EXPLODE_OUT[i] * k;
+          slice.position.y = EXPLODE_RISE[i] * k; // the outer slices rise a little more: a shallow arc
+          slice.rotation.z = side * 0.05 * (2 - i) * k;
+        });
+      });
+      const kc = easeInOut(win(0.2, 0.5, p));
+      P.collars.forEach((collar, s) => {
+        const side = s ? 1 : -1;
+        collar.position.x = collar.userData.rest + side * 0.26 * kc;
+        collar.rotation.x = side * kc * 1.5 * TAU;
+      });
+      const kg = easeInOut(win(0.22, 0.55, p));
+      P.grip.position.set(0, -0.14 * kg, -0.3 * kg);
+
+      // the medallion: from flush on the head to floating in front, facing the camera
+      const km = easeInOut(win(0.18, 0.5, p));
+      root.updateMatrixWorld(true);
+      mount.getWorldPosition(va);
+      mount.getWorldQuaternion(qa);
+      vb.set(va.x + float.x * km, va.y + float.y * km, va.z + float.z * km);
+      face.position.copy(vb);
+      face.lookAt(camera.position);
+      qb.copy(face.quaternion).multiply(upright);
+      medal.position.copy(vb);
+      medal.quaternion.copy(qa).slerp(qb, km);
+      medal.scale.setScalar(1 + 0.08 * km);
+    },
+  };
+  slot.layout(1600, 900, 1600);
+  return slot;
+}
+
+/* ---------- chapter 3, more than an app: one plate flips to face the light ---------- */
+function storyPlateSlot() {
+  const root = new Group();
+  const drop = new Group();   // eases down and shrinks under the typed word
+  const tilt = new Group();   // the diagonal it starts on
+  const flip = new Group();   // edge-on to facing the camera
+  const rubber = M.rubber();
+  rubber.roughness = 0.42;    // a touch more sheen, so the light sweep reads on the face
+  flip.add(new Mesh(plateGeometry(1.0), rubber));
+  const ring = new Mesh(new TorusGeometry(0.235, 0.018, 10, 72), M.green());
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.09 + 0.006; // on the hub's front face
+  flip.add(ring);
+  tilt.add(flip);
+  drop.add(tilt);
+  root.add(drop);
+  const camera = cam(6.6, 0.3);
+  return {
+    // edge-on, the face turns straight toward the green rim: no rim for this slot, a softer environment
+    root, camera, aspect: 1, rim: 0, env: 0.8,
+    update(c) {
+      const p = c.p;
+      const f = easeInOut(win(0.05, 0.45, p));
+      flip.rotation.x = 0.24 + (Math.PI / 2 - 0.24) * f;
+      tilt.rotation.z = -0.55 * (1 - f);
+      tilt.rotation.y = 0.4 * (1 - f);
+      const d = easeInOut(win(0.5, 0.95, p));
+      drop.position.y = -0.42 * d + bob(c, 0.03, 6);
+      drop.scale.setScalar(1 - 0.2 * d);
+    },
+    // the key light sweeps across the face as it turns; restored after this slot draws
+    light(rt, c) {
+      rt.key.position.x = -6 + 12 * easeInOut(win(0.25, 0.6, c.p));
+    },
+  };
+}
+
+/* ============================================================
+   Offline scenes: stills only, for the page's 2D objects and the app's images
+   ============================================================ */
+
+/* ---------- the logo badge (or the app's blank medal), face-on at p 0, edge-on at p 1 ----------
+   A long lens (8 degrees) so the face is a true circle the page can turn with CSS perspective; the
+   disc fills 92% of the square frame (radius 1 in a half-frame of 1.09). */
+const BADGE_HALF = 1.09;
+function badgeStill(opts) {
+  return () => {
+    const root = new Group();
+    const turn = new Group();
+    turn.add(buildBadge(opts));
+    root.add(turn);
+    const fov = 8;
+    const camera = new PerspectiveCamera(fov, 1, 1, 60);
+    camera.position.set(0, 0, BADGE_HALF / Math.tan((fov / 2) * Math.PI / 180));
+    camera.lookAt(0, 0, 0);
+    return {
+      root, camera, aspect: 1,
+      update(c) { turn.rotation.y = c.p * Math.PI / 2; },
+    };
+  };
+}
+
+/** project a world point to the frame, as fractions of its width and height */
+function toFrame(v, camera) {
+  const q = v.clone().project(camera);
+  return [(q.x + 1) / 2, (1 - q.y) / 2];
+}
+
+/* ---------- app: the dumbbell floating (sign-in) or lying on a hex face (Today, rest day) ---------- */
+function appDumbbell(resting) {
+  return () => {
+    const root = new Group();
+    const spin = new Group();
+    const tilt = new Group();
+    const db = buildDumbbell();
+    // the heads have a point at the bottom; a sixth of a turn about the bar lays a face flat
+    if (resting) db.rotation.x = Math.PI / 6;
+    tilt.add(db);
+    spin.add(tilt);
+    root.add(spin);
+    tilt.rotation.z = resting ? 0 : 0.2;
+    tilt.rotation.x = resting ? 0 : 0.12;
+    spin.rotation.y = -0.62;
+    const camera = new PerspectiveCamera(28, 1, 0.1, 60);
+    const el = resting ? 0.5 : 0.2, d = resting ? 7.2 : 7.4;
+    camera.position.set(0, Math.sin(el) * d, Math.cos(el) * d);
+    camera.lookAt(0, 0, 0);
+    return { root, camera, aspect: 1, update() {} };
+  };
+}
+
+/* ---------- app: kettlebell and shaker in a three-quarter pose, the B toward the viewer ---------- */
+function appKettlebell() {
+  const root = new Group();
+  const k = buildKettlebell();
+  k.rotation.y = -0.22;
+  k.position.y = -0.36;
+  root.add(k);
+  return { root, camera: cam(5.1, 0.7, 0, [0, 0, 0]), aspect: 1, update() {} };
+}
+function appShaker() {
+  const root = new Group();
+  const sh = buildShaker();
+  sh.group.rotation.y = -0.3;
+  sh.group.position.y = -0.05;
+  root.add(sh.group);
+  return { root, camera: cam(4.7, 0.7, 0, [0, 0, 0]), aspect: 1, update() {} };
+}
+
+/* ---------- app: one bumper plate lying flat, seen from 0.8 rad up (the workout's plate stack) ----------
+   The story plate's look: rubber, raised rim and hub, the green ring on the hub. info() gives the
+   face's centre and the step one plate's thickness makes on screen, so the app can stack copies. */
+const APP_PLATE_EL = 0.8;
+function appPlate() {
+  const root = new Group();
+  const rubber = M.rubber();
+  rubber.roughness = 0.46;
+  root.add(new Mesh(plateGeometry(1.0), rubber));
+  const ring = new Mesh(new TorusGeometry(0.235, 0.018, 10, 72), M.green());
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.09 + 0.006;
+  root.add(ring);
+  const camera = new PerspectiveCamera(26, 1, 0.1, 60);
+  const d = 5.0;
+  camera.position.set(0, Math.sin(APP_PLATE_EL) * d, Math.cos(APP_PLATE_EL) * d);
+  camera.lookAt(0, 0, 0);
+  return {
+    root, camera, aspect: 1, update() {},
+    info() {
+      const top = toFrame(new Vector3(0, 0.09, 0), camera), bot = toFrame(new Vector3(0, -0.09, 0), camera);
+      const front = toFrame(new Vector3(0, 0.09, 1), camera), back = toFrame(new Vector3(0, 0.09, -1), camera);
+      return { faceCentre: top, plateStep: +(bot[1] - top[1]).toFixed(4), faceHeight: +(front[1] - back[1]).toFixed(4) };
+    },
+  };
+}
+
+/* ---------- app: the short Carbon trophy shelf, without its medal ----------
+   The app's shelf (1.7 x 0.06 x 0.34, matte Carbon) at its camera; info() gives the box the medal
+   stands in (radius 0.4, its foot on the shelf), so the app can place medal-face over it. */
+function appShelf() {
+  const root = new Group();
+  const shelfMat = new MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.85, metalness: 0.1, envMapIntensity: 0.6 });
+  const top = -0.42;
+  const shelf = new Mesh(new BoxGeometry(1.7, 0.06, 0.34), shelfMat);
+  shelf.position.y = top - 0.03;
+  root.add(shelf);
+  const camera = new PerspectiveCamera(24, 2.5, 0.1, 60);
+  const el = 0.1, d = 2.15, y = -0.04;
+  camera.position.set(0, y + Math.sin(el) * d, Math.cos(el) * d);
+  camera.lookAt(0, y, 0);
+  return {
+    root, camera, aspect: 2.5, rim: 0.06, update() {},
+    info() {
+      const c = toFrame(new Vector3(0, top + 0.4, 0), camera);
+      const t = toFrame(new Vector3(0, top + 0.8, 0), camera), b = toFrame(new Vector3(0, top, 0), camera);
+      return { medalCentre: c, medalHeight: +(b[1] - t[1]).toFixed(4) };
+    },
+  };
+}
+
 const BUILDERS = {
   hero: heroSlot,
+  'story-world': storyWorldSlot,
+  'story-exploded': storyExplodedSlot,
+  'story-plate': storyPlateSlot,
   'how-phone': (rt) => stepSlot(rt, howPhone, 0),
   'how-tape': (rt) => stepSlot(rt, howTape, 1.3),
   'how-pair': (rt) => stepSlot(rt, howPair, 2.6),
@@ -1128,6 +1589,15 @@ const BUILDERS = {
   progress: progressSlot,
   pricing: pricingSlot,
   final: finalSlot,
+  // offline stills (render script only)
+  badge: badgeStill(),
+  'app-medal': badgeStill({ disc: 'carbon', mark: false }),
+  'app-dumbbell-float': appDumbbell(false),
+  'app-dumbbell-rest': appDumbbell(true),
+  'app-kettlebell': appKettlebell,
+  'app-shaker': appShaker,
+  'app-plate': appPlate,
+  'app-shelf': appShelf,
 };
 export const SLOTS = Object.keys(BUILDERS);
 
@@ -1178,7 +1648,7 @@ function runtime(renderer) {
   maskScene.add(quad);
   const maskCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  return { renderer, scene, rim, maskScene, maskCam, maskMat, shadowTex: shadowTexture(), roots: [] };
+  return { renderer, scene, key, rim, maskScene, maskCam, maskMat, shadowTex: shadowTexture(), roots: [] };
 }
 
 function buildSlot(rt, name) {
@@ -1193,11 +1663,14 @@ function buildSlot(rt, name) {
 function showOnly(rt, slot) {
   for (const r of rt.roots) r.visible = r === slot.root;
   rt.rim.intensity = slot.rim ?? RIM;
+  // with a scene environment three ignores each material's envMapIntensity: a slot sets its own
+  rt.scene.environmentIntensity = slot.env ?? 1;
 }
 
-/** object-fit: contain against the scene's composition aspect, aligned by ax / ay */
-function frameCamera(slot, W, H, ax, ay) {
-  if (slot.layout) slot.layout(W, H);
+/** object-fit: contain against the scene's composition aspect, aligned by ax / ay.
+ *  vw is the viewport width, for slots whose composition follows the page's breakpoints. */
+function frameCamera(slot, W, H, ax, ay, vw = W) {
+  if (slot.layout) slot.layout(W, H, vw);
   const a = slot.aspect;
   let Sw, Sh;
   if (W / H > a) { Sh = H; Sw = H * a; } else { Sw = W; Sh = W / a; }
@@ -1208,9 +1681,10 @@ function frameCamera(slot, W, H, ax, ay) {
 
 /**
  * Render one slot as a still (posters). Returns { canvas, destroy }.
- * opts: name, width, height, dpr, ax, ay, p (scroll progress for the pose)
+ * opts: name, width, height, dpr, ax, ay, p (scroll progress for the pose),
+ *       vw (the viewport width the poster stands for; picks a slot's phone or wide composition)
  */
-export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.5 }) {
+export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.5, vw = width, light = true }) {
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
   setupRenderer(renderer);
   renderer.setPixelRatio(dpr);
@@ -1218,59 +1692,236 @@ export function still({ name, width, height, dpr = 2, ax = 0.5, ay = 0.5, p = 0.
   const rt = runtime(renderer);
   const slot = buildSlot(rt, name);
   showOnly(rt, slot);
-  frameCamera(slot, width, height, ax, ay);
+  frameCamera(slot, width, height, ax, ay, vw);
   const rect = { left: 0, top: 0, width, height, right: width, bottom: height };
-  slot.update({ still: true, p, t: 0, dt: 0, pointer: { x: 0, y: 0, active: false }, track: rect, rect, vw: width, vh: height, fine: false });
+  const c = { still: true, p, t: 0, dt: 0, pointer: { x: 0, y: 0, active: false }, track: rect, rect, vw, vh: height, fine: false };
+  slot.update(c);
+  if (slot.light && light) slot.light(rt, c); // light: false keeps the studio key still (the page sweeps its own)
   renderer.render(rt.scene, slot.camera);
-  return { canvas: renderer.domElement, destroy: () => renderer.dispose() };
+  return { canvas: renderer.domElement, info: slot.info ? slot.info(c) : null, destroy: () => renderer.dispose() };
+}
+
+/**
+ * The exploded dumbbell as separate layers, one per part, all from one camera: the three-quarter
+ * view the chapter holds once its quarter turn is done. Each part is drawn on its own at its
+ * exploded place (p 0.55); the page stacks the layers far to near and moves each one back to its
+ * assembled place with a 2D transform. For every part this returns its picture (cropped to its
+ * pixels) and, in stage pixels: its centre exploded (the transform origin), the 2D map from its
+ * exploded look to its assembled one (a 2x2 matrix from two of its own axes, projected), and the
+ * offset back to its assembled place. The medallion's offset is split in two: riding its head out,
+ * then floating free. Anchors are the leader-line points, exploded.
+ * opts: mode 'wide' (16:9) or 'narrow' (phones, 1:1); width, height the stage in px; dpr.
+ */
+export function explodedLayers({ mode = 'wide', width = 1600, height = 900, dpr = 2 }) {
+  const renderer = new WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
+  setupRenderer(renderer);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(width, height, false);
+  const rt = runtime(renderer);
+  const slot = buildSlot(rt, 'story-exploded');
+  showOnly(rt, slot);
+  slot.layout(width, height, mode === 'wide' ? 1600 : 390);
+  frameCamera(slot, width, height, 0.5, 0.5, mode === 'wide' ? 1600 : 390);
+  const VIEW = -0.46; // -0.06 - 0.4: the quarter turn done, before the drift
+  const P = slot.parts;
+  const parts = [
+    ['l0', P.slices[0][0], 's0'], ['l1', P.slices[0][1], 's1'], ['l2', P.slices[0][2], 's2'],
+    ['cl', P.collars[0], 'c'], ['grip', P.grip, 'g'], ['cr', P.collars[1], 'c'],
+    ['r2', P.slices[1][2], 's2'], ['r1', P.slices[1][1], 's1'], ['r0', P.slices[1][0], 's0'],
+    ['medal', P.medal, 'm'],
+  ];
+  const cam = slot.camera;
+  cam.updateMatrixWorld(true); // project() needs the view matrix before the first render
+  const px = (v) => { const q = v.clone().project(cam); return [((q.x + 1) / 2) * width, ((1 - q.y) / 2) * height]; };
+  // a part's centre and two axes on screen; collars use their parent's axes (their spin about the
+  // bar would flip their own), everything else its own
+  const frameOf = (obj, parentAxes) => {
+    obj.updateWorldMatrix(true, false);
+    const o = obj.getWorldPosition(new Vector3());
+    let ax, ay;
+    if (parentAxes) {
+      ax = obj.parent.localToWorld(obj.position.clone().add(new Vector3(0.3, 0, 0)));
+      ay = obj.parent.localToWorld(obj.position.clone().add(new Vector3(0, 0.3, 0)));
+    } else {
+      ax = obj.localToWorld(new Vector3(0.3, 0, 0));
+      ay = obj.localToWorld(new Vector3(0, 0.3, 0));
+    }
+    const c = px(o), x = px(ax), y = px(ay);
+    return { c, A: [x[0] - c[0], x[1] - c[1], y[0] - c[0], y[1] - c[1]] }; // columns: x axis, y axis
+  };
+  const ctx = (p) => ({ still: true, p, view: VIEW, t: 0, dt: 0, pointer: { x: 0, y: 0 }, rect: { left: 0, top: 0, width, height }, vw: width, vh: height });
+  const pose = (p) => { slot.update(ctx(p)); slot.root.updateMatrixWorld(true); };
+
+  pose(0.55);
+  const exp = parts.map(([, obj, k]) => frameOf(obj, k === 'c'));
+  const mountExp = px(slot.mount.getWorldPosition(new Vector3()));
+  const anchors = {};
+  for (const [name, o] of Object.entries(slot.anchors)) {
+    const idx = parts.findIndex(([, obj]) => { let n = o; while (n) { if (n === obj) return true; n = n.parent; } return false; });
+    const a = px(o.getWorldPosition(new Vector3()));
+    anchors[name] = [+(a[0] / width).toFixed(4), +(a[1] / height).toFixed(4), parts[idx][0]];
+  }
+  // each part alone
+  const pics = [];
+  const all = parts.map(([, obj]) => obj);
+  for (const [, obj] of parts) {
+    all.forEach((o) => { o.visible = o === obj; });
+    // the medallion's own anchors and the mount are empty groups; the left outer slice keeps its B
+    renderer.render(rt.scene, cam);
+    const out = document.createElement('canvas');
+    out.width = width; out.height = height;
+    const g = out.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(renderer.domElement, 0, 0, width, height);
+    const d = g.getImageData(0, 0, width, height).data;
+    let x0 = width, y0 = height, x1 = -1, y1 = -1;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      if (d[(y * width + x) * 4 + 3] > 2) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    x0 = Math.max(0, x0 - 2); y0 = Math.max(0, y0 - 2); x1 = Math.min(width - 1, x1 + 2); y1 = Math.min(height - 1, y1 + 2);
+    const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+    const crop = document.createElement('canvas');
+    crop.width = cw; crop.height = ch;
+    crop.getContext('2d').drawImage(out, x0, y0, cw, ch, 0, 0, cw, ch);
+    pics.push({ canvas: crop, box: [x0, y0, cw, ch] });
+  }
+  all.forEach((o) => { o.visible = true; });
+
+  pose(0);
+  const rest = parts.map(([, obj, k]) => frameOf(obj, k === 'c'));
+  const mountRest = px(slot.mount.getWorldPosition(new Vector3()));
+  renderer.dispose();
+
+  const r4 = (v) => +v.toFixed(4);
+  const layers = parts.map(([name, , key], i) => {
+    const E = exp[i], R = rest[i];
+    // M maps the exploded look onto the assembled one: R.A = M . E.A
+    const [a, b, c, d] = E.A; // E = [[a, c], [b, d]]
+    const det = a * d - b * c;
+    const inv = [d / det, -b / det, -c / det, a / det]; // [[d, -c], [-b, a]] / det, column-major
+    const [ra, rb, rc, rd] = R.A;
+    const m = [ra * inv[0] + rc * inv[1], rb * inv[0] + rd * inv[1], ra * inv[2] + rc * inv[3], rb * inv[2] + rd * inv[3]];
+    let terms;
+    if (key === 'm') {
+      // ride the right outer slice out (its timing), then float free (the medallion's own)
+      terms = [[(mountRest[0] - mountExp[0]) / width, (mountRest[1] - mountExp[1]) / height, 's0'],
+        [(mountExp[0] - E.c[0]) / width, (mountExp[1] - E.c[1]) / height, 'm']];
+    } else terms = [[(R.c[0] - E.c[0]) / width, (R.c[1] - E.c[1]) / height, key]];
+    const [x0, y0, w, h] = pics[i].box;
+    return {
+      name, key, canvas: pics[i].canvas,
+      box: [r4(x0 / width), r4(y0 / height), r4(w / width), r4(h / height)],
+      o: [r4(E.c[0] / width), r4(E.c[1] / height)],
+      m: m.map(r4), mk: key === 'm' ? 'm' : key,
+      t: terms.map(([x, y, k]) => [r4(x), r4(y), k]),
+    };
+  });
+  return { layers, anchors, aspect: width / height };
 }
 
 /* ============================================================
    Live engine
    ============================================================ */
 
+/* Scroll smoothing, shared with the page's scroll loop (index.html uses the same numbers): a
+ * critically damped spring, stepped with its exact solution, so it moves the same at 30, 60 or
+ * 120 frames a second. OMEGA 11 trails a steady scroll by 2 / OMEGA = 0.18s, the lag of a 5.5 per
+ * second ease, but it starts and stops without a kink, so the coarse steps of a touch fling read as
+ * one move instead of a run of small jumps. `s` is { u, v, set }: value, velocity per second. */
+export const OMEGA = 11;
+export function follow(s, target, dt) {
+  if (!s.set || Math.abs(target - s.u) > 2) { s.u = target; s.v = 0; s.set = true; return; } // a jump lands at once
+  const x = s.u - target, k = (s.v + OMEGA * x) * dt, e = Math.exp(-OMEGA * dt);
+  s.v = (s.v - OMEGA * k) * e;
+  s.u = target + (x + k) * e;
+  if (Math.abs(s.u - target) < 0.0004 && Math.abs(s.v) < 0.004) { s.u = target; s.v = 0; }
+}
+
+/** a hidden fixed box `100<unit>` tall: the small (svh) or large (lvh) viewport height, which a
+ *  phone's toolbar sliding in and out never changes */
+function viewportProbe(unit) {
+  const d = document.createElement('div');
+  d.setAttribute('aria-hidden', 'true');
+  d.style.cssText = `position:fixed;top:0;left:0;width:0;height:100vh;height:100${unit};visibility:hidden;pointer-events:none`;
+  document.body.appendChild(d);
+  return d;
+}
+
 /**
- * Mount the shared canvas and start drawing every [data-3d] slot.
- * opts.canvas, opts.context   a canvas and its WebGL2 context (the page's capability probe),
- *                             so the page only ever opens one context
- * opts.slots                  the slot elements (default: every [data-3d])
- * Returns { canvas, renderer, stats(), destroy() }. The same handle hangs off canvas.built3d.
+ * Start drawing every [data-3d] slot.
+ * opts.canvas, opts.context  a canvas and its WebGL2 context (the page's capability probe), so the
+ *                            page only ever opens one context. The canvas never joins the document.
+ * opts.slots                 the slot elements (default: every [data-3d])
+ * opts.loop                  the page's scroll loop, so the page runs one rAF and one eased progress:
+ *                            { wake() asks for a frame; chapter(el) the loop's record { u, v } for a
+ *                            pinned chapter, eased once per frame; viewport() { s, l }, the small and
+ *                            large viewport heights }. The loop calls api.read(now) before its own
+ *                            writes and api.draw(now) after them. Without it the engine runs its own rAF.
+ * Returns { canvas, renderer, read, draw, stats(), debug(on), destroy() }, also on window.built3d.
  */
 export function mount(opts = {}) {
-  const canvas = opts.canvas || document.createElement('canvas');
+  const gl = opts.canvas || document.createElement('canvas');
   const renderer = new WebGLRenderer({
-    canvas, context: opts.context || undefined,
+    canvas: gl, context: opts.context || undefined,
     antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: 'low-power',
   });
   setupRenderer(renderer);
   renderer.autoClear = false;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  renderer.setPixelRatio(dpr);
+  renderer.setPixelRatio(1); // every size below is in device pixels
   const rt = runtime(renderer);
-
-  canvas.className = 'stage3d';
-  canvas.setAttribute('aria-hidden', 'true');
-  canvas.setAttribute('role', 'presentation');
-  document.body.insertBefore(canvas, document.body.firstChild);
+  const loop = opts.loop || null;
+  const doc = document.documentElement;
+  let devDpr = Math.min(window.devicePixelRatio || 1, 2), dpr = devDpr;
 
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+  // phones list the exploded view's labels under the object, without leader lines
+  const phone = window.matchMedia('(max-width: 620px)');
+  // on wide screens with room beside the object (1200px at 17:10, 1400px at 8:5) the labels stand in
+  // a column either side of it, otherwise in rows above and below; the page's CSS uses the same test
+  const cols = window.matchMedia('(min-width: 1200px) and (min-aspect-ratio: 17/10), (min-width: 1400px) and (min-aspect-ratio: 8/5)');
   const els = Array.from(opts.slots || document.querySelectorAll('[data-3d]'));
   const entries = els.map((el) => {
     const trackSel = el.getAttribute('data-3d-track');
+    const anchorSel = el.getAttribute('data-3d-anchors');
+    const track = (trackSel && document.querySelector(trackSel)) || el;
+    const scrub = el.hasAttribute('data-3d-scrub');
     return {
-      el, name: el.getAttribute('data-3d'),
-      track: (trackSel && document.querySelector(trackSel)) || el,
+      el, name: el.getAttribute('data-3d'), track,
       gate: el.getAttribute('data-3d-gate'),
       avoid: el.getAttribute('data-3d-avoid') ? Array.from(document.querySelectorAll(el.getAttribute('data-3d-avoid'))) : null,
+      // pinned chapters: progress runs across the chapter's pinned scroll, not its pass over the screen;
+      // with the page's loop it is the loop's own eased value for the chapter, so words and objects agree
+      scrub,
+      chapter: (scrub && loop && loop.chapter(track)) || null,
+      pin: scrub ? el.closest('.ch__pin') : null, pinH: 0,
+      // a place in a pinned step sequence, "k/n" (how it works): the slot plays its step's share of it
+      step: /^\d+\/\d+$/.test(el.getAttribute('data-3d-step') || '') ? el.getAttribute('data-3d-step').split('/').map(Number) : null,
+      // labels whose leader lines run to a point on the object: { el, name, leader, rect, w }
+      labels: anchorSel ? Array.from(document.querySelectorAll(anchorSel)).map((a) => ({
+        el: a, name: a.getAttribute('data-anchor'), leader: a.querySelector('.leader'), rect: null, w: '',
+      })).filter((l) => l.leader) : null,
       slot: null, near: false, live: false, fadeT0: 0, fade: 0, gateFade: 0, gateT0: 0,
-      p: 0, pSet: false, t: 0, W: 0, H: 0, ax: 0.5, ay: 0.5, mLeft: 0, mBottom: 0, varsDirty: true,
-      drawn: 0,
+      s: { u: 0, v: 0, set: false }, p: 0, v: 0, calm: 1, t: 0,
+      rect: null, trackRect: null, W: 0, H: 0, ax: 0.5, ay: 0.5, mLeft: 0, mBottom: 0, varsDirty: true,
+      canvas: null, ctx: null, pw: 0, ph: 0, blank: true, drawn: 0, c: null,
     };
   }).filter((e) => BUILDERS[e.name]);
 
   const pointer = { x: 0, y: 0, tx: 0, ty: 0, cx: 0, cy: 0, active: false };
-  const stats = { frames: 0, drawCalls: 0, lastDrawn: [], lastDrawCalls: 0 };
-  let cw = 0, ch = 0, raf = 0, last = 0, running = false, dirty = false, lost = false;
+  const stats = { frames: 0, drawCalls: 0, lastDrawn: [], lastDrawCalls: 0, ms: 0 };
+  let raf = 0, last = 0, dt = 0, running = false, lost = false, dbgOn = false;
+  let pageW = 0, bw = 0, bh = 0, vp = null, probes = null, near = [];
+  // frame-time governor: when frames stay slow while drawing (a throttled or weak phone), the slots
+  // drop to a pixel ratio of 1.5, once, which cuts the pixels drawn and copied by about 44%. A resize
+  // starts over at the device's own ratio.
+  let slowMs = 0, slowN = 0;
+
+  // the small viewport height drives progress, the large one culling; neither moves with a toolbar
+  const viewport = () => {
+    if (loop) return loop.viewport();
+    if (!probes) probes = [viewportProbe('svh'), viewportProbe('lvh')];
+    return { s: probes[0].offsetHeight || window.innerHeight, l: probes[1].offsetHeight || window.innerHeight };
+  };
 
   const readVars = (e) => {
     const cs = getComputedStyle(e.el);
@@ -1280,42 +1931,99 @@ export function mount(opts = {}) {
     e.varsDirty = false;
   };
 
-  const sizeCanvas = () => {
-    const w = document.documentElement.clientWidth;
-    const h = window.innerHeight;
-    // keep the tallest height seen at this width, so a phone's toolbar sliding away does not
-    // reallocate the canvas every few frames
-    const nh = w !== cw ? h : Math.max(ch, h);
-    if (w === cw && nh === ch) return;
-    cw = w; ch = nh;
-    renderer.setSize(cw, ch, false);
-    canvas.style.height = ch + 'px';
-    for (const e of entries) e.varsDirty = true;
-  };
-
   const build = (e) => {
     e.slot = buildSlot(rt, e.name);
     showOnly(rt, e.slot);
     try { renderer.compile(rt.scene, e.slot.camera); } catch { /* compiles on first draw instead */ }
   };
 
+  // Each slot draws into its own 2D canvas, inside the slot (CSS: .slot3d__c, inset 0). The pixels
+  // are part of the slot, so the compositor scrolls them with it, and a pinned slot's canvas stays
+  // pinned with its chapter: nothing is moved from script, so nothing trails the scroll.
+  const attach = (e) => {
+    if (e.canvas) return;
+    const c = document.createElement('canvas');
+    c.className = 'slot3d__c';
+    c.setAttribute('aria-hidden', 'true');
+    c.width = 0; c.height = 0;
+    e.el.appendChild(c);
+    e.canvas = c;
+    e.ctx = c.getContext('2d');
+    e.blank = true;
+  };
+  // frees a slot's pixels (far from the screen, or a step that is not on stage); it redraws on return
+  const release = (e) => {
+    if (!e.canvas || e.blank) return;
+    e.canvas.width = 0; e.canvas.height = 0;
+    e.blank = true;
+  };
+
   const gateOpen = (e) => !e.gate || !!e.el.closest(e.gate);
+  // pinned chapters: 0 as the chapter's top meets the top of the screen, 1 as its bottom meets the
+  // bottom (the pin is one small viewport high). Everything else: 0 as the slot's centre meets the
+  // bottom, 1 as it reaches the top. Both against the small viewport height, never the live one.
+  const progress = (e, vs) => {
+    const tr = e.trackRect || e.rect;
+    return e.scrub ? clamp01(-tr.top / Math.max(1, tr.height - (e.pinH || vs))) : clamp01((vs - (tr.top + tr.height / 2)) / vs);
+  };
+
+  // project each label's anchor through the slot camera (the matrices the draw just used) into
+  // screen px and run an elbowed line to it: flat first, then straight down (or up) onto the part, so
+  // a line never cuts across the plates between. Side columns (from 1200px) start at the label's
+  // first line; rows above and below the object start just past the whole row of labels. The line is
+  // two borders of one box, in the label's own box; the dot sits on the part.
+  const pt = new Vector3();
+  const leaders = (e) => {
+    const r = e.rect, out = [], side = cols.matches;
+    for (const l of e.labels) {
+      const o = e.slot.anchors[l.name], lr = l.rect;
+      if (!o || !lr || !lr.width) continue;
+      o.getWorldPosition(pt).project(e.slot.camera);
+      const sx = r.left + ((pt.x + 1) / 2) * r.width;
+      const sy = r.top + ((1 - pt.y) / 2) * r.height;
+      let x0, y0;
+      if (side) { x0 = sx > lr.left + lr.width / 2 ? lr.right + 12 : lr.left - 12; y0 = lr.top + 12; }
+      else {
+        let top = lr.top, bottom = lr.bottom;
+        for (const m of e.labels) if (m.rect && Math.abs(m.rect.top - lr.top) < 24) { top = Math.min(top, m.rect.top); bottom = Math.max(bottom, m.rect.bottom); }
+        x0 = Math.min(lr.right - 8, Math.max(lr.left + 8, sx));
+        y0 = sy > bottom ? bottom + 10 : top - 10;
+      }
+      const right = sx >= x0, down = sy >= y0;
+      const v = `--lx:${(Math.min(x0, sx) - lr.left).toFixed(0)}px;--ly:${(Math.min(y0, sy) - lr.top).toFixed(0)}px;` +
+        `--lw:${Math.abs(sx - x0).toFixed(0)}px;--lh:${Math.abs(sy - y0).toFixed(0)}px;` +
+        `--lb:${down ? 1 : 0}px ${right ? 1 : 0}px ${down ? 0 : 1}px ${right ? 0 : 1}px;--dx:${right ? 100 : 0}%;--dy:${down ? 100 : 0}%`;
+      out.push([l, v]);
+    }
+    return out;
+  };
   // the box the content actually paints (a centred paragraph is narrower than its block)
   const range = document.createRange();
   const inkRect = (el) => { range.selectNodeContents(el); return range.getBoundingClientRect(); };
+  // debug hook (api.debug): where a point fixed on the object lands on screen, per drawn frame
+  const dbgPt = new Vector3();
+  const probeObject = (e) => {
+    let m = null;
+    e.slot.root.traverse((o) => { if (!m && o.isMesh && o.visible && o.geometry) m = o; });
+    if (!m) return null;
+    if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+    dbgPt.copy(m.geometry.boundingSphere.center);
+    m.localToWorld(dbgPt).project(e.slot.camera);
+    const r = e.rect;
+    return [+(r.left + ((dbgPt.x + 1) / 2) * r.width).toFixed(2), +(r.top + ((1 - dbgPt.y) / 2) * r.height).toFixed(2)];
+  };
 
-  const frame = (now) => {
-    raf = 0;
-    if (!running) return;
-    const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
+  /* read(now): layout reads only. With the page's loop it runs before any of the loop's writes, so
+     nothing here forces a layout. */
+  const read = (now) => {
+    if (!running) return false;
+    dt = last ? Math.min(Math.max(0, (now - last) / 1000), 0.05) : 0;
     last = now;
-    sizeCanvas();
-
-    // reads first, then writes
-    const vw = cw, vh = window.innerHeight, sy = window.scrollY;
-    const docH = document.body.getBoundingClientRect().bottom + sy;
+    if (!vp || loop) vp = viewport();
+    const w = doc.clientWidth;
+    if (w !== pageW) { pageW = w; bw = 0; bh = 0; for (const e of entries) e.varsDirty = true; }
     let builtThisFrame = false;
-    const near = [];
+    near = [];
     for (const e of entries) {
       if (!e.near) continue;
       if (!e.slot) {
@@ -1325,18 +2033,29 @@ export function mount(opts = {}) {
       }
       if (e.varsDirty) readVars(e);
       e.rect = e.el.getBoundingClientRect();
-      e.trackRect = e.track === e.el ? e.rect : e.track.getBoundingClientRect();
+      // the layout box, untransformed: the slot's canvas is sized to it, and a CSS transform on the
+      // way up (the final panel opening) scales the canvas along with the page
+      e.W = e.el.offsetWidth; e.H = e.el.offsetHeight;
+      e.trackRect = e.chapter ? null : (e.track === e.el ? e.rect : e.track.getBoundingClientRect());
+      e.pinH = e.pin && !e.chapter ? e.pin.clientHeight : 0;
       e.avoidRect = e.avoid ? e.avoid.map(inkRect) : null;
+      if (e.labels && !phone.matches) for (const l of e.labels) l.rect = l.el.getBoundingClientRect();
       e.open = gateOpen(e);
       near.push(e);
     }
+    return true;
+  };
 
-    // canvas follows the page; it always covers the viewport and never pokes past the document
-    const T = Math.max(0, Math.min(sy - (ch - vh) / 2, docH - ch));
-    canvas.style.transform = `translate3d(0,${T.toFixed(1)}px,0)`;
-    const off = sy - T;
-
+  /* draw(now): progress, poses, the GPU work and every write: each slot is drawn at its own size into
+     the corner of the offscreen buffer, then copied into the slot's canvas. Returns true while it
+     wants more frames. */
+  const draw = (now) => {
+    if (!running) return false;
+    const t0 = performance.now();
+    const vw = pageW, vs = vp.s, vl = vp.l, margin = vl * 0.25;
     const drawn = [];
+    // a pinned slot away from the screen still follows its chapter, so its state is always the page's
+    for (const e of entries) if (e.chapter && !e.near) { e.p = clamp01(e.chapter.u); e.v = e.chapter.v; }
     for (const e of near) {
       // the crossfade from poster to live drawing, then the poster is hidden
       if (e.open && !e.fadeT0) e.fadeT0 = now;
@@ -1350,79 +2069,117 @@ export function mount(opts = {}) {
       else if (!e.open) { e.gateFade = 0; e.gateT0 = 0; }
       else { if (!e.gateT0) e.gateT0 = now; e.gateFade = outQuart(clamp01((now - e.gateT0) / 400)); }
       const r = e.rect;
-      const visible = e.open && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
+      // drawn a quarter screen ahead, so a slot is ready before the compositor scrolls it in
+      const visible = e.open && e.W > 0 && e.H > 0 && r.bottom > -margin && r.top < vl + margin && r.right > 0 && r.left < vw;
+      if (e.chapter) { e.p = clamp01(e.chapter.u); e.v = e.chapter.v; }
+      else if (visible) { follow(e.s, progress(e, vs), dt); e.p = clamp01(e.s.u); e.v = e.s.v; }
+      // off screen nothing eases: a slot keeps its exact progress, so it comes back where it should be
+      else { e.s.u = progress(e, vs); e.s.v = 0; e.s.set = true; e.p = e.s.u; e.v = 0; }
       if (visible) drawn.push(e);
+      else if (!e.open) release(e);
     }
 
-    if (drawn.length || dirty) {
-      renderer.setScissorTest(false);
-      renderer.clear(true, true, false);
-      dirty = false;
-    }
-    let calls = 0;
+    // the offscreen buffer holds the biggest slot drawn; it only grows (to a 64px step), so a toolbar
+    // sliding in and out never reallocates it, and a new page width lets it shrink again
+    let needW = 0, needH = 0;
     for (const e of drawn) {
-      const r = e.rect;
-      const W = Math.round(r.width), H = Math.round(r.height);
-      const key = `${W}x${H}:${e.ax}:${e.ay}`;
+      e.pw = Math.max(1, Math.round(e.W * dpr)); e.ph = Math.max(1, Math.round(e.H * dpr));
+      needW = Math.max(needW, e.pw); needH = Math.max(needH, e.ph);
+    }
+    if (needW > bw || needH > bh) {
+      bw = Math.max(bw, Math.ceil(needW / 64) * 64); bh = Math.max(bh, Math.ceil(needH / 64) * 64);
+      renderer.setSize(bw, bh, false);
+    }
+
+    let calls = 0;
+    const leaderWrites = [];
+    for (const e of drawn) {
+      const W = e.W, H = e.H;
+      const key = `${W}x${H}:${e.ax}:${e.ay}:${vw}`;
       if (key !== e.framed) {
         e.framed = key;
-        frameCamera(e.slot, W, H, e.ax, e.ay);
+        frameCamera(e.slot, W, H, e.ax, e.ay, vw);
       }
-      const tr = e.trackRect;
-      // 0 as the slot's centre meets the bottom of the screen, 1 as it reaches the top
-      const target = clamp01((vh - (tr.top + tr.height / 2)) / vh);
-      e.p = e.pSet ? e.p + (target - e.p) * damp(9, dt) : target;
-      e.pSet = true;
+      // the idle bob fades out while the progress is moving and back in once it rests
+      const rest = clamp01(1 - Math.abs(e.v) * 5);
+      e.calm += (rest - e.calm) * damp(rest < e.calm ? 10 : 2.5, dt);
       e.t += dt;
-      e.slot.update({
-        still: false, dt, t: e.t, p: e.p, track: tr, rect: r, avoid: e.avoidRect, vw, vh,
-        pointer, fine: fine.matches, started: e.live,
-      });
+      const ctx = {
+        still: false, dt, t: e.t, p: e.p, calm: e.calm, track: e.trackRect || e.rect, rect: e.rect, avoid: e.avoidRect,
+        vw, vh: vs, pointer, fine: fine.matches, started: e.live, step: e.step,
+      };
+      e.slot.update(ctx);
+      // a step that is off the stage draws nothing and gives its pixels back
+      if (e.slot.idle) { release(e); continue; }
+      attach(e);
+      if (e.canvas.width !== e.pw || e.canvas.height !== e.ph) { e.canvas.width = e.pw; e.canvas.height = e.ph; }
       showOnly(rt, e.slot);
-      const top = r.top + off;
-      renderer.setViewport(r.left, ch - (top + r.height), r.width, r.height);
-      const x0 = Math.max(0, r.left), x1 = Math.min(vw, r.right);
-      const y0 = Math.max(0, r.top) + off, y1 = Math.min(vh, r.bottom) + off;
-      renderer.setScissor(x0, ch - y1, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+      const y = bh - e.ph; // the buffer's top-left corner, in GL's bottom-up rows
+      renderer.setViewport(0, y, e.pw, e.ph);
+      renderer.setScissor(0, y, e.pw, e.ph);
       renderer.setScissorTest(true);
+      renderer.clear(true, true, false);
+      // a slot can move the key light for its own draw (the plate's sweep); restored straight after
+      let keyX = 0, keyY = 0, keyZ = 0;
+      if (e.slot.light) { ({ x: keyX, y: keyY, z: keyZ } = rt.key.position); e.slot.light(rt, ctx); }
       renderer.render(rt.scene, e.slot.camera);
+      if (e.slot.light) rt.key.position.set(keyX, keyY, keyZ);
       calls += renderer.info.render.calls;
+      if (dbgOn) e.c = probeObject(e);
+      if (e.labels && e.slot.anchors && !phone.matches) leaderWrites.push(...leaders(e));
       const f = e.fade * e.gateFade;
-      if (f < 1 || e.mLeft > 0 || e.mBottom > 0) {
+      const mB = Math.max(e.mBottom, e.slot.mBottom || 0); // a slot can fade its own lower edge (the world's zoom)
+      if (f < 1 || e.mLeft > 0 || mB > 0) {
         rt.maskMat.uniforms.uFade.value = f;
         rt.maskMat.uniforms.uLeft.value = e.mLeft;
-        rt.maskMat.uniforms.uBottom.value = e.mBottom;
+        rt.maskMat.uniforms.uBottom.value = mB;
         renderer.render(rt.maskScene, rt.maskCam);
       }
+      // copy the slot's corner of the buffer into its own canvas, replacing what was there
+      e.ctx.globalCompositeOperation = 'copy';
+      e.ctx.drawImage(gl, 0, 0, e.pw, e.ph, 0, 0, e.pw, e.ph);
+      e.blank = false;
       e.drawn++;
-      dirty = true;
     }
     renderer.setScissorTest(false);
+    // writes last: each label's leader line, from the label's edge to its part on the object
+    for (const [l, v] of leaderWrites) {
+      if (v === l.w) continue;
+      l.w = v;
+      l.leader.setAttribute('style', v);
+    }
     stats.frames++;
     stats.lastDrawn = drawn.map((e) => e.name);
     stats.lastDrawCalls = calls;
     stats.drawCalls += calls;
+    stats.ms += (performance.now() - t0 - stats.ms) * 0.1;
 
-    if (!near.length) {
-      if (dirty) { renderer.clear(true, true, false); dirty = false; }
-      running = false;
-      return;
+    if (drawn.length && dt > 0) {
+      slowMs += (dt * 1000 - slowMs) * 0.08;
+      slowN++;
+      if (slowN > 40 && slowMs > 28 && dpr > 1.5) { dpr = 1.5; stats.dprDrops = (stats.dprDrops || 0) + 1; }
     }
-    raf = requestAnimationFrame(frame);
+
+    if (!near.length) { running = false; return false; }
+    return true;
   };
 
+  const own = (now) => { raf = 0; if (read(now) && draw(now)) raf = requestAnimationFrame(own); };
+  const wake = () => { if (loop) loop.wake(); else if (!raf) raf = requestAnimationFrame(own); };
   const sync = () => {
     const should = !lost && !document.hidden && entries.some((e) => e.near);
-    if (should && !running) { running = true; last = 0; raf = requestAnimationFrame(frame); }
+    if (should && !running) { running = true; last = 0; wake(); }
     else if (!should && running) { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
   };
 
   // "near" = within half a screen of the viewport: scenes build and posters hand over before
-  // the slot scrolls in; drawing itself is limited to slots that actually intersect the viewport
+  // the slot scrolls in; drawing itself is limited to slots on or just off the screen
   const io = new IntersectionObserver((list) => {
     for (const it of list) {
       const e = entries.find((x) => x.el === it.target);
-      if (e) e.near = it.isIntersecting;
+      if (!e) continue;
+      e.near = it.isIntersecting;
+      if (!e.near) release(e);
     }
     sync();
   }, { rootMargin: '50% 0px 50% 0px' });
@@ -1435,45 +2192,60 @@ export function mount(opts = {}) {
     pointer.cx = e.clientX; pointer.cy = e.clientY; pointer.active = true;
   };
   const onLeave = () => { pointer.x = 0; pointer.y = 0; pointer.active = false; };
-  const onResize = () => { for (const e of entries) e.varsDirty = true; };
+  // a real resize (a new width, a window made taller): new viewport heights and pixel ratio; the
+  // page width check in read() picks up the slots' layout variables
+  const onResize = () => {
+    if (!loop) vp = null;
+    const d = Math.min(window.devicePixelRatio || 1, 2);
+    if (doc.clientWidth !== pageW || d !== devDpr) { devDpr = d; dpr = d; slowMs = 0; slowN = 0; }
+  };
   window.addEventListener('pointermove', onPointer, { passive: true });
-  document.documentElement.addEventListener('pointerleave', onLeave);
+  doc.addEventListener('pointerleave', onLeave);
   window.addEventListener('resize', onResize);
   document.addEventListener('visibilitychange', sync);
 
-  canvas.addEventListener('webglcontextlost', (ev) => {
+  gl.addEventListener('webglcontextlost', (ev) => {
     ev.preventDefault();
     lost = true;
     sync();
-    for (const e of entries) e.el.classList.remove('is-3d-live');
-    canvas.style.display = 'none';
+    // the posters come back
+    for (const e of entries) {
+      e.el.classList.remove('is-3d-live');
+      if (e.canvas) e.canvas.remove();
+      e.canvas = null; e.ctx = null; e.blank = true;
+    }
   });
 
-  // the hero is built at once so its first frame lands on the poster; the rest build as they near
-  const hero = entries.find((e) => e.name === 'hero');
-  if (hero) build(hero);
-  sizeCanvas();
+  // the first screen's object (the story world, or the hero where a page still has one) is built
+  // at once so its first frame lands on the poster; the rest build as they near
+  const first = entries.find((e) => e.name === 'story-world') || entries.find((e) => e.name === 'hero');
+  if (first) build(first);
 
   const api = {
-    canvas, renderer,
+    canvas: gl, renderer, read, draw,
     stats: () => ({
-      ...stats,
-      slots: entries.map((e) => ({ name: e.name, built: !!e.slot, near: e.near, live: e.live, drawn: e.drawn, p: +e.p.toFixed(3) })),
+      ...stats, buffer: [bw, bh], dpr,
+      slots: entries.map((e) => ({
+        name: e.name, built: !!e.slot, near: e.near, live: e.live, drawn: e.drawn, p: +e.p.toFixed(3), pr: e.p, c: e.c,
+        size: e.canvas ? [e.canvas.width, e.canvas.height] : null,
+      })),
       running,
     }),
+    debug(on) { dbgOn = !!on; },
     destroy() {
       running = false;
       if (raf) cancelAnimationFrame(raf);
       io.disconnect();
       window.removeEventListener('pointermove', onPointer);
-      document.documentElement.removeEventListener('pointerleave', onLeave);
+      doc.removeEventListener('pointerleave', onLeave);
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', sync);
-      for (const e of entries) e.el.classList.remove('is-3d-live');
+      for (const e of entries) { e.el.classList.remove('is-3d-live'); if (e.canvas) e.canvas.remove(); }
+      if (probes) probes.forEach((d) => d.remove());
       renderer.dispose();
-      canvas.remove();
     },
   };
-  canvas.built3d = api;
+  gl.built3d = api;
+  window.built3d = api;
   return api;
 }

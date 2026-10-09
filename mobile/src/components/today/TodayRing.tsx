@@ -1,21 +1,15 @@
-/* Today's ring in 3D: a solid ring tilted back 12 degrees, its green arc
-   filling to the day's share in 400ms (as the 2D ring does), then still.
-   Drag sideways to turn it; it springs back on release. The text inside
-   ("Today", the percent) sits on top, centred, as before, and the whole
-   box is one progressbar for screen readers with the same label.
+/* Today's ring: the SVG Ring (components/Ring.tsx), filling to the day's
+   share in 400ms on first view and in 250ms on a later change (ease-out
+   quart), then still; under Reduce Motion it shows the share at once. A
+   soft shadow under the ring keeps the weight it had as an object. The
+   text inside ("Today", the percent) sits on top, centred, and the whole
+   box is one progressbar for screen readers with the label passed in and
+   the percent as its value. */
 
-   Same box as the 2D ring, so the card keeps its height. The 2D track
-   holds the place under the canvas until the first 3D frame is drawn, so
-   the ring never shows blank while the 3D code loads or GL starts. Under
-   Reduce Motion, without WebGL, or if the 3D cannot load, the 2D Ring
-   shows. */
-
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React from 'react';
+import { View } from 'react-native';
 
 import { Ring } from '../Ring';
-import { Lazy3DScene } from '../three/Lazy3D';
-import { useCan3D } from '../three/support';
 
 type Props = {
   size: number;
@@ -25,47 +19,15 @@ type Props = {
   children?: React.ReactNode;
 };
 
-export function TodayRing({ size, stroke, progress, accessibilityLabel, children }: Props) {
-  const can3D = useCan3D();
-  const [failed, setFailed] = useState(false);
-  const [drawn, setDrawn] = useState(false);
-  const share = Math.max(0, Math.min(1, progress));
+/** Soft and dark, straight down: a shadow on Carbon, never a glow. */
+const SHADOW = '0px 10px 24px rgba(0, 0, 0, 0.55)';
 
-  if (!can3D || failed) {
-    return (
+export function TodayRing({ size, stroke, progress, accessibilityLabel, children }: Props) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, boxShadow: SHADOW }}>
       <Ring size={size} stroke={stroke} progress={progress} accessibilityLabel={accessibilityLabel}>
         {children}
       </Ring>
-    );
-  }
-
-  return (
-    <View
-      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
-      accessible
-      accessibilityRole="progressbar"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityValue={{ min: 0, max: 100, now: Math.round(share * 100) }}
-    >
-      {drawn ? null : (
-        <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
-          <Ring size={size} stroke={stroke} progress={0} />
-        </View>
-      )}
-      <Lazy3DScene
-        kind="ring"
-        params={{ progress: share }}
-        width={size}
-        height={size}
-        drag="spring"
-        // While the 3D code loads, the 2D track under it holds the place.
-        placeholder={<View style={{ width: size, height: size }} />}
-        fallback={<Ring size={size} stroke={stroke} progress={progress} />}
-        onFail={() => setFailed(true)}
-        onDrawn={() => setDrawn(true)}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: stroke, pointerEvents: 'none' }]}>{children}</View>
     </View>
   );
 }

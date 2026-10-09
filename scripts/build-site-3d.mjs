@@ -1,17 +1,15 @@
 #!/usr/bin/env node
-/* Bundles the website's 3D engine (every [data-3d] slot: the hero dumbbell, the roadmap
- * objects, kettlebell, shaker, plates, flame, bar chart, medal and the closing orbit) into one
- * self-hosted, minified ES module with a single copy of three.js.
+/* Bundles the BUILT 3D scenes (assets/js/src/site-3d.js) with one copy of three.js into one
+ * minified ES module, for the offline image generator (scripts/render-hero-poster.mjs). The website
+ * never loads this bundle: it shows the rendered images and moves them with CSS transforms.
  *
  *   assets/js/src/site-3d.js  ->  assets/js/site-3d.min.js
  *
- * three is resolved from mobile/node_modules (the app already depends on it), so the
- * website ships no CDN and no extra package.json. esbuild is not a repo dependency:
- *   npm i --prefix /tmp/built-tools esbuild
+ * three and esbuild are not repo dependencies of the website. three is taken from
+ * BUILT_TOOLS_DIR/node_modules/three, else mobile/node_modules/three:
+ *   npm i --prefix /tmp/built-tools esbuild three
  *   BUILT_TOOLS_DIR=/tmp/built-tools node scripts/build-site-3d.mjs
  * or point ESBUILD_BIN at an esbuild binary.
- *
- * Run: node scripts/build-site-3d.mjs
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -22,10 +20,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'assets', 'js', 'src', 'site-3d.js');
 const OUT = join(ROOT, 'assets', 'js', 'site-3d.min.js');
-const THREE = join(ROOT, 'mobile', 'node_modules', 'three', 'build', 'three.module.js');
+const THREE = [
+  process.env.BUILT_TOOLS_DIR && join(process.env.BUILT_TOOLS_DIR, 'node_modules', 'three', 'build', 'three.module.js'),
+  join(ROOT, 'mobile', 'node_modules', 'three', 'build', 'three.module.js'),
+].filter(Boolean).find(existsSync);
 
-if (!existsSync(THREE)) {
-  console.error('three not found in mobile/node_modules. Run: npm --prefix mobile install');
+if (!THREE) {
+  console.error('three not found. Install it outside the repo: npm i --prefix /tmp/built-tools three, then set BUILT_TOOLS_DIR.');
   process.exit(1);
 }
 

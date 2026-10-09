@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { circleStroke, iconStrokes, pathStrokes, rectStroke, type MedalIcon } from '../components/three/iconStrokes';
+import { circleStroke, iconStrokes, pathStrokes, rectStroke, type MedalIcon } from '../lib/objects/iconStrokes';
 
 describe('medal icon strokes', () => {
   it('reads moves, lines, H and V, absolute and relative', () => {
