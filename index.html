@@ -274,7 +274,7 @@
     .nav__burger:active { scale: var(--scale-large); }
     .nav__burger span {
       position: absolute; left: 50%; width: 18px; height: 2px; border-radius: 2px; background: var(--white);
-      transform: translateX(-50%); transition: transform var(--t-med) var(--ease-quart), opacity var(--t-fast);
+      transform: translateX(-50%); transition: transform var(--t-med) var(--ease-quart), opacity var(--t-fast) var(--ease-smooth-out);
     }
     .nav__burger span:nth-child(1) { top: 16px; }
     .nav__burger span:nth-child(2) { top: 21px; }
@@ -287,10 +287,9 @@
       position: fixed; inset: 0; z-index: 99; display: flex; flex-direction: column;
       padding: calc(var(--nav-h) + 24px) var(--gutter) max(32px, env(safe-area-inset-bottom));
       background: var(--black);
-      opacity: 0; visibility: hidden;
-      transition: opacity var(--t-med) var(--ease-quart), visibility 0s linear var(--t-med);
+      visibility: hidden; /* shown while open or closing; the dropdown pattern (below) owns its motion */
     }
-    .mobile-menu.is-open { opacity: 1; visibility: visible; transition: opacity var(--t-med) var(--ease-quart); }
+    .mobile-menu.is-open, .mobile-menu.is-closing { visibility: visible; }
     .mobile-menu__list a {
       display: flex; align-items: center; min-height: 60px;
       font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.02em;
@@ -395,13 +394,13 @@
       transition: background-color var(--t-med) var(--ease-quart), color var(--t-med) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out);
     }
     .tab:active { scale: var(--scale-large); }
-    .tab[aria-selected='true'] { background: var(--green); color: var(--black); font-weight: 600; }
+    .tab[aria-selected='true'] { color: var(--black); }
     .tab:focus-visible { outline-offset: 2px; }
     .icon-btn { width: 52px; height: 52px; border-radius: 50%; background: var(--carbon); color: var(--white); display: grid; place-items: center; flex: none; transition: scale var(--duration-quick) var(--ease-smooth-out); }
     .icon-btn:active { scale: var(--scale-large); }
     .icon-btn .ico { width: 20px; height: 20px; }
-    .icon-btn .ico--play { fill: currentColor; stroke: none; }
-    .icon-btn[data-state='playing'] .ico--play, .icon-btn[data-state='paused'] .ico--pause { display: none; }
+    .icon-btn .ico--play { fill: currentColor; stroke: none; margin-left: 2px; } /* the triangle, centred by eye */
+    .icon-btn .t-icon { display: grid; place-items: center; }
     .no-js .switcher__bar { display: none; } /* the controls need the script; without it the first screen stands alone */
 
     /* ---------- Phone mockup (deck page 6) ---------- */
@@ -421,10 +420,7 @@
     .screen {
       position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px;
       padding: 52px 14px 0;
-      opacity: 0; visibility: hidden;
-      transition: opacity 300ms var(--ease-quart), visibility 0s linear 300ms;
-    }
-    .screen.is-active { opacity: 1; visibility: visible; transition: opacity 300ms var(--ease-quart); }
+    } /* which screen shows, and how it slides in, is the page side-by-side pattern (Lane B block below) */
     .app-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
     .app-greet { font-family: var(--font-display); font-size: 20px; font-weight: 400; line-height: 1.25; letter-spacing: -0.01em; }
     .app-greet b { font-weight: 600; }
@@ -577,14 +573,9 @@
     }
     .faq summary::-webkit-details-marker { display: none; }
     .faq summary:active { scale: var(--scale-large); }
-    .faq summary::after {
-      content: ''; position: absolute; right: 8px; top: 50%; width: 10px; height: 10px;
-      border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
-      transform: translateY(-70%) rotate(45deg); transition: transform var(--t-med) var(--ease-quart);
-    }
-    .faq details[open] summary::after { transform: translateY(-25%) rotate(-135deg); border-color: var(--green); }
-    .faq details > p { padding: 0 48px 24px 0; color: var(--stone); max-width: 68ch; text-wrap: pretty; }
-    .faq details > p + p { margin-top: -12px; }
+    .faq summary .t-acc-chevron { position: absolute; right: 4px; top: 50%; margin-top: -9px; color: var(--muted); }
+    .faq details p { padding: 0 48px 24px 0; color: var(--stone); max-width: 68ch; text-wrap: pretty; }
+    .faq details p + p { margin-top: -12px; }
 
     /* ---------- About ---------- */
     .about-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(32px, 5vw, 72px); align-items: start; }
@@ -628,8 +619,7 @@
     .field input:focus-visible, .field textarea:focus-visible { border-color: var(--green); outline: 2px solid var(--green); outline-offset: 2px; }
     .field.has-error input, .field.has-error textarea { border-color: var(--danger); }
     .field.has-error input:focus-visible, .field.has-error textarea:focus-visible { outline-color: var(--danger); }
-    .field__err { display: none; font-size: 0.875rem; color: var(--danger); }
-    .field.has-error .field__err { display: block; }
+    .field__err { display: block; font-size: 0.875rem; color: var(--danger); }
     .topics { border: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
     .topics legend { padding: 0; margin-bottom: 10px; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -645,7 +635,8 @@
     .chips input:focus-visible + label { outline: 2px solid var(--green); outline-offset: 2px; }
     .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     .notice { display: none; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-tile); font-size: 0.9375rem; color: var(--white); text-wrap: pretty; }
-    .notice.is-shown { display: flex; }
+    .notice.is-shown { display: flex; animation: notice-in var(--duration-fast) var(--ease-smooth-out) both; }
+    @keyframes notice-in { from { opacity: 0; transform: translateY(var(--distance-base)); } }
     .notice .ico { width: 20px; height: 20px; margin-top: 1px; }
     .notice--ok { background: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-line); }
     .notice--ok .ico { color: var(--green); }
@@ -721,10 +712,9 @@
         transform-origin: 0 50%; transition: color var(--t-fast) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out);
       }
       .feature-more > summary::-webkit-details-marker { display: none; }
-      .feature-more > summary .ico { width: 18px; height: 18px; color: var(--muted); transform: rotate(90deg); transition: transform var(--t-med) var(--ease-quart); }
+      .feature-more > summary .t-acc-chevron { color: var(--muted); }
       .feature-more > summary:active { color: var(--green); scale: var(--scale-large); }
-      .feature-more[open] > summary { margin-bottom: 12px; }
-      .feature-more[open] > summary .ico { transform: rotate(-90deg); }
+      .feature-more .t-acc-panel-inner > .feature-list { padding-top: 12px; }
       .split .actions .btn { flex: 1 1 100%; }
       .feature p, .step-list li, .tl-body span, .ex__meta span, .ex__meta b, .workout__head p, .workout__foot,
       .shortcut small, .fine, .price-note, .disclaimer, .notice, .form__small, .field__err,
@@ -733,7 +723,7 @@
       .tl-item { flex-direction: column; gap: 2px; }
       .tl-time { width: auto; }
       .faq summary { padding-right: 40px; }
-      .faq details > p { padding-right: 0; }
+      .faq details p { padding-right: 0; }
       .final .btn, .final .magnet { width: 100%; }
     }
 
@@ -900,17 +890,7 @@
     .kinetic .kd { align-self: center; width: 0.14em; height: 0.46em; margin-inline: 0.2em; padding: 0; background: var(--faint); transform: skewX(-14deg); }
     .fx .kinetic.is-live .kinetic__row { will-change: transform; }
 
-    /* Progress: counters keep the final number's width, so counting never shifts the layout */
-    .cnt { position: relative; display: inline-block; font-variant-numeric: tabular-nums; }
-    .cnt__ghost { color: transparent; }
-    .cnt__live { position: absolute; top: 0; right: 0; }
-
-    /* Pricing: the price rolls up like an odometer; the "about $1 a day" line underlines itself */
-    .odo { display: inline-flex; font-variant-numeric: tabular-nums; }
-    .odo__col { position: relative; display: inline-block; clip-path: inset(0 -0.08em); }
-    .odo__ghost { color: transparent; }
-    .odo__strip { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
-    .odo__strip span { display: block; }
+    /* Pricing: the "about $1 a day" line underlines itself (the counters and the price are reels, Lane B block below) */
     .draw-ul { position: relative; display: inline-block; white-space: nowrap; }
     .draw-ul > i { position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; border-radius: 2px; background: var(--green); transform-origin: 0 50%; }
     .fx .draw-ul > i { transform: scaleX(0); }
@@ -926,7 +906,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .scrollbar, .final__panel { display: none !important; }
-      .wm__i, .stack__card, .kinetic__row, .kinetic__set, .switcher, .screen > *, .odo__strip, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
+      .wm__i, .stack__card, .kinetic__row, .kinetic__set, .switcher, .screen > *, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
       .stack__dim { opacity: 0 !important; }
     }
 
@@ -1340,6 +1320,944 @@
       .fx .how__words { margin: 4px 0 12px; font-size: min(16vw, 9svh); }
     }
 
+    /* ============================================================
+       Controls in motion (DESIGN.md, "Motion system"): the transitions-dev patterns for the phone
+       switcher, the counters, the price, the accordions, the contact form and the mobile menu.
+       Each snippet is pasted as shipped (its :root block, its CSS, its reduced-motion guard); only
+       our hooks and the tuning block after them are ours. Blurs: zero by default, and the small
+       ones come back only where a fine pointer can hover (no blur at all on a touch screen).
+       ============================================================ */
+
+    /* --- Tabs sliding (16) --- */
+    :root {
+      --tabs-dur: 250ms;
+      --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --tabs-text-muted: rgba(15, 15, 15, 0.8);
+      --tabs-text-active: #0f0f0f;
+      --tabs-bar-bg: #f1f1f1;
+      --tabs-pill-bg: #ffffff;
+    }
+    /* The bar is just a flex container with padding for the pill
+       to sit inside. Tabs sit on z-index: 1, the pill on z-index: 0,
+       so labels read above the pill background. */
+    .t-tabs {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 48px;
+      background: var(--tabs-bar-bg);
+    }
+    .t-tab {
+      position: relative;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      height: 30px;
+      padding: 4px 12px;
+      color: var(--tabs-text-muted);
+      cursor: pointer;
+      border-radius: 48px;
+      z-index: 1;
+      transition: color var(--tabs-dur) var(--tabs-ease);
+    }
+    .t-tab:not([aria-selected="true"]):hover,
+    .t-tab[aria-selected="true"] {
+      color: var(--tabs-text-active);
+    }
+
+    /* The pill: width + transform are written inline by JS so
+       the transition tweens between the previous and next
+       measured positions. */
+    .t-tabs-pill {
+      position: absolute;
+      top: 3px;
+      left: 0;
+      height: 30px;
+      width: 0;
+      background: var(--tabs-pill-bg);
+      border-radius: 48px;
+      transform: translateX(0);
+      transition:
+        transform var(--tabs-dur) var(--tabs-ease),
+        width     var(--tabs-dur) var(--tabs-ease);
+      will-change: transform, width;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-tabs-pill, .t-tab { transition: none !important; }
+    }
+
+    /* --- Page side-by-side (08) --- */
+    :root {
+      --page-slide-dur: 250ms;
+      --page-fade-dur: 250ms;
+      --page-slide-distance: 8px;
+      --page-blur: 3px;
+      --page-stagger: 0ms;
+      --page-exit-enabled: 1;
+      --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .t-page-slide {
+      position: relative;
+    }
+    .t-page-slide .t-page[data-page-id="1"] {
+      --t-page-from-x: calc(var(--page-slide-distance) * -1);
+    }
+    .t-page-slide .t-page[data-page-id="2"] {
+      --t-page-from-x: var(--page-slide-distance);
+    }
+    .t-page-slide .t-page {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(calc(var(--t-page-from-x, 0px) * var(--page-exit-enabled)));
+      filter: blur(calc(var(--page-blur) * var(--page-exit-enabled)));
+      transition:
+        opacity   var(--page-fade-dur)  var(--page-fade-ease),
+        transform var(--page-slide-dur) var(--page-slide-ease),
+        filter    var(--page-slide-dur) var(--page-slide-ease);
+      will-change: opacity, transform, filter;
+    }
+    .t-page-slide[data-page="1"] .t-page[data-page-id="1"],
+    .t-page-slide[data-page="2"] .t-page[data-page-id="2"] {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+      filter: blur(0);
+      transition-delay: var(--page-stagger);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-page-slide .t-page { transition: none !important; }
+    }
+
+    /* --- Number pop-in (02) --- */
+    :root {
+      --digit-dur: 500ms;
+      --digit-distance: 8px;
+      --digit-stagger: 70ms;
+      --digit-blur: 2px;
+      --digit-ease: cubic-bezier(0.22, 1, 0.36, 1); /* shipped as an overshoot (0.34, 1.45, 0.64, 1); bounce is banned here */
+      --digit-dir-x: 0;
+      --digit-dir-y: 1;
+    }
+    @keyframes t-digit-pop-in {
+      0%   {
+        transform: translate(
+          calc(var(--digit-distance) * var(--digit-dir-x)),
+          calc(var(--digit-distance) * var(--digit-dir-y))
+        );
+        opacity: 0;
+        filter: blur(var(--digit-blur));
+      }
+      100% { transform: translate(0, 0); opacity: 1; filter: blur(0); }
+    }
+
+    .t-digit-group {
+      display: inline-flex;
+      align-items: baseline;
+    }
+    .t-digit {
+      display: inline-block;
+      will-change: transform, opacity, filter;
+    }
+    .t-digit-group.is-animating .t-digit {
+      animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+    }
+    .t-digit-group.is-animating .t-digit[data-stagger="1"] {
+      animation-delay: var(--digit-stagger);
+    }
+    .t-digit-group.is-animating .t-digit[data-stagger="2"] {
+      animation-delay: calc(var(--digit-stagger) * 2);
+    }
+    /* Digits that did not change (the leading ones the old and new number
+       share) stay still; only the digits that changed pop in. */
+    .t-digit-group.is-animating .t-digit[data-same] {
+      animation: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-digit-group .t-digit { animation: none !important; }
+    }
+
+    /* --- Icon swap (09) --- */
+    :root {
+      --icon-swap-dur: 250ms;
+      --icon-swap-blur: 2px;
+      --icon-swap-start-scale: 0.25;
+      --icon-swap-ease: ease-in-out;
+    }
+    .t-icon-swap {
+      position: relative;
+      display: inline-grid;
+    }
+    .t-icon-swap .t-icon {
+      grid-area: 1 / 1;
+      transition:
+        opacity   var(--icon-swap-dur) var(--icon-swap-ease),
+        filter    var(--icon-swap-dur) var(--icon-swap-ease),
+        transform var(--icon-swap-dur) var(--icon-swap-ease);
+      /* No will-change: it would freeze each icon's raster at its 0.25 start
+         scale, so a large icon scales up blurry and pixelated. */
+    }
+    .t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+    .t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1);
+    }
+    .t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+    .t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+      opacity: 0;
+      filter: blur(var(--icon-swap-blur));
+      transform: scale(var(--icon-swap-start-scale));
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-icon-swap .t-icon { transition: none !important; }
+    }
+
+    /* --- Spinning counter (26) --- */
+    :root {
+      --reel-dur: 1400ms;
+      --reel-cell: 30px;
+      --reel-spin-blur: 3px;
+      --reel-stagger: 90ms;
+      --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .t-reel { display: inline-flex; align-items: center; height: var(--reel-cell); font-variant-numeric: tabular-nums; }
+    .t-reel-col {
+      position: relative; height: var(--reel-cell); overflow: hidden;
+      /* Soft-fade the window edges instead of hard-cropping. */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+    }
+    .t-reel-strip { display: flex; flex-direction: column; will-change: transform, filter; }
+    .t-reel-digit { height: var(--reel-cell); display: flex; align-items: center; justify-content: center; }
+    /* JS drives the tween: strip.style.transition =
+         'transform var(--reel-dur) var(--reel-ease) ' + (col*var(--reel-stagger)) + 'ms';
+       and decays each column's feGaussianBlur stdDeviation from
+       var(--reel-spin-blur) to 0 over its own window. */
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-reel-strip { transition: none !important; filter: none !important; }
+    }
+
+    /* --- Text swap soft (34) --- */
+    :root {
+      --text-soft-dur: 200ms;
+      --text-soft-blur: 2px;
+      --text-soft-ease: ease-in-out;
+      --text-soft-resize-dur: 240ms;
+      --text-soft-resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* Both texts share one grid cell, so they cross-blur in place; the
+       cell's width eases between them. */
+    .t-text-soft {
+      display: inline-grid;
+      justify-items: var(--text-soft-align, start);
+      transition: width var(--text-soft-resize-dur) var(--text-soft-resize-ease);
+    }
+    .t-text-soft > span {
+      grid-area: 1 / 1;
+      white-space: pre;
+      transition:
+        filter  var(--text-soft-dur) var(--text-soft-ease),
+        opacity var(--text-soft-dur) var(--text-soft-ease);
+    }
+    .t-text-soft-new {
+      opacity: 0;
+      filter: blur(var(--text-soft-blur));
+    }
+    .t-text-soft.is-swapping .t-text-soft-old {
+      opacity: 0;
+      filter: blur(var(--text-soft-blur));
+    }
+    .t-text-soft.is-swapping .t-text-soft-new {
+      opacity: 1;
+      filter: blur(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-text-soft,
+      .t-text-soft > span { transition: none !important; }
+    }
+
+    /* --- Text morph (33) --- */
+    :root {
+      --text-morph-dur: 180ms;
+      --text-morph-resize-dur: 240ms;
+      --text-morph-blur: 2px;
+      --text-morph-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .t-morph {
+      white-space: nowrap;
+    }
+    /* The changing part: both versions share one grid cell, so they
+       cross-blur in place; the cell's width eases between them. */
+    .t-morph-swap {
+      display: inline-grid;
+      vertical-align: bottom;
+      justify-items: start;
+      transition: width var(--text-morph-resize-dur) var(--text-morph-ease);
+    }
+    .t-morph-swap > span {
+      grid-area: 1 / 1;
+      white-space: pre;
+      transition:
+        opacity var(--text-morph-dur) var(--text-morph-ease),
+        filter  var(--text-morph-dur) var(--text-morph-ease);
+    }
+    .t-morph-new {
+      opacity: 0;
+      filter: blur(var(--text-morph-blur));
+    }
+    .t-morph-swap.is-morphing .t-morph-old {
+      opacity: 0;
+      filter: blur(var(--text-morph-blur));
+    }
+    .t-morph-swap.is-morphing .t-morph-new {
+      opacity: 1;
+      filter: blur(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-morph-swap,
+      .t-morph-swap > span { transition: none !important; }
+    }
+
+    /* --- Card hover tilt (19) --- */
+    :root {
+      --tilt-perspective: 1000px;
+      --tilt-return: 1000ms;
+      --tilt-return-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --tilt-follow: 400ms;
+      --tilt-follow-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --tilt-glare-opacity: 0.32;
+      --tilt-glare-fade: 300ms;
+      --tilt-glare-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* The outer wrapper is the flat hit area; touch-action:none
+       lets a finger drag tilt the card instead of scrolling the
+       page, so tap-hold-drag works on mobile. */
+    .t-tilt { touch-action: none; }
+    /* The card tilts toward the pointer via rotateX/rotateY fed
+       from JS; on leave it eases back to flat. A separate
+       .is-tilting class swaps in a short linear follow while the
+       pointer moves so the tilt tracks the cursor 1:1. */
+    .t-tilt-card {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      transform:
+        perspective(var(--tilt-perspective))
+        rotateX(var(--tilt-rx, 0deg))
+        rotateY(var(--tilt-ry, 0deg));
+      transform-style: preserve-3d;
+      transition: transform var(--tilt-return) var(--tilt-return-ease);
+      will-change: transform;
+    }
+    .t-tilt-card.is-tilting {
+      transition: transform var(--tilt-follow) var(--tilt-follow-ease);
+    }
+    /* Cursor-tracked glare: layered soft circles that add like
+       light (screen blend) at the pointer position. */
+    .t-tilt-glare {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      mix-blend-mode: screen;
+      background:
+        radial-gradient(circle 95px at var(--tilt-gx, 50%) var(--tilt-gy, 50%),
+          rgba(255,255,255,0.48), rgba(255,255,255,0.06) 52%, rgba(255,255,255,0) 84%),
+        radial-gradient(circle 200px at var(--tilt-gx, 50%) var(--tilt-gy, 50%),
+          rgba(255,255,255,0.22), rgba(255,255,255,0.04) 58%, rgba(255,255,255,0) 78%),
+        radial-gradient(circle 360px at var(--tilt-gx, 50%) var(--tilt-gy, 50%),
+          rgba(255,255,255,0.10), rgba(255,255,255,0) 88%);
+      transition: opacity var(--tilt-glare-fade) var(--tilt-glare-ease);
+    }
+    .t-tilt.is-hover .t-tilt-glare { opacity: var(--tilt-glare-opacity); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-tilt-card { transform: none !important; transition: none !important; }
+    }
+
+    /* --- Accordion expand (21) --- */
+    :root {
+      --acc-expand: 250ms;
+      --acc-collapse: 250ms;
+      --acc-chevron: 250ms;
+      --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* grid-template-rows 0fr → 1fr gives a clean height animation
+       with no JS measurement; the inner element clips overflow. */
+    .t-acc-panel {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows var(--acc-collapse) var(--acc-ease);
+    }
+    .t-acc[data-open="true"] .t-acc-panel {
+      grid-template-rows: 1fr;
+      transition: grid-template-rows var(--acc-expand) var(--acc-ease);
+    }
+    .t-acc-panel-inner {
+      overflow: hidden;
+      opacity: 0;
+      filter: blur(2px);
+      transition:
+        opacity var(--acc-collapse) var(--acc-ease),
+        filter var(--acc-collapse) var(--acc-ease);
+    }
+    .t-acc[data-open="true"] .t-acc-panel-inner {
+      opacity: 1;
+      filter: blur(0);
+      transition:
+        opacity var(--acc-expand) var(--acc-ease),
+        filter var(--acc-expand) var(--acc-ease);
+    }
+    /* Flip the chevron vertically to turn the "v" into a "^".
+       scaleY(-1) about the centre passes through a flat line at
+       the midpoint (same look as a `d:` path morph) but animates
+       in every browser, unlike CSS `d:` morphing (Chromium only).
+       The chevron path is symmetric about the 16x16 viewBox
+       centre, so the flip lands exactly on the "^"; non-scaling
+       -stroke keeps the stroke width constant through the flip. */
+    .t-acc-chevron {
+      display: inline-flex;
+      transform: scaleY(1);
+      transform-origin: center;
+      transition: transform var(--acc-chevron) var(--acc-ease);
+    }
+    .t-acc-chevron path { vector-effect: non-scaling-stroke; }
+    .t-acc[data-open="true"] .t-acc-chevron {
+      transform: scaleY(-1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-acc-panel, .t-acc-panel-inner, .t-acc-chevron {
+        transition: none !important;
+      }
+    }
+
+    /* --- Error state shake (12) --- */
+    :root {
+      --shake-distance: 6px;
+      --shake-overshoot: 4px;
+      --shake-dur-a: 80ms;
+      --shake-dur-b: 60ms;
+      --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --revert-hold: 3000ms;
+      --revert-dur: 280ms;
+    }
+    /* Border-color tween. Define your input's default / focused
+       / error border-color in your own component CSS — this rule
+       only owns the interpolation. Use a constant border-width
+       across states so the tween never shifts inner content. */
+    .t-input {
+      transition: border-color 150ms ease-out;
+      will-change: transform;
+    }
+    .t-input.is-error {
+      /* Error border auto-reverts on the hold timer, so the
+         fade-out uses the slower revert duration (matches the
+         message fade). */
+      transition: border-color var(--revert-dur, 280ms) ease-out;
+    }
+
+    /* Error message reveal. Visibility is delayed by --revert-dur
+       on hide so the message stays painted for the full opacity
+       fade-out. Entering .is-error drops the delay to 0 so the
+       message becomes visible immediately. */
+    .t-error-msg {
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity    var(--revert-dur, 280ms) ease-out,
+        visibility 0s linear var(--revert-dur, 280ms);
+    }
+    .t-input-wrap.is-error .t-error-msg {
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity    var(--revert-dur, 280ms) ease-out,
+        visibility 0s linear 0s;
+    }
+
+    /* Multi-segment keyframe with per-stop easing so each leg
+       of the shake follows its own cubic-bezier independently.
+       %-stops are cumulative durations as a fraction of the
+       total (80, 60, 80, 60 = 280ms): 28.57%, 57.14%, 78.57%,
+       100%. Recompute if any segment duration changes. */
+    .t-input.is-shaking {
+      animation: t-input-shake calc(
+          var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2
+        ) linear;
+    }
+    @keyframes t-input-shake {
+      0%      { transform: translateX(0);                                 animation-timing-function: var(--shake-ease); }
+      28.57%  { transform: translateX(var(--shake-distance));             animation-timing-function: var(--shake-ease); }
+      57.14%  { transform: translateX(calc(var(--shake-distance) * -1)); animation-timing-function: var(--shake-ease); }
+      78.57%  { transform: translateX(var(--shake-overshoot));            animation-timing-function: var(--shake-ease); }
+      100%    { transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-input { animation: none !important; transform: none !important; }
+    }
+
+    /* --- Success check (10) --- */
+    :root {
+      --check-opacity-dur: 500ms;
+      --check-rotate-dur: 500ms;
+      --check-rotate-from: 80deg;
+      --check-bob-dur: 500ms;
+      --check-y-amount: 40px;
+      --check-blur-dur: 500ms;
+      --check-blur-from: 10px;
+      --check-path-dur: 500ms;
+      --check-path-delay: 80ms;
+      --check-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --check-ease-opacity: cubic-bezier(0.22, 1, 0.36, 1);
+      --check-ease-rotate: cubic-bezier(0.22, 1, 0.36, 1);
+      --check-ease-bob: cubic-bezier(0.22, 1, 0.36, 1); /* shipped as an overshoot (0.34, 1.35, 0.64, 1); bounce is banned here */
+      --check-ease-path: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* Wrapper drives the appear animation; it doesn't own any
+       sizing or color so you can drop in any icon. */
+    .t-success-check {
+      display: inline-block;
+      transform-origin: center;
+      opacity: 0;
+      will-change: transform, opacity, filter;
+    }
+    /* overflow: visible keeps the stroke from clipping while it
+       draws; display: block kills the inline whitespace under SVGs. */
+    .t-success-check svg { display: block; overflow: visible; }
+    /* Stroke-draw setup. Replace 20 with the result of
+       path.getTotalLength() for your path; round caps mean any
+       sub-pixel overshoot is invisible. */
+    .t-success-check svg path {
+      stroke-dasharray: 20;
+      stroke-dashoffset: 20;
+    }
+
+    .t-success-check[data-state="in"] {
+      animation:
+        t-check-fade   var(--check-opacity-dur) var(--check-ease-opacity) forwards,
+        t-check-rotate var(--check-rotate-dur)  var(--check-ease-rotate)  forwards,
+        t-check-blur   var(--check-blur-dur)    var(--check-ease-out)     forwards,
+        t-check-bob    var(--check-bob-dur)     var(--check-ease-bob)     forwards;
+    }
+    .t-success-check[data-state="in"] svg path {
+      animation: t-check-draw var(--check-path-dur) var(--check-ease-path) var(--check-path-delay, 0ms) forwards;
+    }
+
+    @keyframes t-check-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes t-check-rotate {
+      from { transform: rotate(var(--check-rotate-from)); }
+      to   { transform: rotate(0deg); }
+    }
+    @keyframes t-check-blur {
+      from { filter: blur(var(--check-blur-from)); }
+      to   { filter: blur(0); }
+    }
+    @keyframes t-check-bob {
+      from { translate: 0 var(--check-y-amount); }
+      to   { translate: 0 0; }
+    }
+    @keyframes t-check-draw { to { stroke-dashoffset: 0; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-success-check { animation: none !important; opacity: 1; }
+      .t-success-check svg path { animation: none !important; stroke-dashoffset: 0 !important; }
+    }
+
+    /* --- Toast open / close (22) --- */
+    :root {
+      --toast-open: 350ms;
+      --toast-close: 250ms;
+      --toast-distance: 16px;
+      --toast-blur: 2px;
+      --toast-scale: 0.97;
+      --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .t-toast {
+      opacity: 0;
+      transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
+      filter: blur(var(--toast-blur));
+      will-change: transform, opacity, filter;
+      transition:
+        opacity var(--toast-close) var(--toast-ease),
+        transform var(--toast-close) var(--toast-ease),
+        filter var(--toast-close) var(--toast-ease);
+    }
+    .t-toast.is-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+      transition:
+        opacity var(--toast-open) var(--toast-ease),
+        transform var(--toast-open) var(--toast-ease),
+        filter var(--toast-open) var(--toast-ease);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-toast { transition: none !important; }
+    }
+
+    /* --- Menu dropdown (05) --- */
+    :root {
+      --dropdown-open-dur: 250ms;
+      --dropdown-close-dur: 150ms;
+      --dropdown-pre-scale: 0.97;
+      --dropdown-closing-scale: 0.99;
+      --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .t-dropdown {
+      transform-origin: top left;
+      transform: scale(var(--dropdown-pre-scale));
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform var(--dropdown-open-dur) var(--dropdown-ease),
+        opacity   var(--dropdown-open-dur) var(--dropdown-ease);
+      will-change: transform, opacity;
+    }
+    .t-dropdown[data-origin="top-right"]     { transform-origin: top right; }
+    .t-dropdown[data-origin="top-center"]    { transform-origin: top center; }
+    .t-dropdown[data-origin="bottom-left"]   { transform-origin: bottom left; }
+    .t-dropdown[data-origin="bottom-center"] { transform-origin: bottom center; }
+    .t-dropdown[data-origin="bottom-right"]  { transform-origin: bottom right; }
+
+    .t-dropdown.is-open {
+      transform: scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .t-dropdown.is-closing {
+      transform: scale(var(--dropdown-closing-scale));
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform var(--dropdown-close-dur) var(--dropdown-ease),
+        opacity   var(--dropdown-close-dur) var(--dropdown-ease);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-dropdown { transition: none !important; }
+    }
+
+    /* --- Our tuning: the patterns' names pointed at the page's scale and palette ---
+       The snippets' own overshoot curves (number pop-in, the check's bob) are set to smooth-out: the
+       design bar bans bounce. Every blur starts at zero (touch screens never blur). */
+    :root {
+      --tabs-dur: var(--duration-fast);
+      --tabs-ease: var(--ease-smooth-out);
+      --tabs-text-muted: var(--muted);
+      --tabs-text-active: var(--black);
+      --tabs-bar-bg: var(--carbon);
+      --tabs-pill-bg: var(--green);
+      --page-slide-dur: var(--duration-fast);
+      --page-fade-dur: var(--duration-fast);
+      --page-slide-distance: var(--distance-base);
+      --page-slide-ease: var(--ease-smooth-out);
+      --page-fade-ease: var(--ease-smooth-out);
+      --page-blur: 0px;
+      --digit-dur: var(--duration-very-slow);
+      --digit-distance: var(--distance-base);
+      --digit-ease: var(--ease-smooth-out);
+      --digit-blur: 0px;
+      --icon-swap-dur: var(--duration-fast);
+      --icon-swap-ease: var(--ease-in-out);
+      --icon-swap-blur: 0px;
+      --reel-spin-blur: 0px; /* no motion blur on the reels: they are large numbers */
+      --text-soft-blur: 0px;
+      --text-morph-blur: 0px;
+      --text-morph-ease: var(--ease-smooth-out);
+      --tilt-glare-opacity: 0.14; /* a soft light on Carbon, not a shine */
+      --acc-expand: var(--duration-fast);
+      --acc-collapse: var(--duration-fast);
+      --acc-chevron: var(--duration-fast);
+      --acc-ease: var(--ease-smooth-out);
+      --shake-distance: var(--distance-small);
+      --shake-dur-a: var(--duration-micro);
+      --check-blur-from: 0px;
+      --check-y-amount: var(--distance-medium);
+      --check-ease-bob: var(--ease-smooth-out);
+      --check-path-delay: var(--duration-micro);
+      --toast-blur: 0px;
+      --toast-ease: var(--ease-smooth-out);
+      --dropdown-pre-scale: var(--scale-medium);
+      --dropdown-closing-scale: var(--scale-tiny);
+      --dropdown-open-dur: var(--duration-fast);
+      --dropdown-close-dur: var(--duration-quick);
+      --dropdown-ease: var(--ease-smooth-out);
+    }
+    /* small blurs only where a fine pointer can hover, and only on small things */
+    @media (hover: hover) and (pointer: fine) {
+      :root {
+        --page-blur: var(--blur-medium);
+        --digit-blur: var(--blur-small);
+        --icon-swap-blur: var(--blur-small);
+        --text-soft-blur: var(--blur-small);
+        --text-morph-blur: var(--blur-small);
+        --check-blur-from: var(--blur-large);
+        --toast-blur: var(--blur-small);
+      }
+    }
+    @media (hover: none), (pointer: coarse) {
+      .t-acc-panel-inner { filter: none !important; } /* the accordion's blur is a literal in the snippet */
+    }
+
+    /* --- Our hooks --- */
+    /* Tabs: the phone switcher and the pricing toggle. The selected tab's label sits on the green pill. */
+    .t-tabs .t-tabs-pill { top: 4px; height: calc(100% - 8px); }
+    .tabs.t-tabs { gap: 2px; padding: 4px; border-radius: var(--r-pill); }
+    .t-tabs .t-tab {
+      height: auto; min-height: 44px; border-radius: var(--r-pill); font-weight: 500;
+      transition: color var(--tabs-dur) var(--tabs-ease), scale var(--duration-quick) var(--ease-smooth-out);
+    }
+    .tabs .t-tab { padding: 0 18px; font-size: 0.9375rem; }
+    .t-tabs .t-tab:not([aria-selected="true"]):hover { color: var(--tabs-text-muted); } /* the snippet's light-theme hover would ink it black */
+    @media (hover: hover) { .t-tabs .t-tab:not([aria-selected="true"]):hover { color: var(--white); } }
+    @media (max-width: 380px) { .tabs .t-tab { padding: 0 14px; } }
+    @media (max-width: 339px) { .tabs .t-tab { padding: 0 9px; } }
+    .plans.t-tabs { display: flex; width: 100%; gap: 2px; padding: 4px; margin-bottom: 28px; border-radius: var(--r-pill); background: var(--black); }
+    .plans .t-tab { flex: 1 1 0; padding: 0 8px; font-size: 0.875rem; white-space: nowrap; }
+    .t-tab:active { scale: var(--scale-large); }
+    .t-tab:focus-visible { outline-offset: 2px; }
+    .no-js .plans { display: none; } /* without the script the monthly price stands, with the other two in words */
+    .js .price-alt { display: none; }
+    .price-alt { margin-top: 8px; font-size: 0.9375rem; color: var(--muted); }
+
+    /* The phone's screens: the page slide, with a third page. The script writes each page's side
+       (--t-page-from-x) from where it sits relative to the one shown, so a page always leaves toward
+       its own side and arrives from it. Inactive screens are also hidden from assistive tech. */
+    .t-page-slide .t-page[data-page-id="3"] { --t-page-from-x: var(--page-slide-distance); }
+    .t-page-slide[data-page="3"] .t-page[data-page-id="3"] {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+      filter: blur(0);
+      transition-delay: var(--page-stagger);
+    }
+    /* numbers on the screen that just arrived pop in; the plain text stays for screen readers */
+    .t-digit-group { font-variant-numeric: tabular-nums; }
+
+    /* Reels: the progress counters and the price. Each cell is taller than the line (so the mask's soft
+       edges never touch a resting digit), and the reel's margins give back the difference, so the
+       number keeps its line's height and baseline (--lh, the host's line height, set by the script). */
+    .cnt, .price .num { font-variant-numeric: tabular-nums; }
+    .cnt .t-reel, .price .t-reel { --reel-cell: 1.4em; vertical-align: top; margin-block: calc((var(--lh, 1.4em) - var(--reel-cell)) / 2); }
+    .t-reel-sep { display: flex; align-items: center; height: var(--reel-cell); }
+    .t-reel-probe { position: absolute; visibility: hidden; }
+    .price .t-reel { position: relative; }
+    .price .t-reel-col { transition: width var(--reel-dur) var(--reel-ease), opacity var(--duration-fast) var(--ease-smooth-out); }
+    .price .t-reel-col.is-empty { opacity: 0; }
+
+    /* Pricing: the card tilts toward a mouse pointer (the script adds .t-tilt and .t-tilt-card only
+       for a fine pointer with motion allowed), its glare follows the pointer. */
+    .price-card.t-tilt-card { border-radius: var(--r-card); }
+    .price-card .t-tilt-glare { z-index: 2; border-radius: inherit; }
+    .price-panel { outline-offset: 6px; border-radius: var(--r-tile); }
+
+    /* Accordions (FAQ, legal, the features' More): <details> with the grid-rows panel. The script wraps
+       each answer in the panel and holds the native close until the panel has shut; without it the
+       native <details> opens and closes as always. */
+    .t-acc-chevron svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .faq summary .t-acc-chevron { transition: transform var(--acc-chevron) var(--acc-ease), color var(--duration-quick) var(--ease-smooth-out); }
+    .faq .t-acc[data-open="true"] > summary .t-acc-chevron { color: var(--green); }
+    .no-js details[open] > summary .t-acc-chevron { transform: scaleY(-1); }
+    .no-js .feature-more[open] > summary { margin-bottom: 12px; }
+
+    /* Contact form: the field shakes, its message grows in under it, and the label morphs to Sending */
+    .field__msg { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--revert-dur) var(--ease-smooth-out); }
+    .t-input-wrap.is-error .field__msg { grid-template-rows: 1fr; }
+    .field__msg > .t-error-msg { min-height: 0; overflow: hidden; }
+    .notice .t-success-check { flex: none; }
+    .notice .t-success-check .ico { margin-top: 1px; }
+
+    .toast {
+      position: fixed; z-index: 150; left: 50%; bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+      translate: -50% 0; display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px);
+      padding: 12px 20px 12px 14px; border-radius: var(--r-pill); background: var(--carbon); color: var(--white);
+      font-size: 0.9375rem; line-height: 1.4; pointer-events: none;
+      box-shadow: 0 0 0 1px var(--line-strong), 0 12px 32px -8px rgba(0, 0, 0, 0.7);
+    }
+    .toast .ico { width: 20px; height: 20px; }
+    .toast__ok { color: var(--green); }
+    .toast__err { color: var(--danger); }
+    .toast[data-kind="ok"] .toast__err, .toast[data-kind="err"] .toast__ok { display: none; }
+
+    /* Mobile menu: the dropdown grows from the burger (top right), 8px high and at 0.97, and the links
+       follow 40ms apart */
+    .mobile-menu.t-dropdown {
+      translate: 0 calc(var(--distance-base) * -1);
+      transition:
+        transform var(--dropdown-open-dur) var(--dropdown-ease),
+        opacity   var(--dropdown-open-dur) var(--dropdown-ease),
+        translate var(--dropdown-open-dur) var(--dropdown-ease);
+    }
+    .mobile-menu.t-dropdown.is-open { translate: 0 0; }
+    .mobile-menu.t-dropdown.is-closing {
+      translate: 0 calc(var(--distance-micro) * -1);
+      transition:
+        transform var(--dropdown-close-dur) var(--dropdown-ease),
+        opacity   var(--dropdown-close-dur) var(--dropdown-ease),
+        translate var(--dropdown-close-dur) var(--dropdown-ease);
+    }
+    .mobile-menu.is-open .mobile-menu__list li, .mobile-menu.is-open .mobile-menu__foot {
+      animation: menu-in var(--duration-fast) var(--ease-smooth-out) both;
+      animation-delay: calc(var(--i, 0) * var(--duration-stagger) + var(--duration-stagger));
+    }
+    @keyframes menu-in { from { opacity: 0; transform: translateY(var(--distance-base)); } }
+
+    /* ---------- Features: each pillar card carries a small piece of the app ----------
+       Desktop: the name and line top left, the app piece under them, the features on the right.
+       Phones: name, features, then the piece at the foot of the card. Decorative (aria-hidden); the
+       copy carries the meaning. With motion, each piece plays once its card reaches the top of the
+       stack (.is-top) and resets out of sight; without motion it stands complete. */
+    .stack__card { grid-template-rows: auto minmax(0, 1fr); }
+    .stack__head { grid-column: 1; grid-row: 1; }
+    .feature-body { grid-column: 2; grid-row: 1 / 3; }
+    .fviz-slot { grid-column: 1; grid-row: 2; min-width: 0; }
+    .fviz { display: grid; gap: 10px; width: 100%; max-width: 420px; }
+    .fviz small { font-size: 0.8125rem; color: var(--muted); }
+    .fviz b { font-weight: 600; }
+
+    .fv-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; border-radius: var(--r-tile); background: var(--black); }
+    .fv-thumb { position: relative; width: 52px; height: 52px; border-radius: 6px; overflow: hidden; flex: none; background: var(--carbon); } /* concentric: the row's 14px less its 8px */
+    .fv-thumb img { position: absolute; left: -11px; top: -5px; width: 68px; max-width: none; height: auto; }
+    .fv-row__t, .fv-sets__k { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+    .fv-row__t b, .fv-sets__k b { font-size: 0.9375rem; }
+    .fv-play { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--green); color: var(--black); }
+    .fv-play .ico { width: 15px; height: 15px; fill: currentColor; stroke: none; margin-left: 2px; }
+    .fv-sets { display: grid; gap: 12px; padding: 14px 16px 16px; border-radius: var(--r-tile); background: var(--black); }
+    .fv-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .fv-seg i { height: 6px; border-radius: 99px; background: var(--stone); transform-origin: 0 50%; }
+    .fv-seg i.is-next { background: var(--line-strong); }
+
+    .fviz--food { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 24px; }
+    .fv-ring { position: relative; width: 136px; height: 136px; }
+    .fv-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .fv-ring circle { fill: none; stroke-width: 10; stroke-linecap: round; }
+    .fv-ring__track { stroke: var(--line-strong); }
+    .fv-ring__fill { stroke: var(--green); stroke-dasharray: 100; stroke-dashoffset: 12; }
+    .fv-ring__label { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.2; }
+    .fv-ring__label b { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .fv-ring__label small { font-size: 0.75rem; }
+    .fv-macros { display: grid; gap: 14px; }
+    .fv-macro span { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; font-size: 0.875rem; }
+    .fv-macro small { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .fv-macro i { display: block; height: 6px; border-radius: 99px; overflow: hidden; background: var(--line-strong); }
+    .fv-macro u { display: block; height: 100%; border-radius: inherit; background: var(--stone); transform-origin: 0 50%; transform: scaleX(var(--v)); }
+
+    .fviz--coach { justify-items: start; }
+    .fv-bubble { max-width: 34ch; padding: 10px 14px; border-radius: 4px var(--r-tile) var(--r-tile) var(--r-tile); background: var(--black); color: var(--stone); font-size: 0.9375rem; line-height: 1.5; text-wrap: pretty; }
+    .fv-bubble--you { justify-self: end; border-radius: var(--r-tile) 4px var(--r-tile) var(--r-tile); background: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-line); color: var(--white); }
+    .fv-coach { display: flex; align-items: flex-start; gap: 10px; }
+    .fv-coach img { width: 28px; height: auto; flex: none; margin-top: 8px; }
+    .fv-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; margin-left: 38px; padding: 0 12px 0 10px; border-radius: var(--r-pill); background: var(--black); font-size: 0.8125rem; color: var(--stone); }
+    .fv-chip .ico { width: 14px; height: 14px; color: var(--green); }
+
+    .fviz--progress { gap: 14px; }
+    .fv-stat { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+    .fv-stat b { font-family: var(--font-display); font-size: clamp(2rem, 1.6rem + 1.4vw, 2.75rem); letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .fv-stat small { font-size: 0.9375rem; }
+    .fv-chart { position: relative; }
+    .fv-line { width: 100%; height: auto; overflow: visible; }
+    .fv-line path { fill: none; }
+    .fv-line__grid { stroke: var(--line-strong); stroke-width: 1; }
+    .fv-line__path { stroke: var(--stone); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
+    .fv-dot { position: absolute; left: calc(97.5% - 6px); top: calc(85.4% - 6px); width: 12px; height: 12px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px var(--carbon); }
+    .fv-axis { display: flex; justify-content: space-between; margin-top: -4px; }
+    .fv-axis small { font-size: 0.75rem; color: var(--faint); }
+
+    /* the play: rows rise in turn, bars fill, the ring and the line draw, the dot lands last */
+    .fx .stack__card:not(.is-top) .fv-in { opacity: 0; transform: translateY(var(--distance-medium)); }
+    .fx .stack__card:not(.is-top) .fv-seg i, .fx .stack__card:not(.is-top) .fv-macro u { transform: scaleX(0); }
+    .fx .stack__card:not(.is-top) .fv-ring__fill, .fx .stack__card:not(.is-top) .fv-line__path { stroke-dashoffset: 100; }
+    .fx .stack__card:not(.is-top) .fv-dot { opacity: 0; transform: scale(0.4); }
+    .fx .stack__card.is-top .fv-in {
+      transition: opacity var(--duration-very-slow) var(--ease-smooth-out), transform var(--duration-very-slow) var(--ease-smooth-out);
+      transition-delay: calc(var(--k, 0) * var(--duration-micro) * 2 + var(--duration-micro));
+    }
+    .fx .stack__card.is-top .fv-seg i { transition: transform var(--duration-slow) var(--ease-smooth-out); transition-delay: calc(var(--k, 0) * var(--duration-micro) + 360ms); }
+    .fx .stack__card.is-top .fv-macro u { transition: transform var(--duration-very-slow) var(--ease-smooth-out); transition-delay: calc(var(--k, 0) * var(--duration-micro) + 200ms); }
+    .fx .stack__card.is-top .fv-ring__fill { transition: stroke-dashoffset 900ms var(--ease-smooth-out) var(--duration-micro); }
+    .fx .stack__card.is-top .fv-line__path { transition: stroke-dashoffset 1100ms var(--ease-smooth-out) var(--duration-micro); }
+    .fx .stack__card.is-top .fv-dot { transition: opacity var(--duration-slow) var(--ease-smooth-out) 900ms, transform var(--duration-slow) var(--ease-smooth-out) 900ms; }
+
+    /* Wide screens: the piece only takes the space the card already has under its name (the slot is
+       size-contained, so it never makes a card taller). Room for the whole piece: it shows whole; room
+       for less (a laptop's shorter cards): its compact form; no room to spare: it stays out. */
+    @media (min-width: 941px) {
+      .stack__card { min-height: clamp(360px, 58svh, 520px); }
+      .fviz-slot { position: relative; container: fviz / size; }
+      .fviz { position: absolute; left: 0; bottom: 0; visibility: hidden; }
+      .fviz--progress .fv-chart, .fviz--progress .fv-axis { max-width: 340px; }
+      @container fviz (max-height: 168px) {
+        .fv-sets { display: none; }
+      }
+      @container fviz (max-height: 140px) {
+        .fviz--food { gap: 16px; }
+        .fv-ring { width: 88px; height: 88px; }
+        .fv-ring circle { stroke-width: 11; }
+        .fv-ring__label b { font-size: 1rem; }
+        .fv-ring__label small { font-size: 0.6875rem; }
+        .fv-macros { gap: 4px; }
+        .fv-macro span { margin-bottom: 3px; font-size: 0.8125rem; line-height: 1.35; }
+        .fv-macro small { font-size: 0.75rem; }
+      }
+      @container fviz (max-height: 162px) {
+        .fviz--coach { gap: 8px; }
+        .fv-chip { display: none; }
+        .fv-bubble { font-size: 0.875rem; padding: 8px 12px; }
+      }
+      @container fviz (max-height: 193px) {
+        .fviz--progress { grid-template-columns: auto minmax(0, 1fr); align-items: end; column-gap: 20px; }
+        .fv-axis { display: none; }
+        .fv-stat { flex-direction: column; gap: 6px; }
+        .fv-stat b { font-size: 2rem; }
+        .fv-stat small { font-size: 0.875rem; }
+      }
+      @container fviz (min-height: 76px) { .fviz--train { visibility: visible; } }
+      @container fviz (min-height: 96px) { .fviz--food { visibility: visible; } }
+      @container fviz (min-height: 114px) { .fviz--coach { visibility: visible; } }
+      @container fviz (min-height: 80px) { .fviz--progress { visibility: visible; } }
+    }
+    /* Phones and tablets: the compact piece follows the features at the foot of the card */
+    @media (max-width: 940px) {
+      .stack__card { grid-template-rows: auto auto minmax(0, 1fr); }
+      .stack__head, .feature-body, .fviz-slot { grid-column: 1; grid-row: auto; }
+      .fviz-slot { align-self: end; }
+      .fviz { max-width: 440px; }
+      .fv-sets { display: none; }
+      .fviz--food { gap: 16px; }
+      .fv-ring { width: 88px; height: 88px; }
+      .fv-ring circle { stroke-width: 11; }
+      .fv-ring__label b { font-size: 1rem; }
+      .fv-ring__label small { font-size: 0.6875rem; }
+      .fv-macros { gap: 4px; }
+      .fv-macro span { margin-bottom: 3px; font-size: 0.8125rem; line-height: 1.35; }
+      .fv-macro small { font-size: 0.75rem; }
+      .fviz--coach { gap: 8px; }
+      .fv-chip { display: none; }
+      .fv-bubble { font-size: 0.875rem; padding: 8px 12px; }
+      .fviz--progress { grid-template-columns: auto minmax(0, 1fr); align-items: end; column-gap: 20px; }
+      .fv-axis { display: none; }
+      .fv-stat { flex-direction: column; gap: 6px; }
+      .fv-stat b { font-size: 2rem; }
+      .fv-stat small { font-size: 0.875rem; }
+    }
+
     @media print {
       .nav, .mobile-menu, .obj, .switcher__bar, .world__cue, .leader { display: none !important; }
       body { background: #fff; color: #000; }
@@ -1370,12 +2288,14 @@
       "operatingSystem": "iOS, Android",
       "description": "An all-in-one fitness and nutrition platform powered by AI coaching. Built to help you train, fuel, and become a stronger, healthier, better you.",
       "url": "https://builtbybrains.github.io/fitness-platform/",
-      "offers": {
-        "@type": "Offer",
-        "price": "30.00",
-        "priceCurrency": "USD",
-        "url": "https://builtbybrains.github.io/fitness-platform/#pricing"
-      }
+      "offers": [
+        {"@type": "Offer", "name": "Monthly", "price": "30.00", "priceCurrency": "USD", "url": "https://builtbybrains.github.io/fitness-platform/#pricing",
+         "priceSpecification": {"@type": "UnitPriceSpecification", "price": "30.00", "priceCurrency": "USD", "billingDuration": "P1M"}},
+        {"@type": "Offer", "name": "3 months", "price": "81.00", "priceCurrency": "USD", "url": "https://builtbybrains.github.io/fitness-platform/#pricing",
+         "priceSpecification": {"@type": "UnitPriceSpecification", "price": "81.00", "priceCurrency": "USD", "billingDuration": "P3M"}},
+        {"@type": "Offer", "name": "Yearly", "price": "300.00", "priceCurrency": "USD", "url": "https://builtbybrains.github.io/fitness-platform/#pricing",
+         "priceSpecification": {"@type": "UnitPriceSpecification", "price": "300.00", "priceCurrency": "USD", "billingDuration": "P1Y"}}
+      ]
     }
   </script>
   <script type="application/ld+json">
@@ -1383,9 +2303,9 @@
       "@context": "https://schema.org",
       "@type": "FAQPage",
       "mainEntity": [
-        {"@type": "Question", "name": "Is there a free trial?", "acceptedAnswer": {"@type": "Answer", "text": "No. There is no free trial. BUILT is $30 a month, and you can cancel anytime."}},
+        {"@type": "Question", "name": "Is there a free trial?", "acceptedAnswer": {"@type": "Answer", "text": "No. There is no free trial. BUILT is $30 a month, $81 for 3 months or $300 a year, and you can cancel anytime."}},
         {"@type": "Question", "name": "Can I cancel anytime?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Cancel from inside the app in a couple of taps. You keep access until the end of the period you have already paid for."}},
-        {"@type": "Question", "name": "Why only one plan?", "acceptedAnswer": {"@type": "Answer", "text": "Because tiers force you to guess which version of a product you need. Nutrition and training work together, so splitting them into packages would make the product worse."}},
+        {"@type": "Question", "name": "Why only one version?", "acceptedAnswer": {"@type": "Answer", "text": "Because tiers force you to guess which version of a product you need. Every plan includes everything; the only choice is how often you pay. Nutrition and training work together, so splitting them into packages would make the product worse."}},
         {"@type": "Question", "name": "Do you charge for updates?", "acceptedAnswer": {"@type": "Answer", "text": "No. New features are included in the same subscription."}},
         {"@type": "Question", "name": "What payment methods do you accept?", "acceptedAnswer": {"@type": "Answer", "text": "Payment is handled through the App Store and Google Play, so any method already on your account works."}}
       ]
@@ -1444,18 +2364,18 @@
   <div class="scrollbar" aria-hidden="true"><i class="scrollbar__all"></i><i class="scrollbar__now"></i></div>
 </header>
 
-<div class="mobile-menu" id="mobile-menu" aria-hidden="true" inert>
+<div class="mobile-menu t-dropdown" data-origin="top-right" id="mobile-menu" aria-hidden="true" inert>
   <nav aria-label="Mobile">
     <ul class="mobile-menu__list">
-      <li><a href="#home">Home</a></li>
-      <li><a href="#how">How it works</a></li>
-      <li><a href="#features">Features</a></li>
-      <li><a href="#pricing">Pricing</a></li>
-      <li><a href="#about">About</a></li>
-      <li><a href="#contact">Contact</a></li>
+      <li style="--i:0"><a href="#home">Home</a></li>
+      <li style="--i:1"><a href="#how">How it works</a></li>
+      <li style="--i:2"><a href="#features">Features</a></li>
+      <li style="--i:3"><a href="#pricing">Pricing</a></li>
+      <li style="--i:4"><a href="#about">About</a></li>
+      <li style="--i:5"><a href="#contact">Contact</a></li>
     </ul>
   </nav>
-  <div class="mobile-menu__foot">
+  <div class="mobile-menu__foot" style="--i:6">
     <a class="btn btn-primary btn-lg" href="#contact" data-topic="early-access">Get early access</a>
     <p class="fine">$30 a month. About $1 a day.</p>
   </div>
@@ -1664,12 +2584,25 @@
               <div class="feature"><h4>AI personal training</h4><p>Workout guidance designed around your goal, experience level and the time you actually have.</p></div>
               <div class="feature"><h4>Home or gym</h4><p>Exercises for no equipment, the kit you have at home, or a full gym. Change it any week.</p></div>
             </div>
-            <details class="feature-more" data-more open>
-              <summary>More on training <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+            <details class="feature-more" data-more data-acc open>
+              <summary>More on training <span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
               <div class="feature-list">
                 <div class="feature"><h4>Swap an exercise</h4><p>Pick an alternative for the same muscles that suits your equipment and any injury.</p></div>
               </div>
             </details>
+          </div>
+          <div class="fviz-slot">
+            <div class="fviz fviz--train" aria-hidden="true">
+              <div class="fv-row fv-in" style="--k:0">
+                <span class="fv-thumb"><img src="assets/img/dumbbell-hero-640.webp?v=2" alt="" width="640" height="640" loading="lazy" decoding="async"></span>
+                <span class="fv-row__t"><b>Upper body strength</b><small>Today &middot; 32 min &middot; Gym</small></span>
+                <span class="fv-play"><svg class="ico"><use href="#i-play"/></svg></span>
+              </div>
+              <div class="fv-sets fv-in" style="--k:1">
+                <span class="fv-sets__k"><b>Incline dumbbell press</b><small>Set 3 of 4 &middot; 10 reps &middot; 16 kg</small></span>
+                <span class="fv-seg"><i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i class="is-next"></i></span>
+              </div>
+            </div>
           </div>
           <i class="stack__dim" aria-hidden="true"></i>
         </article>
@@ -1684,13 +2617,26 @@
               <div class="feature"><h4>AI personalized diet</h4><p>Meal recommendations built around your goals, preferences and daily targets, regenerated whenever something changes.</p></div>
               <div class="feature"><h4>Macro balance</h4><p>Protein, carbohydrates and fats tracked against targets, with a clear daily progress view.</p></div>
             </div>
-            <details class="feature-more" data-more open>
-              <summary>More on nutrition <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+            <details class="feature-more" data-more data-acc open>
+              <summary>More on nutrition <span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
               <div class="feature-list">
                 <div class="feature"><h4>Hydration tracking</h4><p>Water targets split across the day, with small timed reminders instead of one large goal.</p></div>
                 <div class="feature"><h4>Food photo scan</h4><p>Snap a plate. Get calories, protein, carbs and fat.</p></div>
               </div>
             </details>
+          </div>
+          <div class="fviz-slot">
+            <div class="fviz fviz--food" aria-hidden="true">
+              <div class="fv-ring">
+                <svg viewBox="0 0 120 120"><circle class="fv-ring__track" cx="60" cy="60" r="50" pathLength="100"/><circle class="fv-ring__fill" cx="60" cy="60" r="50" pathLength="100"/></svg>
+                <span class="fv-ring__label"><b>1,842</b><small>of 2,100 kcal</small></span>
+              </div>
+              <div class="fv-macros">
+                <div class="fv-macro" style="--v:.79;--k:0"><span><b>Protein</b><small>142 / 180 g</small></span><i><u></u></i></div>
+                <div class="fv-macro" style="--v:.82;--k:1"><span><b>Carbs</b><small>164 / 200 g</small></span><i><u></u></i></div>
+                <div class="fv-macro" style="--v:.74;--k:2"><span><b>Fats</b><small>52 / 70 g</small></span><i><u></u></i></div>
+              </div>
+            </div>
           </div>
           <i class="stack__dim" aria-hidden="true"></i>
         </article>
@@ -1705,12 +2651,22 @@
               <div class="feature"><h4>A coach that knows you</h4><p>A chat that knows your plan and remembers what you tell it.</p></div>
               <div class="feature"><h4>Recommendations that adapt</h4><p>The app adjusts as your progress, schedule and preferences change over time.</p></div>
             </div>
-            <details class="feature-more" data-more open>
-              <summary>More on the coach <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+            <details class="feature-more" data-more data-acc open>
+              <summary>More on the coach <span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
               <div class="feature-list">
                 <div class="feature"><h4>Daily accountability</h4><p>Streaks and daily check-ins turn intention into a routine you keep.</p></div>
               </div>
             </details>
+          </div>
+          <div class="fviz-slot">
+            <div class="fviz fviz--coach" aria-hidden="true">
+              <p class="fv-bubble fv-bubble--you fv-in" style="--k:0">Only 3 days this week, my knee hurts.</p>
+              <div class="fv-coach fv-in" style="--k:2">
+                <img src="assets/img/mark.svg" alt="" width="32" height="25">
+                <p class="fv-bubble">Done: Monday, Wednesday and Friday, with no lunges or jumps.</p>
+              </div>
+              <span class="fv-chip fv-in" style="--k:3"><svg class="ico"><use href="#i-check"/></svg>Plan updated</span>
+            </div>
           </div>
           <i class="stack__dim" aria-hidden="true"></i>
         </article>
@@ -1725,12 +2681,25 @@
               <div class="feature"><h4>Progress tracking</h4><p>Weight, consistency, completion and achievements in one continuous timeline.</p></div>
               <div class="feature"><h4>Weekly check-ins</h4><p>Weekly weigh-ins and monthly reviews that adjust the plan.</p></div>
             </div>
-            <details class="feature-more" data-more open>
-              <summary>More on progress <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+            <details class="feature-more" data-more data-acc open>
+              <summary>More on progress <span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
               <div class="feature-list">
                 <div class="feature"><h4>Goal setting</h4><p>Set a specific target and get a clear, realistic path toward reaching it.</p></div>
               </div>
             </details>
+          </div>
+          <div class="fviz-slot">
+            <div class="fviz fviz--progress" aria-hidden="true">
+              <div class="fv-stat"><b>7.2 kg</b><small>lost in 12 weeks</small></div>
+              <div class="fv-chart">
+                <svg class="fv-line" viewBox="0 0 320 96">
+                  <path class="fv-line__grid" d="M0 95H320"/>
+                  <path class="fv-line__path" pathLength="100" d="M4 14 C 26 16, 34 26, 56 24 S 86 38, 108 36 S 138 46, 160 50 S 190 52, 212 60 S 244 66, 266 72 S 296 76, 312 82"/>
+                </svg>
+                <span class="fv-dot"></span>
+              </div>
+              <span class="fv-axis"><small>Week 1</small><small>Week 12</small></span>
+            </div>
           </div>
           <i class="stack__dim" aria-hidden="true"></i>
         </article>
@@ -1756,26 +2725,29 @@
 
       <div class="split__media switcher" data-tabs>
         <div class="switcher__bar">
-          <div class="tabs" role="tablist" aria-label="App screens">
-            <button class="tab" type="button" role="tab" id="tab-today" aria-controls="screen-today" aria-selected="true">Today</button>
-            <button class="tab" type="button" role="tab" id="tab-nutrition" aria-controls="screen-nutrition" aria-selected="false" tabindex="-1">Nutrition</button>
-            <button class="tab" type="button" role="tab" id="tab-coach" aria-controls="screen-coach" aria-selected="false" tabindex="-1">Coach</button>
+          <div class="tabs t-tabs" role="tablist" aria-label="App screens" data-pill>
+            <span class="t-tabs-pill" aria-hidden="true"></span>
+            <button class="tab t-tab" type="button" role="tab" id="tab-today" aria-controls="screen-today" aria-selected="true">Today</button>
+            <button class="tab t-tab" type="button" role="tab" id="tab-nutrition" aria-controls="screen-nutrition" aria-selected="false" tabindex="-1">Nutrition</button>
+            <button class="tab t-tab" type="button" role="tab" id="tab-coach" aria-controls="screen-coach" aria-selected="false" tabindex="-1">Coach</button>
           </div>
           <button class="icon-btn" type="button" data-autoplay-toggle data-state="playing" aria-label="Pause screen rotation">
-            <svg class="ico ico--pause" aria-hidden="true"><use href="#i-pause"/></svg>
-            <svg class="ico ico--play" aria-hidden="true"><use href="#i-play"/></svg>
+            <span class="t-icon-swap" data-state="a" aria-hidden="true">
+              <span class="t-icon" data-icon="a"><svg class="ico ico--pause"><use href="#i-pause"/></svg></span>
+              <span class="t-icon" data-icon="b"><svg class="ico ico--play"><use href="#i-play"/></svg></span>
+            </span>
           </button>
         </div>
 
         <div class="phone" data-activate data-reveal="tilt" data-tilt>
-          <div class="phone__screen">
+          <div class="phone__screen t-page-slide" data-page="1">
             <div class="phone__island" aria-hidden="true"></div>
             <div class="statusbar" aria-hidden="true">
               <span>9:41</span>
               <svg viewBox="0 0 44 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="6" width="3" height="6" rx="1"/><rect x="9" y="3.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="1" width="3" height="11" rx="1"/><rect x="21" y="1.5" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1"/><rect x="23" y="3.5" width="13" height="5" rx="1.2"/><rect x="41" y="4.5" width="1.6" height="3" rx=".8"/></svg>
             </div>
 
-            <div class="screen is-active" role="tabpanel" id="screen-today" aria-labelledby="tab-today">
+            <div class="screen t-page is-active" data-page-id="1" role="tabpanel" id="screen-today" aria-labelledby="tab-today">
               <p class="app-greet">Good morning,<br>Let&rsquo;s <b class="hl">build your best.</b></p>
               <div class="app-card app-row app-workout">
                 <span class="app-workout__img"><img src="assets/img/dumbbell-hero-640.webp?v=2" alt="" width="640" height="640"></span>
@@ -1785,7 +2757,7 @@
               <div class="app-card app-ring">
                 <div class="ring" style="--p:75">
                   <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg>
-                  <div class="ring__label"><small>Today</small><b>75%</b></div>
+                  <div class="ring__label"><small>Today</small><b data-pop>75%</b></div>
                 </div>
               </div>
               <div class="tiles">
@@ -1806,16 +2778,16 @@
               </div>
             </div>
 
-            <div class="screen" role="tabpanel" id="screen-nutrition" aria-labelledby="tab-nutrition" aria-hidden="true">
+            <div class="screen t-page" data-page-id="2" role="tabpanel" id="screen-nutrition" aria-labelledby="tab-nutrition" aria-hidden="true">
               <p class="app-title">Nutrition</p>
               <div>
                 <p class="app-h">Your nutrition plan</p>
-                <p class="app-sub">2,100 kcal &middot; High protein</p>
+                <p class="app-sub"><span data-pop>2,100</span> kcal &middot; High protein</p>
               </div>
               <div class="macros">
-                <div><b>180g</b><span>Protein</span></div>
-                <div><b>70g</b><span>Fats</span></div>
-                <div><b>200g</b><span>Carbs</span></div>
+                <div><b data-pop>180g</b><span>Protein</span></div>
+                <div><b data-pop>70g</b><span>Fats</span></div>
+                <div><b data-pop>200g</b><span>Carbs</span></div>
               </div>
               <div class="app-rows">
                 <div class="app-card app-row"><span class="thumb"><img src="assets/img/food-bowl.webp" alt="" width="96" height="96"></span><div><b>Grilled chicken bowl</b><span>560 kcal &middot; Lunch</span></div><svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg></div>
@@ -1823,7 +2795,7 @@
                 <div class="app-card app-row"><span class="thumb"><img src="assets/img/food-roast-bowl.webp" alt="" width="96" height="96"></span><div><b>Roast veg bowl</b><span>610 kcal &middot; Dinner</span></div><svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg></div>
               </div>
               <div class="app-card">
-                <div class="kv" style="margin:0"><b style="font-size:13px">Today</b><span style="font-size:11px">1,842 / 2,100 kcal</span></div>
+                <div class="kv" style="margin:0"><b style="font-size:13px">Today</b><span style="font-size:11px"><span data-pop>1,842</span> / 2,100 kcal</span></div>
                 <div class="app-bar"><i style="--v:.88"></i></div>
               </div>
               <div class="app-tabs" aria-hidden="true">
@@ -1834,7 +2806,7 @@
               </div>
             </div>
 
-            <div class="screen" role="tabpanel" id="screen-coach" aria-labelledby="tab-coach" aria-hidden="true">
+            <div class="screen t-page" data-page-id="3" role="tabpanel" id="screen-coach" aria-labelledby="tab-coach" aria-hidden="true">
               <p class="app-title">AI Coach</p>
               <div class="coach-msg">
                 <img src="assets/img/mark.svg" alt="" width="32" height="25">
@@ -2011,7 +2983,7 @@
       </div>
       <div class="section-head section-head--center">
         <h2 class="h-1" data-words="reveal">Your health, for about $1 a day.</h2>
-        <p class="lead">One subscription. Everything included. No tiers to compare, no upsells.</p>
+        <p class="lead">Everything included, whichever way you pay: monthly, every 3 months or yearly. No tiers to compare, no upsells.</p>
       </div>
 
       <div class="price-wrap">
@@ -2023,13 +2995,23 @@
           </div>
         </div>
 
-        <div class="price-card" data-reveal="tilt" data-tilt="3">
-          <div class="price-card__top">
-            <span class="fine">Full access</span>
-            <span class="chip">All included</span>
+        <div class="price-tilt" data-reveal="tilt" data-card-tilt>
+        <div class="price-card">
+          <div class="plans t-tabs" role="tablist" aria-label="Billing period" data-pill data-plans>
+            <span class="t-tabs-pill" aria-hidden="true"></span>
+            <button class="t-tab" type="button" role="tab" id="plan-1m" aria-controls="price-panel" aria-selected="true" data-price="30" data-months="1" data-days="30" data-per="/ month" data-bill="Billed monthly.">Monthly</button>
+            <button class="t-tab" type="button" role="tab" id="plan-3m" aria-controls="price-panel" aria-selected="false" tabindex="-1" data-price="81" data-months="3" data-days="90" data-per="/ 3 months" data-bill="$81 billed every 3 months.">3 months</button>
+            <button class="t-tab" type="button" role="tab" id="plan-1y" aria-controls="price-panel" aria-selected="false" tabindex="-1" data-price="300" data-months="12" data-days="365" data-per="/ year" data-bill="$300 billed once a year.">Yearly</button>
           </div>
-          <div class="price"><span class="cur">$</span><span class="num" data-odometer>30</span><span class="per">/ month</span></div>
-          <p class="price-aday">That&rsquo;s <span class="draw-ul" data-draw>about $1 a day<i aria-hidden="true"></i></span>.</p>
+          <div class="price-panel" id="price-panel" role="tabpanel" aria-labelledby="plan-1m">
+            <div class="price-card__top">
+              <span class="fine">Full access</span>
+              <span class="chip"><span class="t-text-soft" data-plan-chip>All included</span></span>
+            </div>
+            <div class="price"><span class="cur">$</span><span class="num" data-price-num>30</span><span class="per t-text-soft" data-plan-per>/ month</span></div>
+            <p class="price-aday">That&rsquo;s <span class="draw-ul" data-draw><span class="t-text-soft" data-plan-aday>about $1 a day</span><i aria-hidden="true"></i></span>.</p>
+            <p class="price-alt">Or $81 for 3 months, or $300 a year.</p>
+          </div>
           <ul class="price-list">
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Personalized AI diet guidance</span></li>
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>AI personal training</span></li>
@@ -2039,7 +3021,9 @@
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Daily accountability</span></li>
           </ul>
           <a class="btn btn-primary btn-lg btn-block" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
-          <p class="price-note">Cancel anytime. No hidden fees.</p>
+          <p class="price-note"><span class="t-text-soft" data-plan-bill>Billed monthly.</span> Cancel anytime. No hidden fees.</p>
+          <div class="t-tilt-glare" aria-hidden="true"></div>
+        </div>
         </div>
       </div>
       <p class="disclaimer">BUILT is a wellness app, not a medical service, and its guidance does not replace advice from a doctor, dietitian or other qualified professional, especially if you are pregnant, have an existing condition, or take medication.</p>
@@ -2053,24 +3037,24 @@
         <h2 class="h-1" data-words="reveal">Good to know.</h2>
       </div>
       <div class="faq">
-        <details>
-          <summary>Is there a free trial?</summary>
-          <p>No. There is no free trial. BUILT is $30 a month, and you can cancel anytime.</p>
+        <details data-acc>
+          <summary><span>Is there a free trial?</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>No. There is no free trial. BUILT is $30 a month, $81 for 3 months or $300 a year, and you can cancel anytime.</p>
         </details>
-        <details>
-          <summary>Can I cancel anytime?</summary>
+        <details data-acc>
+          <summary><span>Can I cancel anytime?</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>Yes. Cancel from inside the app in a couple of taps. You keep access until the end of the period you have already paid for.</p>
         </details>
-        <details>
-          <summary>Why only one plan?</summary>
-          <p>Because tiers force you to guess which version of a product you need. Nutrition and training work together, so splitting them into packages would make the product worse.</p>
+        <details data-acc>
+          <summary><span>Why only one version?</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>Because tiers force you to guess which version of a product you need. Every plan includes everything; the only choice is how often you pay. Nutrition and training work together, so splitting them into packages would make the product worse.</p>
         </details>
-        <details>
-          <summary>Do you charge for updates?</summary>
+        <details data-acc>
+          <summary><span>Do you charge for updates?</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>No. New features are included in the same subscription.</p>
         </details>
-        <details>
-          <summary>What payment methods do you accept?</summary>
+        <details data-acc>
+          <summary><span>What payment methods do you accept?</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>Payment is handled through the App Store and Google Play, so any method already on your account works.</p>
         </details>
       </div>
@@ -2128,15 +3112,15 @@
 
       <div class="form-card" id="contact-form">
         <form class="form" data-form novalidate>
-          <div class="field">
+          <div class="field t-input-wrap">
             <label for="c-name">Name</label>
-            <input id="c-name" name="name" type="text" autocomplete="name" placeholder="Your name" maxlength="120" required aria-describedby="c-name-err">
-            <span class="field__err" id="c-name-err"></span>
+            <input class="t-input" id="c-name" name="name" type="text" autocomplete="name" placeholder="Your name" maxlength="120" required aria-describedby="c-name-err">
+            <span class="field__msg"><span class="field__err t-error-msg" id="c-name-err"></span></span>
           </div>
-          <div class="field">
+          <div class="field t-input-wrap">
             <label for="c-email">Email</label>
-            <input id="c-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" required aria-describedby="c-email-err">
-            <span class="field__err" id="c-email-err"></span>
+            <input class="t-input" id="c-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" required aria-describedby="c-email-err">
+            <span class="field__msg"><span class="field__err t-error-msg" id="c-email-err"></span></span>
           </div>
           <fieldset class="topics">
             <legend>Topic</legend>
@@ -2148,17 +3132,17 @@
               <input type="radio" name="topic" id="t-privacy" value="privacy"><label for="t-privacy">Privacy or data</label>
             </div>
           </fieldset>
-          <div class="field">
+          <div class="field t-input-wrap">
             <label for="c-message">Message</label>
-            <textarea id="c-message" name="message" placeholder="How can we help?" maxlength="4000" required aria-describedby="c-message-err"></textarea>
-            <span class="field__err" id="c-message-err"></span>
+            <textarea class="t-input" id="c-message" name="message" placeholder="How can we help?" maxlength="4000" required aria-describedby="c-message-err"></textarea>
+            <span class="field__msg"><span class="field__err t-error-msg" id="c-message-err"></span></span>
           </div>
           <div class="hp" aria-hidden="true">
             <label for="c-company">Leave this field empty</label>
             <input id="c-company" name="company" type="text" tabindex="-1" autocomplete="off">
           </div>
-          <button class="btn btn-primary btn-lg btn-block" type="submit"><span data-label>Send message</span></button>
-          <p class="notice notice--ok" data-ok role="status" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-check-circle"/></svg><span>Thanks. Your message has been sent and we&rsquo;ll reply by email.</span></p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit"><span class="t-morph" data-label>Send message</span></button>
+          <p class="notice notice--ok" data-ok role="status" tabindex="-1"><span class="t-success-check" data-state="out" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path pathLength="20" d="m8.5 12.2 2.4 2.4 4.6-4.9"/></svg></span><span>Thanks. Your message has been sent and we&rsquo;ll reply by email.</span></p>
           <p class="notice notice--err" data-err role="alert"><svg class="ico" aria-hidden="true"><use href="#i-alert"/></svg><span>We couldn&rsquo;t send that. Please try again in a moment.</span></p>
           <p class="form__small">We only use your details to reply to this message.</p>
         </form>
@@ -2174,35 +3158,35 @@
         <p class="lead">Last updated: October 2026.</p>
       </div>
       <div class="faq">
-        <details>
-          <summary>Privacy Policy: what we collect</summary>
+        <details data-acc>
+          <summary><span>Privacy Policy: what we collect</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>To build your plan we collect what you tell us during setup: your name, phone number, date of birth, gender, height and weight, activity level, goal and timeline, where and when you train, food preferences and allergies, and any injuries or medical conditions you choose to share. We also keep what you log day to day, such as workouts, meals and food photos, activities, weigh-ins, check-ins, body photos, your messages to the coach and any problems you report. If you turn on Apple Health or Health Connect, we read only the steps, active calories, workouts, weight and sleep you allow.</p>
         </details>
-        <details>
-          <summary>Privacy Policy: body photos</summary>
+        <details data-acc>
+          <summary><span>Privacy Policy: body photos</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>You take a body photo at sign-up and again at your monthly check-ins. Your face is blurred on your phone before the photo is uploaded, so an unblurred photo never leaves your device. The photos are stored privately, where only your account can open them. The AI uses them to estimate your starting point and suggest the training approach that suits you. Our support and admin tools never show them.</p>
         </details>
-        <details>
-          <summary>Privacy Policy: how we use it</summary>
+        <details data-acc>
+          <summary><span>Privacy Policy: how we use it</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>Your information is used to generate and adapt your nutrition and training recommendations, to send the reminders you have turned on, to answer the problems you report, and to show you your own progress. Your phone number and email are kept on file so we can reach you about your account and invite you to BUILT events. We never sell your phone number or any other personal information, share your health data with advertisers, or use your data to build profiles for third parties.</p>
         </details>
-        <details>
-          <summary>Privacy Policy: services that handle your data</summary>
+        <details data-acc>
+          <summary><span>Privacy Policy: services that handle your data</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>Your account and the data you log are stored with Supabase, the database and sign-in service BUILT runs on.</p>
           <p>When you send a food photo, a body photo or a message to the coach, it is sent to an outside AI provider to produce the estimate, the suggestion or the reply. Today that provider is OpenRouter, and BUILT uses its free AI models. Free models may keep what they are sent and use it to improve their systems, so leave out anything you would not want stored. Estimates are approximate, so treat them as a guide.</p>
         </details>
-        <details>
-          <summary>Privacy Policy: security and your rights</summary>
+        <details data-acc>
+          <summary><span>Privacy Policy: security and your rights</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>Data is encrypted in transit and at rest, and access is limited to the people who need it to run and support the service. You can ask us to delete your account data at any time by writing to us through the <a class="inline-link" href="#contact" data-topic="privacy">contact form</a> with the topic &ldquo;Privacy or data&rdquo;. Deleting removes your personal data from our production systems, with backups aging out on a rolling schedule.</p>
         </details>
-        <details>
-          <summary>Terms of Service: using BUILT</summary>
+        <details data-acc>
+          <summary><span>Terms of Service: using BUILT</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
           <p>BUILT provides personalized nutrition and fitness guidance generated by software. You must be at least 13 years old to use it. If you are 13 to 17, you need the consent of a parent or guardian, which the app asks for at sign-up along with their name; plans for under-18s never set a calorie deficit, give supplement advice or prescribe max-effort lifting. You are responsible for keeping your account credentials secure.</p>
           <p>BUILT is a wellness product, not a medical service, and its recommendations do not replace advice from a doctor, dietitian or other qualified professional. Everyone accepts a short waiver at sign-up: check with a doctor before starting if you have a medical condition, are pregnant, or have a history of disordered eating, and you train at your own risk.</p>
         </details>
-        <details>
-          <summary>Terms of Service: billing and acceptable use</summary>
-          <p>Access is provided through a $30 monthly subscription, billed through the App Store or Google Play, and renews automatically until cancelled; you can cancel anytime and keep access until the end of the paid period. Do not attempt to disrupt the service, reverse engineer it, or use it to distribute unlawful or harmful content. If a change materially reduces what you have paid for, we will tell you in advance. Questions about these terms: use the <a class="inline-link" href="#contact" data-topic="question">contact form</a>.</p>
+        <details data-acc>
+          <summary><span>Terms of Service: billing and acceptable use</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>Access is provided through a subscription of $30 a month, $81 every 3 months or $300 a year, billed through the App Store or Google Play, and renews automatically until cancelled; you can cancel anytime and keep access until the end of the paid period. Do not attempt to disrupt the service, reverse engineer it, or use it to distribute unlawful or harmful content. If a change materially reduces what you have paid for, we will tell you in advance. Questions about these terms: use the <a class="inline-link" href="#contact" data-topic="question">contact form</a>.</p>
         </details>
       </div>
     </div>
@@ -2281,6 +3265,14 @@
   </div>
 </footer>
 
+<!-- A transient confirmation after the contact form posts. The form's own notice (role status or
+     alert) carries the announcement; the toast repeats it visually, so it stays out of the tree. -->
+<div class="toast t-toast" data-toast aria-hidden="true">
+  <svg class="ico toast__ok" aria-hidden="true"><use href="#i-check-circle"/></svg>
+  <svg class="ico toast__err" aria-hidden="true"><use href="#i-alert"/></svg>
+  <span data-toast-text></span>
+</div>
+
 <script>
   /* BUILT: interaction layer. No dependencies; the page reads fine without it. */
   (function () {
@@ -2292,23 +3284,79 @@
 
     var nav = $('.nav');
 
-    /* ---------- Mobile menu ---------- */
+    // a motion token's value in ms, read from :root so the script's timers stay in step with the CSS
+    var msVar = function (name, fallback) {
+      var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+      return isFinite(v) ? v : fallback;
+    };
+
+    /* ---------- Mobile menu: the menu dropdown (transitions-dev 05) from the burger ----------
+       It grows from the burger's corner (0.97, a little high, fading in) and its links follow 40ms
+       apart (CSS). Tab stays inside the burger and the menu while it is open; Escape, a tap outside
+       it and any of its links close it. */
     var burger = $('.nav__burger');
     var menu = $('#mobile-menu');
+    var menuTimer = 0;
     function setMenu(open) {
       burger.setAttribute('aria-expanded', String(open));
       burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-      menu.classList.toggle('is-open', open);
+      clearTimeout(menuTimer);
+      if (open) {
+        menu.classList.remove('is-closing');
+        menu.classList.add('is-open');
+      } else if (menu.classList.contains('is-open')) {
+        // swap .is-open for .is-closing, then rest: the next open starts from the resting scale
+        menu.classList.remove('is-open');
+        menu.classList.add('is-closing');
+        menuTimer = setTimeout(function () { menu.classList.remove('is-closing'); }, reduceMotion ? 0 : msVar('--dropdown-close-dur', 150));
+      }
       menu.setAttribute('aria-hidden', String(!open));
       menu.inert = !open;
       document.body.classList.toggle('menu-open', open);
     }
-    burger.addEventListener('click', function () { setMenu(burger.getAttribute('aria-expanded') !== 'true'); });
+    var menuOpen = function () { return menu.classList.contains('is-open'); };
+    burger.addEventListener('click', function () { setMenu(!menuOpen()); });
     $$('a', menu).forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && menu.classList.contains('is-open')) { setMenu(false); burger.focus(); }
+      if (!menuOpen()) return;
+      if (e.key === 'Escape') { setMenu(false); burger.focus(); return; }
+      if (e.key !== 'Tab') return;
+      // the focus trap: the burger, then the menu's links and button, round again
+      var ring = [burger].concat($$('a[href], button', menu));
+      var at = ring.indexOf(document.activeElement);
+      if (e.shiftKey && at <= 0) { e.preventDefault(); ring[ring.length - 1].focus(); }
+      else if (!e.shiftKey && (at === ring.length - 1 || at < 0)) { e.preventDefault(); ring[0].focus(); }
     });
-    window.addEventListener('resize', function () { if (window.innerWidth > 940 && menu.classList.contains('is-open')) setMenu(false); });
+    document.addEventListener('click', function (e) {
+      if (menuOpen() && !menu.contains(e.target) && !burger.contains(e.target)) setMenu(false);
+    });
+    window.addEventListener('resize', function () { if (window.innerWidth > 940 && menuOpen()) setMenu(false); });
+
+    /* ---------- Tabs sliding (transitions-dev 16): the pill under the selected tab ----------
+       The pill is written to the selected tab's place and width; on first paint and whenever the bar
+       changes size (fonts landing, a resize) it is written without a transition, so it never slides
+       in from nowhere. Returns a function that moves it to the selected tab, animated. */
+    var tabPill = function (bar) {
+      var pill = $('.t-tabs-pill', bar), tabs = $$('.t-tab', bar);
+      var active = function () { return tabs.filter(function (t) { return t.getAttribute('aria-selected') === 'true'; })[0] || tabs[0]; };
+      var moveTo = function (tab, animate) {
+        if (!animate) {
+          var prev = pill.style.transition;
+          pill.style.transition = 'none';
+          pill.style.transform = 'translateX(' + tab.offsetLeft + 'px)';
+          pill.style.width = tab.offsetWidth + 'px';
+          void pill.offsetWidth;
+          pill.style.transition = prev;
+        } else {
+          pill.style.transform = 'translateX(' + tab.offsetLeft + 'px)';
+          pill.style.width = tab.offsetWidth + 'px';
+        }
+      };
+      requestAnimationFrame(function () { moveTo(active(), false); });
+      if ('ResizeObserver' in window) new ResizeObserver(function () { moveTo(active(), false); }).observe(bar);
+      else window.addEventListener('resize', function () { moveTo(active(), false); });
+      return function () { moveTo(active(), true); };
+    };
 
     /* ---------- Fill-once visuals: rings, bars, timeline (counters run in the scroll system) ---------- */
     function activate(el) {
@@ -2337,13 +3385,49 @@
       fillTargets.forEach(function (el) { el.classList.add('is-visible'); });
     }
 
-    /* ---------- App screen switcher: WAI-ARIA tabs with a pausable rotation ---------- */
+    /* ---------- App screen switcher: WAI-ARIA tabs with a pausable rotation ----------
+       The pill slides to the tab (tabs sliding), the screens slide side by side (transitions-dev 08:
+       the one leaving goes the way of travel, the one arriving comes from the other side), the
+       numbers on the arriving screen pop in (number pop-in, 02) and the pause button's icon swaps
+       (icon swap, 09). */
+    // number pop-in: the number goes on the page as digits that rise in, its plain text kept for screen readers
+    var popNumber = function (el) {
+      if (!el._pop) {
+        var text = el.textContent;
+        var sr = document.createElement('span');
+        sr.className = 'sr-only';
+        sr.textContent = text;
+        var g = document.createElement('span');
+        g.className = 't-digit-group';
+        g.setAttribute('aria-hidden', 'true');
+        el.textContent = '';
+        el.appendChild(sr);
+        el.appendChild(g);
+        el._pop = { g: g, text: text };
+      }
+      var group = el._pop.g, chars = el._pop.text.split('');
+      group.classList.remove('is-animating');
+      group.replaceChildren();
+      chars.forEach(function (ch, i) {
+        var span = document.createElement('span');
+        span.className = 't-digit';
+        span.textContent = ch;
+        if (i === chars.length - 2) span.dataset.stagger = '1';
+        else if (i === chars.length - 1) span.dataset.stagger = '2';
+        group.appendChild(span);
+      });
+      void group.offsetHeight; // force reflow
+      group.classList.add('is-animating');
+    };
     $$('[data-tabs]').forEach(function (root) {
       var list = $('[role="tablist"]', root);
       var tabs = $$('[role="tab"]', root);
       var panels = tabs.map(function (t) { return document.getElementById(t.getAttribute('aria-controls')); });
       var toggle = $('[data-autoplay-toggle]', root);
+      var swapIcon = $('.t-icon-swap', toggle);
       var phone = $('.phone', root);
+      var slider = $('.t-page-slide', root);
+      var movePill = tabPill(list);
       var index = 0;
       var timer = null;
       var userPaused = reduceMotion; // reduced motion: never rotate unless asked
@@ -2352,7 +3436,18 @@
       var inView = false;
 
       function select(i, moveFocus) {
+        var prev = index, dir = i > index ? 1 : -1; // the way of travel (on past the last is still forward)
         index = (i + tabs.length) % tabs.length;
+        if (index !== prev) {
+          // the arriving screen starts on the side it comes from (set without a transition while it is
+          // unseen); the leaving one is sent the way of travel
+          var inc = panels[index], out = panels[prev], d = 'var(--page-slide-distance)';
+          inc.style.transition = 'none';
+          inc.style.setProperty('--t-page-from-x', dir > 0 ? d : 'calc(' + d + ' * -1)');
+          void inc.offsetWidth;
+          inc.style.transition = '';
+          out.style.setProperty('--t-page-from-x', dir > 0 ? 'calc(' + d + ' * -1)' : d);
+        }
         tabs.forEach(function (t, ti) {
           var on = ti === index;
           t.setAttribute('aria-selected', String(on));
@@ -2360,6 +3455,9 @@
           panels[ti].classList.toggle('is-active', on);
           if (on) panels[ti].removeAttribute('aria-hidden'); else panels[ti].setAttribute('aria-hidden', 'true');
         });
+        if (slider) slider.setAttribute('data-page', String(index + 1));
+        movePill();
+        if (index !== prev) $$('[data-pop]', panels[index]).forEach(popNumber);
         if (moveFocus) tabs[index].focus();
       }
       function sync() {
@@ -2368,6 +3466,7 @@
         var run = !userPaused && !hovering && !focusInside && inView && !document.hidden;
         if (run) timer = setInterval(function () { select(index + 1, false); }, 5000);
         toggle.dataset.state = userPaused ? 'paused' : 'playing';
+        if (swapIcon) swapIcon.dataset.state = userPaused ? 'b' : 'a'; // paused shows play
         toggle.setAttribute('aria-label', userPaused ? 'Play screen rotation' : 'Pause screen rotation');
       }
       function userTookOver() { userPaused = true; sync(); }
@@ -2405,6 +3504,194 @@
       }
       select(0, false);
       sync();
+    });
+
+    /* ---------- Spinning counter (transitions-dev 26): digit reels ----------
+       One clipped column per digit, each a strip of 0 to 9 repeated; a roll moves the strip up one or
+       two whole turns onto the digit (left column first, --reel-stagger apart), then quietly drops it
+       back to the same digit on the first turn so the next roll has room. Other characters (a comma, a
+       point) stand still. The number's text stays for screen readers. No motion blur: these are large
+       numbers. Options: len (pad with empty columns on the left), loops (turns in a strip), collapse
+       (an empty column narrows to nothing, so 30 and 300 each sit snug). */
+    var makeReel = function (host, o) {
+      o = o || {};
+      var text = host.textContent.trim(), len = o.len || text.length, loops = o.loops || 3;
+      var pad = function (t) { while (t.length < len) t = ' ' + t; return t; };
+      var mk = function (cls, txt) { var e = document.createElement('span'); e.className = cls; if (txt != null) e.textContent = txt; return e; };
+      var sr = mk('sr-only', text), reel = mk('t-reel'), probe = mk('t-reel-probe', '0');
+      reel.setAttribute('aria-hidden', 'true');
+      reel.appendChild(probe);
+      var cols = pad(text).split('').map(function (ch) {
+        if (!/[\d ]/.test(ch)) { reel.appendChild(mk('t-reel-sep', ch)); return null; }
+        var col = mk('t-reel-col'), strip = mk('t-reel-strip');
+        for (var j = 0; j < loops * 10; j++) strip.appendChild(mk('t-reel-digit', String(j % 10)));
+        col.appendChild(strip);
+        reel.appendChild(col);
+        return { col: col, strip: strip, idx: 0, timer: 0 };
+      });
+      host.textContent = '';
+      host.appendChild(sr);
+      host.appendChild(reel);
+      var lh = parseFloat(getComputedStyle(host).lineHeight);
+      if (lh) host.style.setProperty('--lh', lh + 'px');
+      var DUR = msVar('--reel-dur', 1400), STAG = msVar('--reel-stagger', 90), w = 0, cur = text;
+      var place = function (c, idx, delay, animate) {
+        clearTimeout(c.timer);
+        c.idx = idx;
+        c.strip.style.transition = animate ? 'transform var(--reel-dur) var(--reel-ease) ' + delay + 'ms' : 'none';
+        c.strip.style.transform = 'translate3d(0, calc(var(--reel-cell) * ' + (-idx) + '), 0)';
+        if (!animate) return;
+        c.timer = setTimeout(function () {
+          c.timer = 0;
+          c.strip.style.transition = 'none';
+          c.idx = idx % 10;
+          c.strip.style.transform = 'translate3d(0, calc(var(--reel-cell) * ' + (-c.idx) + '), 0)';
+        }, DUR + delay + 40);
+      };
+      var fit = function () {
+        if (!o.collapse) return;
+        w = probe.getBoundingClientRect().width;
+        cols.forEach(function (c) { if (c) c.col.style.width = c.col.classList.contains('is-empty') ? '0px' : w + 'px'; });
+      };
+      var set = function (t, animate) {
+        var ch = pad(t).split(''), k = 0, last = cols.length - 1;
+        cur = t;
+        cols.forEach(function (c, i) {
+          if (!c) return;
+          var empty = ch[i] === ' ', d = empty ? 0 : +ch[i], target = d;
+          if (animate) {
+            target = c.idx - (c.idx % 10) + 10 * (i === last ? 2 : 1) + d; // the right-hand digit goes round twice
+            if (target >= loops * 10) target = 10 + d; // out of strip (many quick rolls): land one turn in
+          }
+          place(c, target, animate ? k * STAG : 0, animate);
+          if (o.collapse) c.col.classList.toggle('is-empty', empty);
+          k++;
+        });
+        fit();
+        sr.textContent = t;
+      };
+      set(text, false);
+      if (o.collapse) {
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+        window.addEventListener('resize', fit, { passive: true });
+      }
+      return { set: set, spin: function () { set(cur, true); } };
+    };
+
+    /* ---------- Text swap soft (transitions-dev 34): a value changes in place ---------- */
+    var softSwap = function (el, next) {
+      var prev = el.dataset.text != null ? el.dataset.text : el.textContent;
+      if (prev === next) return;
+      el.dataset.text = next;
+      clearTimeout(el._softTimer);
+
+      var out = document.createElement('span');
+      out.className = 't-text-soft-old';
+      out.setAttribute('aria-hidden', 'true');
+      out.textContent = prev;
+      var inn = document.createElement('span');
+      inn.className = 't-text-soft-new';
+      inn.textContent = next;
+
+      var w0 = el.getBoundingClientRect().width;
+      el.classList.remove('is-swapping');
+      el.replaceChildren(out, inn);
+      var w1 = inn.getBoundingClientRect().width;
+      el.style.width = w0 + 'px';
+      void el.offsetWidth; // force reflow so every transition runs
+      el.classList.add('is-swapping');
+      el.style.width = w1 + 'px';
+
+      el._softTimer = setTimeout(function () {
+        el.classList.remove('is-swapping');
+        el.style.removeProperty('width');
+        el.textContent = next;
+      }, Math.max(msVar('--text-soft-dur', 200), msVar('--text-soft-resize-dur', 240)) + 40);
+    };
+
+    /* ---------- Pricing: the plan toggle ----------
+       Monthly $30, 3 months $81, yearly $300 (PRODUCT.md). The pill slides to the plan, the price rolls
+       to it (spinning counter), and the per-day line, the period, the saving and the billing line change
+       in place (text swap soft). The per-day figure and the saving are worked out here from each plan's
+       price, months and days, never typed in: $30 / 30 days, $81 / 90 days, $300 / 365 days, and the
+       saving against paying monthly for as long. */
+    var plansBar = $('[data-plans]'), priceReel = null;
+    if (plansBar) {
+      var planTabs = $$('.t-tab', plansBar), planPanel = document.getElementById('price-panel');
+      var priceNum = $('[data-price-num]'), planChip = $('[data-plan-chip]'), planPer = $('[data-plan-per]');
+      var planAday = $('[data-plan-aday]'), planBill = $('[data-plan-bill]');
+      var movePlanPill = tabPill(plansBar), planAt = 0, monthly = +planTabs[0].dataset.price;
+      priceReel = makeReel(priceNum, { len: 3, loops: 10, collapse: true });
+      var money = function (v) { return Math.abs(v - Math.round(v)) < 0.005 ? '$' + Math.round(v) : '$' + v.toFixed(2); };
+      var plan = function (t) {
+        var price = +t.dataset.price, months = +t.dataset.months, days = +t.dataset.days;
+        var save = Math.round((1 - price / (monthly * months)) * 100);
+        return { price: String(price), per: t.dataset.per, aday: 'about ' + money(price / days) + ' a day', chip: save > 0 ? 'Save ' + save + '%' : 'All included', bill: t.dataset.bill };
+      };
+      var pickPlan = function (i, moveFocus) {
+        i = (i + planTabs.length) % planTabs.length;
+        planTabs.forEach(function (t, ti) { t.setAttribute('aria-selected', String(ti === i)); t.tabIndex = ti === i ? 0 : -1; });
+        if (moveFocus) planTabs[i].focus();
+        movePlanPill();
+        if (i === planAt) return;
+        planAt = i;
+        var p = plan(planTabs[i]);
+        planPanel.setAttribute('aria-labelledby', planTabs[i].id);
+        priceReel.set(p.price, true);
+        softSwap(planPer, p.per);
+        softSwap(planAday, p.aday);
+        softSwap(planChip, p.chip);
+        softSwap(planBill, p.bill);
+      };
+      planTabs.forEach(function (t, i) { t.addEventListener('click', function () { pickPlan(i, false); }); });
+      plansBar.addEventListener('keydown', function (e) {
+        var next = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = planAt + 1;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = planAt - 1;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = planTabs.length - 1;
+        if (next === null) return;
+        e.preventDefault();
+        pickPlan(next, true);
+      });
+    }
+
+    /* ---------- Accordions (transitions-dev 21): FAQ, legal, the features' More ----------
+       Still <details> and <summary> (keyboard and screen readers as native). The script moves each
+       answer into the grid-rows panel; a click opens the <details> and then grows the panel from 0fr,
+       or shuts the panel and only then closes the <details>. Without the script nothing is wrapped and
+       the native <details> works as always. */
+    $$('details[data-acc]').forEach(function (d) {
+      var sum = d.querySelector('summary');
+      var panel = document.createElement('div'), inner = document.createElement('div'), timer = 0;
+      panel.className = 't-acc-panel';
+      inner.className = 't-acc-panel-inner';
+      while (sum.nextSibling) inner.appendChild(sum.nextSibling);
+      panel.appendChild(inner);
+      d.appendChild(panel);
+      d.classList.add('t-acc');
+      sum.classList.add('t-acc-head');
+      d.setAttribute('data-open', String(d.open));
+      var set = function (open, animate) {
+        clearTimeout(timer);
+        timer = 0;
+        if (open) {
+          d.open = true;
+          if (animate) void panel.offsetHeight; // the panel lays out shut, then grows
+          d.setAttribute('data-open', 'true');
+        } else {
+          d.setAttribute('data-open', 'false');
+          if (!animate || reduceMotion) { d.open = false; return; }
+          timer = setTimeout(function () { timer = 0; d.open = false; }, msVar('--acc-collapse', 250));
+        }
+      };
+      sum.addEventListener('click', function (e) {
+        e.preventDefault();
+        set(d.getAttribute('data-open') !== 'true', true);
+      });
+      // opened some other way (find in page, a fragment): show it; never undo a close in progress
+      d.addEventListener('toggle', function () { if (d.open && !timer) d.setAttribute('data-open', 'true'); else if (!d.open) d.setAttribute('data-open', 'false'); });
+      d._acc = set;
     });
 
     /* ---------- Scroll system ----------
@@ -3026,7 +4313,7 @@
       var stack = $('[data-stack]');
       if (stack) {
         var sCards = $$('.stack__card', stack), sDims = sCards.map(function (c) { return $('.stack__dim', c); });
-        var sNat = [], sStick = [], sH = [], sTop = 0, sEnd = 0, sLive = null, sCardH = -1;
+        var sNat = [], sStick = [], sH = [], sViz = [], sTop = 0, sEnd = 0, sLive = null, sCardH = -1;
         fx.push({
           measure: function () {
             // every row is as tall as the tallest card (grid 1fr). --stack-h lets a card taller than the
@@ -3038,12 +4325,20 @@
             sCards.forEach(function (c, i) {
               sH[i] = c.offsetHeight; sNat[i] = sTop + y; y += sH[i] + gap;
               sStick[i] = parseFloat(getComputedStyle(c).top) || 0;
+              var vz = $('.fviz', c); sViz[i] = vz ? offIn(vz, c)[1] + vz.offsetHeight / 2 : 0;
             });
           },
           update: function () {
             var live = sTop - V.y < V.h && sEnd - V.y > 0;
             if (live !== sLive) { sLive = live; stack.classList.toggle('is-live', live); }
             else if (!live) return; // off screen: written once on the way out, then left alone
+            // a card's app piece plays once its card has pinned (it is the top card) or the middle of the piece is
+            // well up the screen, and resets once the card is back below the screen, out of sight
+            for (var t = 0; t < sCards.length; t++) {
+              var ct = sNat[t] - V.y, top = sCards[t]._top, vy = Math.max(sStick[t], ct) + sViz[t]; // the piece's middle on screen
+              if (!top && (vy < V.h * 0.86 || ct <= sStick[t] + 1)) { sCards[t]._top = true; sCards[t].classList.add('is-top'); }
+              else if (top && ct > V.h) { sCards[t]._top = false; sCards[t].classList.remove('is-top'); }
+            }
             for (var i = 0; i < sCards.length - 1; i++) {
               // 0 while the next card's top is at or below this card's bottom, 1 once it has pinned on top
               var next = Math.max(sStick[i + 1], sNat[i + 1] - V.y), span = sStick[i] + sH[i] - sStick[i + 1];
@@ -3115,21 +4410,11 @@
         });
       }
 
-      /* Progress: counters count up each time they come on screen; the weekly bars grow with the scroll */
-      var fmt = function (v, d) { return v.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+      /* Progress: each counter rolls its reels (spinning counter) the first time it comes on screen, once,
+         landing on its number; one already on screen at load simply stands. The weekly bars grow with the scroll. */
       var counters = $$('[data-count]').map(function (el) {
-        var ghost = document.createElement('span');
-        ghost.className = 'cnt__ghost';
-        ghost.textContent = el.textContent;
-        var live = document.createElement('span');
-        live.className = 'cnt__live';
-        live.setAttribute('aria-hidden', 'true');
-        live.textContent = el.textContent;
-        el.textContent = '';
         el.classList.add('cnt');
-        el.appendChild(ghost);
-        el.appendChild(live);
-        return { el: el, live: live, target: parseFloat(el.dataset.count), dec: parseInt(el.dataset.decimals || '0', 10), top: 0, h: 0, state: null, t0: 0 };
+        return { el: el, reel: makeReel(el, { loops: 3 }), top: 0, h: 0, state: null };
       });
       var spark = $('.spark'), sparkBars = spark ? $$('i', spark) : [], sparkTop = 0;
       fx.push({
@@ -3137,18 +4422,12 @@
           counters.forEach(function (c) { c.top = docTop(c.el); c.h = c.el.offsetHeight; });
           if (spark) sparkTop = docTop(spark);
         },
-        update: function (now) {
-          var more = false;
+        update: function () {
           counters.forEach(function (c) {
-            var vt = c.top - V.y, inside = vt < V.h - 4 && vt + c.h > 0;
-            if (c.state === null) { c.state = inside ? 'done' : 'out'; if (!inside) c.live.textContent = fmt(0, c.dec); return; }
-            if (!inside) { if (c.state !== 'out') { c.state = 'out'; c.live.textContent = fmt(0, c.dec); } return; }
-            if (c.state === 'out') { c.state = 'run'; c.t0 = now; }
-            if (c.state === 'run') {
-              var k = clamp01((now - c.t0) / 900);
-              c.live.textContent = fmt(c.target * (1 - Math.pow(1 - k, 4)), c.dec);
-              if (k >= 1) c.state = 'done'; else more = true;
-            }
+            if (c.state === 'done') return;
+            var vt = c.top - V.y, inside = vt < V.h * 0.92 && vt + c.h > 0;
+            if (c.state === null) { c.state = inside ? 'done' : 'wait'; return; }
+            if (inside) { c.state = 'done'; c.reel.spin(); }
           });
           if (spark) {
             var p = prog(sparkTop, 0.95, 0.5), n = sparkBars.length;
@@ -3157,59 +4436,21 @@
               put(b, 'transform', k >= 1 ? 'none' : 'scaleY(' + k.toFixed(3) + ')');
             });
           }
-          return more;
         }
       });
 
-      /* Pricing: the price rolls up like an odometer as the card arrives; the daily line underlines itself */
-      var odo = $('[data-odometer]');
-      var odoCols = [], odoTop = 0;
-      if (odo) {
-        var digits = odo.textContent.trim();
-        odo.textContent = '';
-        var sr = document.createElement('span');
-        sr.className = 'sr-only';
-        sr.textContent = digits;
-        var wrap = document.createElement('span');
-        wrap.className = 'odo';
-        wrap.setAttribute('aria-hidden', 'true');
-        digits.split('').forEach(function (ch, ci) {
-          var col = document.createElement('span');
-          col.className = 'odo__col';
-          var ghost = document.createElement('span');
-          ghost.className = 'odo__ghost';
-          ghost.textContent = ch;
-          col.appendChild(ghost);
-          if (/\d/.test(ch)) {
-            var seq = [], j, d = +ch;
-            if (ci === digits.length - 1) for (j = 0; j < 10; j++) seq.push(j); // the last digit goes once round first
-            for (j = 0; j <= d; j++) seq.push(j);
-            var strip = document.createElement('span');
-            strip.className = 'odo__strip';
-            seq.forEach(function (n) { var e = document.createElement('span'); e.textContent = String(n); strip.appendChild(e); });
-            col.appendChild(strip);
-            odoCols.push({ strip: strip, n: seq.length, ci: ci });
-          } else {
-            ghost.className = '';
-          }
-          wrap.appendChild(col);
-        });
-        odo.appendChild(sr);
-        odo.appendChild(wrap);
-      }
+      /* Pricing: the price's reels roll once as the card arrives (the plan toggle rolls them after that);
+         the daily line underlines itself with the scroll */
+      var priceEl = priceReel && $('[data-price-num]'), priceTop = 0, priceState = null;
       var ul = $('[data-draw] > i'), ulTop = 0;
-      if (odoCols.length || ul) {
+      if (priceEl || ul) {
         fx.push({
-          measure: function () { if (odo) odoTop = docTop(odo); if (ul) ulTop = docTop(ul.parentNode); },
+          measure: function () { if (priceEl) priceTop = docTop(priceEl); if (ul) ulTop = docTop(ul.parentNode); },
           update: function () {
-            if (odoCols.length) {
-              var p = prog(odoTop, 1, 0.72), m = odoCols.length;
-              odoCols.forEach(function (c, i) {
-                var lag = 0.12 * (m - 1 - i); // the right-hand digit lands first
-                var k = outCubic(clamp01((p - (0.12 * (m - 1) - lag)) / (1 - 0.12 * (m - 1))));
-                var pos = k * (c.n - 1);
-                put(c.strip, 'transform', 'translate3d(0,' + (-pos / c.n * 100).toFixed(3) + '%,0)');
-              });
+            if (priceEl && priceState !== 'done') {
+              var vt = priceTop - V.y, inside = vt < V.h * 0.85 && vt > -V.h * 0.3;
+              if (priceState === null) priceState = inside ? 'done' : 'wait';
+              else if (inside) { priceState = 'done'; priceReel.spin(); }
             }
             if (ul) {
               var u = outCubic(prog(ulTop, 0.85, 0.6));
@@ -3453,21 +4694,85 @@
         email: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Please enter a valid email address.'; },
         message: function (v) { return v.trim().length >= 10 || 'Please tell us a little more (10 characters or more).'; }
       };
-      var check = function (input) {
+      /* An invalid field (error state shake, transitions-dev 12): its border turns red, its message grows
+         in under it, and on a send attempt the field shakes. The error stays until the value is fixed
+         (no timed revert: a form keeps telling you what is wrong); once fixed, the message fades and
+         its text is cleared, so it is no longer read out as the field's description. */
+      var shakeMs = msVar('--shake-dur-a', 80) * 2 + msVar('--shake-dur-b', 60) * 2;
+      var check = function (input, shake) {
         var rule = rules[input.name];
         if (!rule) return true;
         var result = rule(input.value);
         var field = input.closest('.field');
+        var msg = $('.field__err', field);
         var good = result === true;
         field.classList.toggle('has-error', !good);
+        field.classList.toggle('is-error', !good);
+        input.classList.toggle('is-error', !good);
         input.setAttribute('aria-invalid', String(!good));
-        $('.field__err', field).textContent = good ? '' : result;
+        clearTimeout(msg._clear);
+        if (!good) msg.textContent = result;
+        else if (msg.textContent) msg._clear = setTimeout(function () { msg.textContent = ''; }, msVar('--revert-dur', 280));
+        if (!good && shake) {
+          input.classList.remove('is-shaking');
+          void input.offsetWidth; // force reflow, so the shake replays
+          input.classList.add('is-shaking');
+          setTimeout(function () { input.classList.remove('is-shaking'); }, shakeMs + 20);
+        }
         return good;
       };
+      /* The send button's label morphs (text morph, transitions-dev 33: "Send" stays, the rest changes) */
+      var morphText = function (el, next) {
+        var prev = el.dataset.text != null ? el.dataset.text : el.textContent;
+        if (prev === next) return;
+        el.dataset.text = next;
+        clearTimeout(el._morphTimer);
+
+        // Shared start (a) and shared end (b).
+        var a = 0;
+        while (a < prev.length && a < next.length && prev[a] === next[a]) a++;
+        var b = 0;
+        while (b < prev.length - a && b < next.length - a && prev[prev.length - 1 - b] === next[next.length - 1 - b]) b++;
+
+        var swap = document.createElement('span');
+        swap.className = 't-morph-swap';
+        var out = document.createElement('span');
+        out.className = 't-morph-old';
+        out.setAttribute('aria-hidden', 'true');
+        out.textContent = prev.slice(a, prev.length - b);
+        var inn = document.createElement('span');
+        inn.className = 't-morph-new';
+        inn.textContent = next.slice(a, next.length - b);
+        swap.append(out, inn);
+
+        el.textContent = '';
+        el.append(next.slice(0, a), swap, next.slice(next.length - b));
+
+        swap.style.width = out.getBoundingClientRect().width + 'px';
+        void swap.offsetWidth; // force reflow so the width transitions
+        swap.classList.add('is-morphing');
+        swap.style.width = inn.getBoundingClientRect().width + 'px';
+
+        el._morphTimer = setTimeout(function () {
+          el.textContent = next;
+        }, Math.max(msVar('--text-morph-dur', 180), msVar('--text-morph-resize-dur', 240)) + 40);
+      };
+      /* A toast (transitions-dev 22) repeats the outcome at the foot of the screen for a few seconds; the
+         form's own notice (role status or alert) is what assistive tech reads, so the toast stays silent */
+      var toastEl = $('[data-toast]'), toastText = toastEl && $('[data-toast-text]', toastEl), toastTimer = 0;
+      var toast = function (kind, text) {
+        if (!toastEl) return;
+        clearTimeout(toastTimer);
+        toastEl.dataset.kind = kind;
+        toastText.textContent = text;
+        toastEl.classList.add('is-open');
+        toastTimer = setTimeout(function () { toastEl.classList.remove('is-open'); }, 4200);
+      };
+      var okCheck = $('.t-success-check', ok);
       var inputs = $$('#c-name, #c-email, #c-message', form);
       inputs.forEach(function (input) {
-        input.addEventListener('blur', function () { if (input.value) check(input); });
-        input.addEventListener('input', function () { if (input.closest('.field').classList.contains('has-error')) check(input); });
+        input.addEventListener('blur', function () { if (input.value) check(input, false); });
+        input.addEventListener('input', function () { if (input.closest('.field').classList.contains('has-error')) check(input, false); });
       });
 
       form.addEventListener('submit', function (e) {
@@ -3475,7 +4780,7 @@
         ok.classList.remove('is-shown');
         err.classList.remove('is-shown');
         if (form.company.value) return; // honeypot: a person never fills this in
-        var valid = inputs.map(check).every(Boolean);
+        var valid = inputs.map(function (input) { return check(input, true); }).every(Boolean);
         if (!valid) { $('.field.has-error input, .field.has-error textarea', form).focus(); return; }
 
         var topic = $('input[name="topic"]:checked', form);
@@ -3489,7 +4794,7 @@
 
         submit.disabled = true;
         form.setAttribute('aria-busy', 'true');
-        submitLabel.textContent = 'Sending…';
+        morphText(submitLabel, 'Sending…');
         var controller = 'AbortController' in window ? new AbortController() : null;
         var timeout = setTimeout(function () { if (controller) controller.abort(); }, 15000);
 
@@ -3508,24 +4813,65 @@
           form.reset();
           ok.classList.add('is-shown');
           ok.focus();
+          // the success check (transitions-dev 10): it turns upright and its tick draws
+          if (okCheck) { okCheck.setAttribute('data-state', 'out'); void okCheck.offsetWidth; okCheck.setAttribute('data-state', 'in'); }
+          toast('ok', 'Message sent.');
         }).catch(function () {
           err.classList.add('is-shown');
+          toast('err', 'Not sent. Check your connection and try again.');
         }).then(function () {
           clearTimeout(timeout);
           submit.disabled = false;
           form.removeAttribute('aria-busy');
-          submitLabel.textContent = 'Send message';
+          morphText(submitLabel, 'Send message');
         });
       });
     }
 
     /* ---------- Features: all four per pillar on wide screens, two plus More on phones ---------- */
     var moreMq = window.matchMedia('(max-width: 620px)');
-    var setMore = function () { $$('[data-more]').forEach(function (d) { d.open = !moreMq.matches; }); };
+    var setMore = function () { $$('[data-more]').forEach(function (d) { if (d._acc) d._acc(!moreMq.matches, false); else d.open = !moreMq.matches; }); };
     setMore();
     if (moreMq.addEventListener) moreMq.addEventListener('change', setMore); else moreMq.addListener(setMore);
 
-    /* ---------- 3D tilt on the phone and the price card (mouse and trackpad only) ---------- */
+    /* ---------- Card hover tilt (transitions-dev 19) on the price card, mouse and trackpad only ----------
+       The pointer is tracked on the flat wrapper (.t-tilt), the card inside it tilts (8 degrees at the
+       edges at most) and a soft glare follows the pointer. The classes go on only for a fine pointer
+       with motion allowed, so a touch screen never gets touch-action: none or a standing layer. */
+    var tiltBox = $('[data-card-tilt]'), tiltFine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    if (tiltBox && !reduceMotion && tiltFine.matches) (function () {
+      var tilt = tiltBox, card = tilt.firstElementChild, reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+      tilt.classList.add('t-tilt');
+      card.classList.add('t-tilt-card');
+      var MAX = 8; // peak tilt in degrees at the card edges
+      function reset() {
+        tilt.classList.remove('is-hover');
+        card.classList.remove('is-tilting');
+        card.style.setProperty('--tilt-rx', '0deg');
+        card.style.setProperty('--tilt-ry', '0deg');
+      }
+      function track(e) {
+        if (reduce.matches) return;
+        var r = tilt.getBoundingClientRect();
+        var px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+        var py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+        tilt.classList.add('is-hover');
+        card.classList.add('is-tilting');
+        card.style.setProperty('--tilt-ry', ((px - 0.5) * MAX).toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-rx', ((0.5 - py) * MAX).toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-gx', (px * 100).toFixed(1) + '%');
+        card.style.setProperty('--tilt-gy', (py * 100).toFixed(1) + '%');
+      }
+      tilt.addEventListener('pointerdown', function (e) {
+        if (e.pointerType !== 'mouse') { try { tilt.setPointerCapture(e.pointerId); } catch (_) {} }
+      });
+      tilt.addEventListener('pointermove', track);
+      tilt.addEventListener('pointerup', reset);
+      tilt.addEventListener('pointercancel', reset);
+      tilt.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') reset(); });
+    })();
+
+    /* ---------- 3D tilt on the phone (mouse and trackpad only) ---------- */
     var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
     if (!reduceMotion && fine.matches) {
       $$('[data-tilt]').forEach(function (el) {
