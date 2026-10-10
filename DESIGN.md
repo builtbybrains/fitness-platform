@@ -13,7 +13,8 @@ disagree, the deck wins; fix this file.
 - Family: flat ink on deep black. Solid fills, hard edges, no glass, no gradients.
 - Dials: variance 5/10, motion 6/10, density 5/10. Motion sits at 6 because of the objects: they
   follow the scroll (see Objects (2D renders)). The scroll story at the top of the page runs at 8 (see Scroll story).
-  Everything else stays at the old 4: short, motivated, once.
+  Below the story, one authored moment per section at most (see Motion system); controls stay at the
+  old 4: short, motivated, once.
 
 ## Name and voice
 
@@ -182,12 +183,14 @@ with the same look and the same motion. Nothing on the website runs WebGL or dow
 ## Motion
 
 - Ease-out quart or expo, 150 to 400ms, transform and opacity only.
-- Progress rings and bars fill once on first view. Buttons scale to 0.97 on press.
+- Progress rings and bars fill once on first view. Buttons and every tappable row scale to 0.96 on
+  press (the CSS `scale` property, 150ms).
 - Web scroll reveal: the Nutrition split copy rises in once (the `rise` keyframes, 80ms stagger),
   and the phone and price card settle in from a slight tilt; only what starts below the fold is
   held back. Everything else that moves with the page is scroll-linked (below).
-- The world badge's bob (about 6px, 6s) is the only time-driven motion on the website (and the pricing
-  badge's, the same); every other object moves with the scroll. See Objects (2D renders) and Scroll story.
+- Time-driven motion on the website is limited to: the world badge's bob (about 6px, 6s, and the
+  pricing badge's, the same), the kinetic band's drift, and the one opening sequence; every other object
+  moves with the scroll. See Objects (2D renders), Scroll story and Motion system.
 - `prefers-reduced-motion` (web) and Reduce Motion (app) turn all of it off, every object included
   (each image stands still).
 
@@ -207,19 +210,32 @@ Each section moves its own way, never the same fade-up twice:
 - Scroll progress: a 2px line under the nav. Stone at 35% for the page so far, green for the part
   of the current section already read.
 - Scroll story: see the section below.
-- Key headings (How it works and the final call): word by word, each word rises out of its own mask
-  with a 4-degree settle as the heading crosses the lower third of the screen.
-- Section headlines (Features, Nutrition, Train, AI Coach, Progress, Pricing, About): line after line,
-  each word fades in sliding from a quarter of a letter to the right, as the heading rises
-  from the bottom of the screen to 60% up. The words stay real text; the filter is cleared at rest.
+- Key heading (How it works): word by word, each word rises out of its own mask with a 4-degree
+  settle as the heading crosses the lower third of the screen.
+- Section headlines (Features, Nutrition, Train, AI Coach, Progress, Pricing, FAQ, About, Contact,
+  Privacy and terms, the final call): the texts reveal (see Motion system). Each visual line of the
+  heading rises its full height out of its own mask and fades in, 40ms after the line above (the final
+  call goes word by word), once the heading's top is 12% up the screen. Met in a fast fling (over
+  1500px a second) the heading is simply shown, since a reveal there is never seen and each one costs
+  the page a layer change; it resets out of sight once it drops back below the screen, so it plays
+  again next time. One mask per line, not per word, keeps the page's layer count low. No blur. The
+  heading keeps its full text as its accessible name.
 - How it works: a pinned step sequence (see Scroll story). Without motion the roadmap stands as before:
   every step reached, the rail drawn green, each number lit.
-- Features: each card stands up from lying back (rotateX 24 degrees to 0, 40px rise, opacity), the
-  right-hand column a beat behind the left, rows staggered by their position.
-- Kinetic band (between Features and Nutrition, decorative, hidden from screen readers): "Train ·
-  Fuel · Become ·" in Sora Bold caps, solid and outline words alternating, green once. Two rows slide
-  against each other with the scroll and lean up to 6 degrees into the scroll's direction while it
-  moves.
+- Features: the four pillars (Train, Nutrition, AI Coach, Progress) are big Carbon cards (20px
+  corners, a hairline ring and a soft two-layer shadow cast upward) that stack. Each pins under the
+  nav 14px lower than the one before (CSS sticky); as the next slides up over it, the covered card
+  scales to 0.94 from its top edge and dims to 55% black, from the raw scroll position. Every card is
+  as tall as the tallest, so none shows below the one on top, and a card taller than the screen pins by
+  its bottom edge so all of it is read first. Phones: the same at 360, two features up front and the
+  rest under "More". Without motion: a plain list of cards.
+- Kinetic band (between How it works and Features, decorative, hidden from screen readers): "Train ·
+  Fuel · Become" in giant Sora Bold caps (72px on phones to 176px), solid and outline words
+  alternating, green once, separated by a short bar leaning forward like the B's slots (drawn, not a
+  glyph). A full-width marquee: two rows drift in opposite directions on their own
+  (72px a second on a 1440px screen); scrolling speeds them up, turns them with the scroll's direction
+  and leans them up to 6 degrees into it. Paused off screen. The client's own line, kept over a generic
+  "Train, eat, recover" because the app has no recovery features.
 - Progress: the counters count up (900ms, ease-out quart) each time they come on screen and reset
   when they leave; they keep the final number's width, so nothing shifts. The weekly bars grow with
   the scroll, left to right.
@@ -228,7 +244,59 @@ Each section moves its own way, never the same fade-up twice:
 - Phone mockup: drifts slower than the page (40px at most, 22px on phones) and its screen scrolls
   under a pinned status bar and tab bar, as if in use.
 - Final call: a Deep Black panel opens from a rounded card (scale 0.96, 24px corners) inside a band
-  of `#121212` to full bleed as the section arrives. The copy itself never scales.
+  of `#121212` to full bleed as the section arrives. The copy itself never scales. "Train. Fuel.
+  Become." reveals a beat per word (80ms apart, the scale's large-stagger step) and "Become." turns
+  green once the last word has landed. The three
+  objects are three layers of one picture (each cut to its object), drifting 18, 36 and 54px against
+  the scroll, so they sit at three depths.
+- Footer: revealed from under the page. When the whole footer fits the screen under the nav, its
+  content is held at the bottom of the screen (a transform trailing the page's end by the scroll still
+  left) while the footer's own clipped box on `#121212` rises over it, and the final call lifts off it
+  on 28px rounded corners. Not CSS sticky: a sticky footer behind the page made the whole page one
+  composited layer and cost frames. A footer taller than that (a short phone) simply follows the page,
+  so no part of it is ever out of reach.
+
+### Motion system
+
+One timing language, two engines, one rule for touch.
+
+- Tokens: the transitions-dev scale sits in `:root` (`--duration-*` 40 to 500ms, `--ease-smooth-out`
+  `cubic-bezier(0.22, 1, 0.36, 1)` and the rest, `--distance-*`, `--scale-*`, `--blur-*`; its two
+  bounce easings are left out, since bounce and elastic easing are banned). The older
+  names map onto it by usage: `--t-fast` is `--duration-quick` (150ms, hovers and presses), `--t-med`
+  is `--duration-fast` (250ms, state swaps), `--t-slow` is `--duration-slow` (400ms, reveals),
+  `--ease-quart` is `--ease-smooth-out`. `--ease-expo` stays for one-shot settles. New motion uses the
+  tokens, never a raw number, unless no token's usage fits. Pattern tokens (`--stagger-*`, `--learn-*`)
+  point at the scale rather than repeating its numbers. Browser surfaces follow the palette too: the
+  scrollbar, the caret and native accents.
+- The scroll loop (Web scroll system) owns everything that follows the scroll. Nothing else listens to
+  the scroll position; no ScrollTrigger, no smooth-scroll library.
+- GSAP core (3.13.0, vendored at `assets/js/vendor/gsap.min.js`, deferred) is for one-shot
+  choreography only: the opening sequence and the magnetic button. It only moves containers and
+  wrappers, never a button itself, so each button's own press stays CSS.
+- Opening sequence (once per load, when the page opens at its top, about 1s): the nav slides down,
+  the headline rises 0.3em into place line by line (80ms apart), the badge drops in
+  (`--distance-large`, 30px; `--distance-medium` on phones, where it sits 16px under the headline) and
+  settles once, then the lead, the button and the scroll cue rise `--distance-medium` in, 80ms apart. The headline and the
+  badge are the page's largest paint (LCP), so they are painted from the first frame, whole and
+  unclipped, just short of their places; only the nav and the foot start unseen. If GSAP fails or is
+  slow, its start offsets are dropped (on error, or after 2.5s) and the page stands. A scroll, a tap
+  or a key during it plays the rest at triple speed.
+- Magnetic button: the two main "Get early access" buttons (green world, final call) lean toward a
+  mouse pointer over them, 8px across and 5px up or down at most (`gsap.quickTo`, 0.4s). Mouse and
+  trackpad only.
+- transitions-dev patterns in use, pasted as shipped with their reduced-motion blocks: Texts reveal
+  (section headlines; on our headlines the blur is off, see below) and Learn more hover ("Explore all
+  features" and the contact rows; it also plays on keyboard focus).
+- Touch and blur: no CSS blur on large text anywhere, and no blur at all on touch screens. A pattern
+  that ships a small blur may keep it only on small elements and only under `(hover: hover)`.
+  Scroll-linked values use the raw scroll position on touch (no easing), transform and opacity only,
+  and every effect is stepped only while on screen.
+- Hover only where a pointer can hover: every colour or arrow hover sits in `@media (hover: hover)`, so
+  nothing sticks after a tap. Focus: a 2px green ring on every control at its own corners, the same
+  ring 2px outside each form field (red while it is in error); a focused link shows its arrow.
+- Reduced motion: every pattern above is off (the tokens zero nothing; the `.fx` and `.intro` classes
+  are simply never set). No script: the same still page, every headline and card shown.
 
 ## Scroll story (web, top of the page)
 

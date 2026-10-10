@@ -62,11 +62,60 @@
       --r-tile: 14px;
       --r-pill: 999px;
 
-      --ease-quart: cubic-bezier(0.25, 1, 0.5, 1);
+      /* ── Motion tokens (transitions-dev _root.css, the shared scale) ──
+         Every transition on the page reads these (DESIGN.md, "Motion system"). */
+      /* Durations */
+      --duration-stagger: 40ms;  /* per-item stagger offset */
+      --duration-micro: 80ms;  /* tooltip/path delay, shake segment, large stagger */
+      --duration-quick: 150ms;  /* modal/dropdown close, text swap, tooltip appear */
+      --duration-fast: 250ms;  /* icon swap, dropdown/modal open, tabs sliding, page slide */
+      --duration-medium: 350ms;  /* panel close, toast close */
+      --duration-slow: 400ms;  /* panel open, skeleton content reveal, input clear */
+      --duration-very-slow: 500ms;  /* emphasis moments, badge appear, text reveal, success check */
+      /* Easings */
+      --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);  /* modal/dropdown/panel open + close, page slide, resize, position change */
+      --ease-in-out: ease-in-out;  /* icon swap, text swap, text reveal, skeleton reveal */
+      --ease-out: ease-out;  /* tooltip open / close */
+      --ease-linear: linear;  /* shimmer, skeleton pulse, spinner */
+      /* the scale's two bounce easings are left out: the design bar bans bounce and elastic easing */
+      /* Distances */
+      --distance-micro: 4px;  /* text swap */
+      --distance-small: 6px;  /* error shake (small segment) */
+      --distance-base: 8px;  /* badge diagonal reveal, page slide, error shake (large segment) */
+      --distance-medium: 12px;  /* text reveal */
+      --distance-large: 30px;  /* check badge appear */
+      /* Scales */
+      --scale-large: 0.96;  /* modal open / close */
+      --scale-medium: 0.97;  /* dropdown open */
+      --scale-small: 0.98;  /* tooltip open */
+      --scale-tiny: 0.99;  /* dropdown close */
+      /* Blur */
+      --blur-small: 2px;  /* panel reveal, icon swap, text swap, skeleton reveal, number pop-in */
+      --blur-medium: 3px;  /* page slide, text reveal */
+      --blur-large: 8px;  /* success check open */
+
+      /* Pattern tokens point at the scale above (primitive, then pattern), so one change retunes all */
+      /* Texts reveal (transitions-dev 18): the section headlines */
+      --stagger-dur: var(--duration-very-slow);
+      --stagger-distance: var(--distance-medium);
+      --stagger-stagger: var(--duration-stagger);
+      --stagger-blur: var(--blur-medium);
+      --stagger-ease: var(--ease-smooth-out);
+      /* Learn more hover (transitions-dev 24): link and row chevrons */
+      --learn-shift: 2px;
+      --learn-spread: 8deg;
+      --learn-in: var(--duration-medium);
+      --learn-out: var(--duration-medium);
+      --learn-ease: var(--ease-smooth-out);
+
+      /* The page's older names, mapped onto the scale by usage ("transitions refine"):
+         hovers and presses are quick, state swaps fast, reveals slow; every ease is smooth-out.
+         --ease-expo stays for one-shot settles (the tilt-in), which no token's usage covers. */
+      --ease-quart: var(--ease-smooth-out);
       --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-      --t-fast: 150ms;
-      --t-med: 250ms;
-      --t-slow: 400ms;
+      --t-fast: var(--duration-quick);
+      --t-med: var(--duration-fast);
+      --t-slow: var(--duration-slow);
 
       --nav-h: 72px;
     }
@@ -95,8 +144,13 @@
     button { background: none; border: 0; cursor: pointer; padding: 0; }
     a { color: inherit; text-decoration: none; }
     ul, ol { list-style: none; padding: 0; }
-    :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 6px; }
+    :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; } /* the ring follows each element's own corners */
+    /* text links and the accordion rows own a small corner, so their focus ring is rounded too (rows with a
+       divider underneath keep square corners, so the divider stays straight) */
+    .logo, .nav__link, .link-arrow, .inline-link, .footer__links a, .faq summary, .feature-more > summary { border-radius: 8px; }
     ::selection { background: var(--green); color: var(--black); }
+    html { scrollbar-color: #3A3A3A var(--black); accent-color: var(--green); } /* the browser's own surfaces, in the palette */
+    input, textarea { caret-color: var(--green); }
     .ico { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .ico * { vector-effect: non-scaling-stroke; }
 
@@ -124,7 +178,7 @@
       color: var(--white); text-decoration: underline; text-decoration-color: var(--green);
       text-decoration-thickness: 2px; text-underline-offset: 4px;
     }
-    .inline-link:hover { color: var(--green); }
+    .inline-link { transition: color var(--duration-quick) var(--ease-smooth-out); }
 
     /* ---------- Layout ---------- */
     .container { width: 100%; max-width: var(--container); margin-inline: auto; padding-inline: var(--gutter); }
@@ -142,51 +196,82 @@
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
       min-height: 48px; padding: 0 24px; border-radius: var(--r-pill);
       font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; white-space: nowrap;
-      transition: transform var(--t-fast) var(--ease-quart), background-color var(--t-fast) var(--ease-quart), box-shadow var(--t-fast) var(--ease-quart);
+      /* scale is the press (the transform stays free for the magnetic pull); opacity eases the disabled state */
+      transition: scale var(--duration-quick) var(--ease-smooth-out), background-color var(--duration-quick) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out), opacity var(--duration-quick) var(--ease-smooth-out);
     }
-    .btn:active { transform: scale(0.97); }
-    .btn .ico { width: 18px; height: 18px; transition: transform var(--t-med) var(--ease-quart); }
-    .btn:hover .ico--arrow { transform: translateX(3px); }
+    .btn:active:not([disabled]) { scale: var(--scale-large); }
+    .btn .ico { width: 18px; height: 18px; transition: transform var(--duration-fast) var(--ease-smooth-out); }
+    .btn:focus-visible .ico--arrow { transform: translateX(3px); }
     .btn-primary { background: var(--green); color: var(--black); }
-    .btn-primary:hover { background: var(--green-press); }
     .btn-secondary { background: var(--carbon); color: var(--white); }
-    .btn-secondary:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
     .btn-lg { min-height: 56px; padding: 0 32px; font-size: 1rem; }
     .btn-sm { min-height: 44px; padding: 0 20px; font-size: 0.875rem; }
     .btn-block { width: 100%; }
     .btn[disabled] { opacity: 0.6; cursor: progress; }
+    /* "Explore all features": the chevron slides and its arms open into an arrow (transitions-dev 24) */
     .link-arrow {
       display: inline-flex; align-items: center; gap: 8px; min-height: 48px;
       font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; color: var(--white);
     }
-    .link-arrow .ico { width: 18px; height: 18px; color: var(--green); transition: transform var(--t-med) var(--ease-quart); }
-    .link-arrow:hover .ico { transform: translateX(4px); }
+    .link-arrow .t-learn-chevron { color: var(--green); }
+    .link-arrow .t-learn-chevron svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
     .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    /* the main calls to action sit in a wrapper that GSAP pulls toward a mouse pointer (the button's
+       own scale stays free for its press) */
+    .magnet { display: inline-flex; }
+
+    /* Learn more hover (transitions-dev 24), pasted as shipped */
+    .t-learn-chevron {
+      display: inline-flex;
+      transform: translateX(0);
+      transition: transform var(--learn-out) var(--learn-ease);
+    }
+    .t-learn-arm {
+      transform-box: view-box;
+      transform-origin: 10px 8px;
+      vector-effect: non-scaling-stroke;
+      transition: transform var(--learn-out) var(--learn-ease);
+    }
+    .t-learn:hover .t-learn-chevron { transform: translateX(var(--learn-shift)); transition-duration: var(--learn-in); }
+    .t-learn:hover .t-learn-arm { transition-duration: var(--learn-in); }
+    .t-learn:hover .t-learn-arm-top { transform: rotate(var(--learn-spread)); }
+    .t-learn:hover .t-learn-arm-bot { transform: rotate(calc(var(--learn-spread) * -1)); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-learn-chevron, .t-learn-arm { transition: none !important; }
+    }
+    /* the same answer for the keyboard: a focused link shows its arrow too */
+    .t-learn:focus-visible .t-learn-chevron { transform: translateX(var(--learn-shift)); transition-duration: var(--learn-in); }
+    .t-learn:focus-visible .t-learn-arm { transition-duration: var(--learn-in); }
+    .t-learn:focus-visible .t-learn-arm-top { transform: rotate(var(--learn-spread)); }
+    .t-learn:focus-visible .t-learn-arm-bot { transform: rotate(calc(var(--learn-spread) * -1)); }
 
     /* ---------- Navigation ---------- */
+    /* always solid Deep Black with its hairline, so the white wordmark and the green B read over the green world */
     .nav {
       position: fixed; inset: 0 0 auto 0; z-index: 100; height: var(--nav-h);
       display: flex; align-items: center;
-      border-bottom: 1px solid transparent;
-      transition: background-color var(--t-med) var(--ease-quart), border-color var(--t-med) var(--ease-quart);
+      background: var(--black); border-bottom: 1px solid var(--line);
     }
-    .nav.is-scrolled, body.menu-open .nav { background: var(--black); border-bottom-color: var(--line); }
     .nav__inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-    .logo { display: inline-flex; align-items: center; min-height: 44px; flex: none; }
+    .logo { display: inline-flex; align-items: center; min-height: 44px; flex: none; transition: scale var(--duration-quick) var(--ease-smooth-out); }
+    .logo:active { scale: var(--scale-large); }
     .logo img { height: 26px; width: auto; }
     .nav__links { display: flex; align-items: center; gap: 4px; }
     .nav__link {
       position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
       font-size: 0.9375rem; font-weight: 500; color: var(--muted);
-      transition: color var(--t-fast) var(--ease-quart);
+      transition: color var(--duration-quick) var(--ease-smooth-out), scale var(--duration-quick) var(--ease-smooth-out);
     }
-    .nav__link:hover, .nav__link.is-active { color: var(--white); }
+    .nav__link.is-active { color: var(--white); }
+    .nav__link:active { scale: var(--scale-large); }
     .nav__link.is-active::after {
       content: ''; position: absolute; left: 14px; right: 14px; bottom: 6px; height: 2px;
       border-radius: 2px; background: var(--green);
     }
     .nav__actions { display: flex; align-items: center; gap: 8px; flex: none; }
-    .nav__burger { display: none; position: relative; width: 44px; height: 44px; border-radius: 50%; background: var(--carbon); }
+    .nav__burger { display: none; position: relative; width: 44px; height: 44px; border-radius: 50%; background: var(--carbon); transition: scale var(--duration-quick) var(--ease-smooth-out); }
+    .nav__burger:active { scale: var(--scale-large); }
     .nav__burger span {
       position: absolute; left: 50%; width: 18px; height: 2px; border-radius: 2px; background: var(--white);
       transform: translateX(-50%); transition: transform var(--t-med) var(--ease-quart), opacity var(--t-fast);
@@ -210,8 +295,9 @@
       display: flex; align-items: center; min-height: 60px;
       font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.02em;
       border-bottom: 1px solid var(--line);
+      transform-origin: 0 50%; transition: color var(--duration-quick) var(--ease-smooth-out), scale var(--duration-quick) var(--ease-smooth-out);
     }
-    .mobile-menu__list a:active { color: var(--green); }
+    .mobile-menu__list a:active { color: var(--green); scale: var(--scale-large); }
     .mobile-menu__foot { margin-top: auto; display: grid; gap: 12px; padding-top: 32px; }
     body.menu-open { overflow: hidden; }
 
@@ -255,22 +341,39 @@
     .roadmap__step.is-left .roadmap__marker { right: -72px; }
     .roadmap__step.is-right .roadmap__marker { left: -72px; }
     .roadmap__card h3 { margin-bottom: 8px; }
-    .roadmap__card > p { color: var(--muted); }
+    .roadmap__card > p { color: var(--muted); text-wrap: pretty; }
     .step-list { display: grid; gap: 6px; margin-top: 16px; }
     .step-list li { display: flex; gap: 10px; align-items: baseline; font-size: 0.9375rem; color: var(--stone); }
     .step-list li::before { content: ''; width: 6px; height: 2px; border-radius: 2px; background: var(--green); flex: none; transform: translateY(-4px); }
 
-    /* ---------- Features by pillar ---------- */
-    .feature-group {
-      display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px 56px;
-      padding-block: 40px; border-top: 1px solid var(--line);
-    }
-    .feature-group:last-child { padding-bottom: 0; }
-    .feature-group__head { display: flex; align-items: center; gap: 16px; align-self: start; }
+    /* ---------- Features: the four pillars as big cards that stack ----------
+       A plain list of Carbon cards at rest (reduced motion, no script). With motion (.fx) each card
+       pins under the nav a little lower than the one before, the next one slides up over it, and the
+       scroll loop scales the covered card to 0.94 and dims it. Every row is as tall as the tallest
+       card, so a card underneath never shows below the one on top. */
     .icon-circle { width: 52px; height: 52px; border-radius: 50%; background: var(--carbon); color: var(--green); display: grid; place-items: center; flex: none; }
+    .stack { display: grid; grid-auto-rows: 1fr; gap: 20px; }
+    .stack__card {
+      position: relative; overflow: hidden; overflow: clip;
+      display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-content: start; gap: 32px clamp(32px, 5vw, 72px);
+      padding: clamp(28px, 4vw, 48px); border-radius: var(--r-card); background: var(--carbon);
+      /* a hairline ring where it meets the card below, and a soft two-layer shadow cast upward onto it */
+      box-shadow: 0 0 0 1px var(--line), 0 -12px 24px -12px rgba(0, 0, 0, 0.7), 0 -32px 64px -24px rgba(0, 0, 0, 0.6);
+      transform-origin: 50% 0;
+    }
+    .stack__head { display: grid; align-content: start; justify-items: start; gap: 16px; }
+    .stack__head .icon-circle { width: 56px; height: 56px; background: var(--black); }
+    .stack__head .icon-circle .ico { width: 26px; height: 26px; }
+    .stack__title { font-size: clamp(2rem, 1.4rem + 2vw, 3rem); line-height: 1.05; }
+    .stack__line { max-width: 30ch; color: var(--stone); text-wrap: pretty; }
+    .stack__dim { position: absolute; inset: 0; z-index: 1; border-radius: inherit; background: var(--black); opacity: 0; pointer-events: none; }
+    .fx .stack__card { position: sticky; top: min(calc(var(--nav-h) + 20px + var(--i, 0) * 14px), calc(100svh - var(--stack-h, 0px) - 16px)); }
+    .fx .stack.is-live .stack__card { will-change: transform; }
+    .fx .stack.is-live .stack__dim { will-change: opacity; } /* its own layer, so dimming never repaints the card */
+    @media (min-width: 941px) { .fx .stack__card { min-height: clamp(360px, 58svh, 520px); } }
     .feature-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 48px; }
     .feature h4 { font-size: 1.0625rem; margin-bottom: 6px; }
-    .feature p { color: var(--muted); font-size: 0.9375rem; line-height: 1.6; }
+    .feature p { color: var(--muted); font-size: 0.9375rem; line-height: 1.6; text-wrap: pretty; }
     .feature-more { margin-top: 32px; }
     .feature-more > summary { display: none; }
 
@@ -278,7 +381,7 @@
     .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(40px, 6vw, 88px); align-items: center; }
     .split--reverse .split__media { order: -1; }
     .check-list { display: grid; gap: 14px; margin-top: 28px; }
-    .check-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--stone); }
+    .check-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--stone); text-wrap: pretty; }
     .check-list .ico { width: 20px; height: 20px; color: var(--green); margin-top: 2px; }
     .split .actions { margin-top: 32px; }
 
@@ -289,13 +392,13 @@
     .tab {
       min-height: 44px; padding: 0 18px; border-radius: var(--r-pill);
       font-size: 0.9375rem; font-weight: 500; color: var(--muted);
-      transition: background-color var(--t-med) var(--ease-quart), color var(--t-med) var(--ease-quart);
+      transition: background-color var(--t-med) var(--ease-quart), color var(--t-med) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out);
     }
-    .tab:hover { color: var(--white); }
+    .tab:active { scale: var(--scale-large); }
     .tab[aria-selected='true'] { background: var(--green); color: var(--black); font-weight: 600; }
     .tab:focus-visible { outline-offset: 2px; }
-    .icon-btn { width: 52px; height: 52px; border-radius: 50%; background: var(--carbon); color: var(--white); display: grid; place-items: center; flex: none; transition: transform var(--t-fast) var(--ease-quart); }
-    .icon-btn:active { transform: scale(0.94); }
+    .icon-btn { width: 52px; height: 52px; border-radius: 50%; background: var(--carbon); color: var(--white); display: grid; place-items: center; flex: none; transition: scale var(--duration-quick) var(--ease-smooth-out); }
+    .icon-btn:active { scale: var(--scale-large); }
     .icon-btn .ico { width: 20px; height: 20px; }
     .icon-btn .ico--play { fill: currentColor; stroke: none; }
     .icon-btn[data-state='playing'] .ico--play, .icon-btn[data-state='paused'] .ico--pause { display: none; }
@@ -351,7 +454,7 @@
     .app-row .thumb { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: var(--black); flex: none; }
     .app-row .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .app-workout { padding: 8px 8px 8px 8px; }
-    .app-workout__img { position: relative; width: 52px; height: 52px; border-radius: 10px; overflow: hidden; flex: none; background: var(--black); }
+    .app-workout__img { position: relative; width: 52px; height: 52px; border-radius: 6px; /* concentric: the 14px card less its 8px padding */ overflow: hidden; flex: none; background: var(--black); }
     .app-workout__img img { position: absolute; left: -11px; top: -5px; width: 68px; max-width: none; height: auto; }
     .app-row .app-play { width: 36px; height: 36px; border-radius: 50%; background: var(--green); color: var(--black); display: grid; place-items: center; flex: none; }
     .app-row .app-play .ico { width: 14px; height: 14px; fill: currentColor; stroke: none; margin-left: 2px; }
@@ -453,11 +556,11 @@
     .price-card__top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
     .price { display: flex; align-items: baseline; gap: 6px; margin-top: 16px; font-family: var(--font-display); }
     .price .cur { font-size: 1.75rem; font-weight: 500; color: var(--stone); }
-    .price .num { font-size: clamp(3.5rem, 2.6rem + 4vw, 5rem); font-weight: 600; line-height: 0.95; letter-spacing: -0.02em; }
+    .price .num { font-size: clamp(3.5rem, 2.6rem + 4vw, 5rem); font-weight: 600; line-height: 0.95; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
     .price .per { font-family: var(--font-body); font-size: 1rem; color: var(--muted); }
     .price-aday { margin-top: 8px; color: var(--stone); }
     .price-list { display: grid; gap: 12px; margin: 28px 0 32px; padding-top: 28px; border-top: 1px solid var(--line); }
-    .price-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--stone); }
+    .price-list li { display: flex; gap: 12px; align-items: flex-start; color: var(--stone); text-wrap: pretty; }
     .price-list .ico { width: 20px; height: 20px; color: var(--green); margin-top: 2px; }
     .price-note { margin-top: 14px; text-align: center; font-size: 0.875rem; color: var(--muted); }
     .disclaimer { max-width: 680px; margin: 48px auto 0; text-align: center; font-size: 0.875rem; color: var(--muted); }
@@ -470,17 +573,17 @@
       position: relative; list-style: none; cursor: pointer;
       display: flex; align-items: center; min-height: 64px; padding: 16px 48px 16px 0;
       font-family: var(--font-display); font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem); font-weight: 500;
-      transition: color var(--t-fast) var(--ease-quart);
+      transform-origin: 0 50%; transition: color var(--t-fast) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out);
     }
     .faq summary::-webkit-details-marker { display: none; }
-    .faq summary:hover { color: var(--green); }
+    .faq summary:active { scale: var(--scale-large); }
     .faq summary::after {
       content: ''; position: absolute; right: 8px; top: 50%; width: 10px; height: 10px;
       border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
       transform: translateY(-70%) rotate(45deg); transition: transform var(--t-med) var(--ease-quart);
     }
     .faq details[open] summary::after { transform: translateY(-25%) rotate(-135deg); border-color: var(--green); }
-    .faq details > p { padding: 0 48px 24px 0; color: var(--stone); max-width: 68ch; }
+    .faq details > p { padding: 0 48px 24px 0; color: var(--stone); max-width: 68ch; text-wrap: pretty; }
     .faq details > p + p { margin-top: -12px; }
 
     /* ---------- About ---------- */
@@ -490,7 +593,7 @@
     .values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
     .value { padding: 24px 0; border-top: 1px solid var(--line); }
     .value b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; margin-bottom: 6px; }
-    .value span { color: var(--muted); }
+    .value span { color: var(--muted); text-wrap: pretty; }
 
     /* ---------- Contact ---------- */
     .contact-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: clamp(32px, 5vw, 72px); align-items: start; }
@@ -498,14 +601,17 @@
     .shortcut {
       display: flex; align-items: center; gap: 16px; width: 100%; min-height: 72px; padding: 14px 0;
       border-bottom: 1px solid var(--line); text-align: left;
+      transform-origin: 0 50%; transition: scale var(--duration-quick) var(--ease-smooth-out);
     }
+    .shortcut:active { scale: var(--scale-large); }
     .shortcut .icon-circle { width: 44px; height: 44px; }
     .shortcut .icon-circle .ico { width: 20px; height: 20px; }
     .shortcut > span:nth-child(2) { flex: 1; display: grid; }
     .shortcut b { font-weight: 600; }
     .shortcut small { font-size: 0.875rem; color: var(--muted); }
-    .shortcut .chev { width: 18px; height: 18px; color: var(--faint); transition: transform var(--t-med) var(--ease-quart), color var(--t-med); }
-    .shortcut:hover .chev { transform: translateX(4px); color: var(--green); }
+    .shortcut .t-learn-chevron { color: var(--faint); transition: transform var(--learn-out) var(--learn-ease), color var(--duration-quick) var(--ease-smooth-out); }
+    .shortcut .t-learn-chevron svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+    .shortcut:focus-visible .t-learn-chevron { color: var(--green); }
 
     .form-card { background: var(--carbon); border-radius: var(--r-card); padding: clamp(24px, 3.4vw, 40px); }
     .form { display: grid; gap: 20px; }
@@ -518,8 +624,10 @@
     }
     .field textarea { min-height: 148px; resize: vertical; line-height: 1.55; }
     .field input::placeholder, .field textarea::placeholder { color: var(--faint); opacity: 1; }
-    .field input:focus-visible, .field textarea:focus-visible { border-color: var(--green); }
+    /* focus: a 2px green ring outside the field (the 1px border alone was too faint), red while in error */
+    .field input:focus-visible, .field textarea:focus-visible { border-color: var(--green); outline: 2px solid var(--green); outline-offset: 2px; }
     .field.has-error input, .field.has-error textarea { border-color: var(--danger); }
+    .field.has-error input:focus-visible, .field.has-error textarea:focus-visible { outline-color: var(--danger); }
     .field__err { display: none; font-size: 0.875rem; color: var(--danger); }
     .field.has-error .field__err { display: block; }
     .topics { border: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
@@ -530,13 +638,13 @@
       display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--r-pill);
       background: var(--black); box-shadow: inset 0 0 0 1px var(--line-strong);
       font-size: 0.875rem; font-weight: 500; color: var(--stone); cursor: pointer;
-      transition: background-color var(--t-fast) var(--ease-quart), box-shadow var(--t-fast) var(--ease-quart), color var(--t-fast);
+      transition: background-color var(--t-fast) var(--ease-quart), box-shadow var(--t-fast) var(--ease-quart), color var(--t-fast) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out);
     }
-    .chips label:hover { color: var(--white); }
+    .chips label:active { scale: var(--scale-large); }
     .chips input:checked + label { background: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-line); color: var(--white); }
     .chips input:focus-visible + label { outline: 2px solid var(--green); outline-offset: 2px; }
     .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
-    .notice { display: none; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-tile); font-size: 0.9375rem; color: var(--white); }
+    .notice { display: none; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-tile); font-size: 0.9375rem; color: var(--white); text-wrap: pretty; }
     .notice.is-shown { display: flex; }
     .notice .ico { width: 20px; height: 20px; margin-top: 1px; }
     .notice--ok { background: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-line); }
@@ -555,14 +663,14 @@
     .soon .ico--fill { fill: currentColor; stroke: none; }
 
     /* ---------- Footer ---------- */
-    .footer { border-top: 1px solid var(--line); padding-block: clamp(48px, 6vw, 72px) max(32px, env(safe-area-inset-bottom)); }
+    .footer { border-top: 1px solid var(--line); padding-block: clamp(48px, 6vw, 72px) max(32px, env(safe-area-inset-bottom)); background: var(--band); }
     .footer__top { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: clamp(28px, 4vw, 56px); padding-bottom: 40px; }
     .footer__brand img { height: 30px; width: auto; }
     .tagline { margin-top: 14px; font-family: var(--font-display); font-weight: 300; font-size: 0.8125rem; letter-spacing: 0.5em; text-transform: uppercase; color: var(--stone); }
     .footer__brand p { margin-top: 16px; font-size: 0.9375rem; color: var(--muted); max-width: 36ch; }
     .footer__h { font-family: var(--font-body); font-size: 0.9375rem; font-weight: 600; letter-spacing: 0; margin-bottom: 8px; }
-    .footer__links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 0.9375rem; color: var(--muted); transition: color var(--t-fast) var(--ease-quart); }
-    .footer__links a:hover { color: var(--white); }
+    .footer__links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 0.9375rem; color: var(--muted); transform-origin: 0 50%; transition: color var(--t-fast) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out); }
+    .footer__links a:active { scale: var(--scale-large); }
     .footer__bottom { padding-top: 24px; border-top: 1px solid var(--line); font-size: 0.875rem; color: var(--muted); }
 
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -581,7 +689,7 @@
 
       .split, .price-wrap, .about-grid, .contact-grid, .dash { grid-template-columns: minmax(0, 1fr); }
       .split--reverse .split__media { order: 0; }
-      .feature-group { grid-template-columns: minmax(0, 1fr); padding-block: 32px; }
+      .stack__card { grid-template-columns: minmax(0, 1fr); gap: 24px; }
     }
 
     @media (max-width: 860px) {
@@ -599,20 +707,22 @@
       :root { --nav-h: 64px; }
       .feature-list { grid-template-columns: minmax(0, 1fr); gap: 24px; }
       /* Phones: two features per pillar up front, the rest one tap away. */
-      .feature-group { gap: 20px; padding-block: 28px; }
-      .feature-group__head { gap: 12px; }
-      .feature-group__head .icon-circle { width: 44px; height: 44px; }
-      .feature-group__head .icon-circle .ico { width: 22px; height: 22px; }
+      .stack { gap: 16px; }
+      .stack__card { padding: 24px 20px; gap: 20px; }
+      .stack__head { gap: 12px; }
+      .stack__head .icon-circle { width: 44px; height: 44px; }
+      .stack__head .icon-circle .ico { width: 22px; height: 22px; }
+      .stack__title { font-size: 1.75rem; }
       .feature h4 { margin-bottom: 4px; }
       .feature-more { margin-top: 20px; border-top: 1px solid var(--line); }
       .feature-more > summary {
         display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px;
         list-style: none; cursor: pointer; font-family: var(--font-display); font-weight: 500; font-size: 1rem;
-        transition: color var(--t-fast) var(--ease-quart);
+        transform-origin: 0 50%; transition: color var(--t-fast) var(--ease-quart), scale var(--duration-quick) var(--ease-smooth-out);
       }
       .feature-more > summary::-webkit-details-marker { display: none; }
       .feature-more > summary .ico { width: 18px; height: 18px; color: var(--muted); transform: rotate(90deg); transition: transform var(--t-med) var(--ease-quart); }
-      .feature-more > summary:active { color: var(--green); }
+      .feature-more > summary:active { color: var(--green); scale: var(--scale-large); }
       .feature-more[open] > summary { margin-bottom: 12px; }
       .feature-more[open] > summary .ico { transform: rotate(-90deg); }
       .split .actions .btn { flex: 1 1 100%; }
@@ -624,7 +734,7 @@
       .tl-time { width: auto; }
       .faq summary { padding-right: 40px; }
       .faq details > p { padding-right: 0; }
-      .final .btn { width: 100%; }
+      .final .btn, .final .magnet { width: 100%; }
     }
 
     @media (max-width: 380px) {
@@ -640,8 +750,20 @@
       .phone { width: min(288px, 100%); }
     }
 
-    @media (hover: none) {
-      .btn:hover .ico--arrow, .link-arrow:hover .ico, .shortcut:hover .chev { transform: none; }
+    /* Hovers only where a pointer can hover, so nothing sticks after a tap on a phone */
+    @media (hover: hover) {
+      .inline-link:hover { color: var(--green); }
+      .btn:hover .ico--arrow { transform: translateX(3px); }
+      .btn-primary:hover { background: var(--green-press); }
+      .btn-secondary:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+      .btn-ink:hover { background: var(--carbon); }
+      .nav__link:hover { color: var(--white); }
+      .tab:hover { color: var(--white); }
+      .tab[aria-selected='true']:hover { color: var(--black); }
+      .faq summary:hover { color: var(--green); }
+      .chips label:hover { color: var(--white); }
+      .shortcut:hover .t-learn-chevron { color: var(--green); }
+      .footer__links a:hover { color: var(--white); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -756,24 +878,26 @@
     .roadmap__ring circle { fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
     .roadmap__step.is-reached .roadmap__ring circle { stroke-dashoffset: 0; }
 
-    /* Features: each card stands up from lying back, column by column */
-    .fx .feature { transform-origin: 50% 100%; }
-
-    /* Kinetic band: the brand line, in two rows that slide against each other with the scroll */
+    /* Kinetic band: a full-width marquee of the brand line in giant caps, two rows drifting in
+       opposite directions on their own. Scrolling speeds them up, turns them with the scroll's
+       direction and leans them into it. Each row holds the line twice so the drift wraps without a
+       seam; the loop pauses it off screen. Without motion the rows stand. */
     .kinetic {
       position: relative; overflow: hidden; overflow: clip;
-      padding-block: clamp(44px, 7vw, 104px); border-top: 1px solid var(--line);
+      padding-block: clamp(40px, 6vw, 96px); border-top: 1px solid var(--line);
       font-family: var(--font-display); font-weight: 700; text-transform: uppercase;
-      font-size: clamp(3.25rem, 1.5rem + 8vw, 9.5rem); line-height: 1; letter-spacing: -0.02em;
+      font-size: clamp(4.5rem, 2rem + 10vw, 11rem); line-height: 1; letter-spacing: -0.02em;
       user-select: none;
     }
-    .kinetic__row { display: flex; width: max-content; white-space: nowrap; }
-    .kinetic__row + .kinetic__row { margin-top: 0.1em; }
+    .kinetic__row { display: flex; width: max-content; white-space: nowrap; transform-origin: 50% 50%; }
+    .kinetic__row + .kinetic__row { margin-top: 0.08em; }
+    .kinetic__set { display: flex; flex: none; }
     .kinetic__row span { padding-inline: 0.16em; }
     .kinetic .ks { color: var(--white); }
     .kinetic .ko { color: transparent; -webkit-text-stroke: 1.5px var(--stone); }
     .kinetic .kg { color: var(--green); }
-    .kinetic .kd { color: var(--faint); padding-inline: 0.04em; }
+    /* the separator: a short bar leaning forward like the B's own slots, drawn, not a glyph */
+    .kinetic .kd { align-self: center; width: 0.14em; height: 0.46em; margin-inline: 0.2em; padding: 0; background: var(--faint); transform: skewX(-14deg); }
     .fx .kinetic.is-live .kinetic__row { will-change: transform; }
 
     /* Progress: counters keep the final number's width, so counting never shifts the layout */
@@ -782,7 +906,7 @@
     .cnt__live { position: absolute; top: 0; right: 0; }
 
     /* Pricing: the price rolls up like an odometer; the "about $1 a day" line underlines itself */
-    .odo { display: inline-flex; }
+    .odo { display: inline-flex; font-variant-numeric: tabular-nums; }
     .odo__col { position: relative; display: inline-block; clip-path: inset(0 -0.08em); }
     .odo__ghost { color: transparent; }
     .odo__strip { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
@@ -802,7 +926,8 @@
 
     @media (prefers-reduced-motion: reduce) {
       .scrollbar, .final__panel { display: none !important; }
-      .wm__i, .feature, .kinetic__row, .switcher, .screen > *, .odo__strip, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
+      .wm__i, .stack__card, .kinetic__row, .kinetic__set, .switcher, .screen > *, .odo__strip, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
+      .stack__dim { opacity: 0 !important; }
     }
 
     /* ---------- Scroll story (DESIGN.md, "Scroll story") ----------
@@ -812,9 +937,7 @@
        no script) the same content stands as three plain sections, every word shown, each object
        standing still. No filters: every transition is transform and opacity only (blur measured too
        costly while scrolling fast, on phones and desktops alike). */
-    .nav { background: var(--black); border-bottom-color: var(--line); } /* solid over the green world, so the white wordmark and the B read */
     .btn-ink { background: var(--black); color: var(--white); }
-    .btn-ink:hover { background: var(--carbon); }
     .ch { position: relative; overflow-x: clip; }
     .ch__pin { position: relative; }
 
@@ -832,7 +955,7 @@
     .world__slot { flex: 1 0 auto; height: min(84vw, 44svh); container-type: size; }
     .world__slot .coin { --coin: min(80cqh, 76cqw, 560px); }
     .world__foot { display: flex; align-items: center; gap: 16px 32px; padding-block: 24px max(32px, env(safe-area-inset-bottom)); }
-    .world__lead { max-width: 34ch; font-size: 1.0625rem; font-weight: 500; line-height: 1.5; }
+    .world__lead { max-width: 34ch; font-size: 1.0625rem; font-weight: 500; line-height: 1.5; text-wrap: pretty; }
     .world__cue { display: none; }
     .world__cue i { position: relative; width: 72px; height: 2px; border-radius: 2px; background: rgba(8, 8, 8, 0.2); overflow: hidden; }
     .world__cue b { position: absolute; inset: 0; background: var(--black); transform-origin: 0 50%; transform: scaleX(0); }
@@ -861,9 +984,9 @@
     .part { position: relative; display: grid; align-content: start; gap: 4px; counter-increment: part; }
     .part::before { content: counter(part, decimal-leading-zero); font-family: var(--font-display); font-size: 0.8125rem; font-weight: 600; color: var(--faint); }
     .part b { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 600; line-height: 1.3; }
-    .part span { font-size: 0.9375rem; line-height: 1.5; color: var(--muted); }
+    .part span { font-size: 0.9375rem; line-height: 1.5; color: var(--muted); text-wrap: pretty; }
     .explode__title { font-weight: 300; font-size: clamp(2.25rem, 1.4rem + 3vw, 3.75rem); line-height: 1.04; }
-    .explode__copy p { margin-top: 14px; max-width: 36ch; color: var(--stone); }
+    .explode__copy p { margin-top: 14px; max-width: 36ch; color: var(--stone); text-wrap: pretty; }
     .explode__copy .btn { margin-top: 28px; }
     /* an elbowed 1px Stone line from the label to its part, a small green dot on the part; drawn only
        with motion. The scroll loop writes the box (--lx, --ly, --lw, --lh), which two of its borders
@@ -1021,6 +1144,7 @@
 
     @media (max-width: 620px) {
       .world__foot .btn { width: 100%; }
+      .world__foot .magnet { display: flex; }
       .fx .ch--world .ch__pin { --foot: 220px; }
       .fx .world__slot { left: 0; right: 0; }
       .fx .world__foot { flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
@@ -1095,9 +1219,113 @@
     .how__glow { position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(163, 255, 61, 0.12), rgba(163, 255, 61, 0.04) 55%, rgba(163, 255, 61, 0)); opacity: 0; }
     .fx .how__stage .obj--step { position: absolute; inset: 0; width: auto; height: auto; margin: 0; float: none; }
 
-    /* Section headlines below the story: word by word, sliding in as they fade up, line after line */
-    .fx .wb { display: inline-block; opacity: 0; }
+    /* Section headlines below the story: the transitions-dev "Texts reveal" (18), pasted as shipped */
+    /* Lines start translated down + blurred + invisible; .is-shown
+       on the parent flips them to their resting state. The second
+       line's transition-delay holds it back by --stagger-stagger
+       so the eye lands on the headline first. */
+    .t-stagger-line {
+      display: block;
+      opacity: 0;
+      transform: translateY(var(--stagger-distance));
+      filter: blur(var(--stagger-blur));
+      transition:
+        opacity   var(--stagger-dur) var(--stagger-ease),
+        transform var(--stagger-dur) var(--stagger-ease),
+        filter    var(--stagger-dur) var(--stagger-ease);
+      will-change: transform, opacity, filter;
+    }
+    .t-stagger-line--2 { transition-delay: var(--stagger-stagger); }
+
+    .t-stagger.is-shown .t-stagger-line {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    /* Exit decouples from the stagger: same fade for every line,
+       no Y return, no blur: so the disappearance reads as a
+       single quiet fade instead of a reverse reveal. */
+    .t-stagger.is-hiding .t-stagger-line {
+      opacity: 0;
+      transform: translateY(0);
+      filter: blur(0);
+      transition:
+        opacity 200ms ease,
+        transform 0s linear,
+        filter 0s linear;
+      transition-delay: 0s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .t-stagger-line { transition: none !important; }
+    }
+
+    /* Our wiring of it (the scroll loop adds the classes). Section headlines (.t-stagger--lines): each
+       visual line of the heading is a line of the reveal, rising its full height out of its own mask
+       (.wl, a plain overflow clip, padded so descenders are never cut), a stagger after the line above
+       (--i). The final call (.t-stagger--words): each word out of its own mask (.wm). Headlines are
+       large text, so no blur at all, on any device; no standing layer hints (one mask per line, not
+       per word, keeps the page's layer count low while scrolling). */
+    .t-stagger--lines .wl { display: block; overflow: hidden; padding-bottom: 0.16em; margin-bottom: -0.16em; }
+    .t-stagger--lines .t-stagger-line, .t-stagger--words .t-stagger-line {
+      --stagger-distance: 115%;
+      filter: none; will-change: auto;
+      transition-delay: calc(var(--stagger-stagger) * var(--i, 0));
+    }
+    .t-stagger--words .t-stagger-line { display: inline-block; }
+    .t-stagger.is-shown .t-stagger-line, .t-stagger.is-hiding .t-stagger-line { filter: none; }
+    .t-stagger.is-instant .t-stagger-line { transition: none; } /* shown in a fast fling, or reset below the screen */
+    @media (hover: none) { .t-stagger-line { filter: none !important; } } /* and never a blur on a touch screen */
     .js .is-pending > [data-words], .js .is-revealed > [data-words] { opacity: 1; animation: none; }
+
+    /* Final call: "Train. Fuel. Become." a beat per word, and "Become." turns green once it has landed */
+    .final .t-stagger--words { --stagger-stagger: var(--duration-micro); } /* three large words: the large-stagger step */
+    .fx .final h2 .hl { color: var(--white); transition: color var(--duration-very-slow) var(--ease-smooth-out); }
+    .fx .final h2.is-shown .hl { color: var(--green); transition-delay: calc(var(--stagger-stagger) * 2 + var(--stagger-dur)); } /* once the last word has landed */
+    /* its three objects drift at three depths: one picture, three layers, each cut to its own object */
+    /* the picture is contained and centred (--pw by --ph); each layer is a crop of it, a band from --l
+       that is --w of its width, cut in the empty space between two objects, so each layer is only as
+       big as its object and moves as one piece */
+    .obj--orbit { container-type: size; --pw: min(100cqw, 190cqh); --ph: calc(var(--pw) / 1.9); }
+    .orbit__l {
+      position: absolute; overflow: hidden; top: calc(50% - var(--ph) / 2); height: var(--ph);
+      left: calc(50% - var(--pw) / 2 + var(--pw) * var(--l)); width: calc(var(--pw) * var(--w));
+    }
+    .orbit__l > picture { position: absolute; top: 0; height: 100%; left: calc(var(--pw) * var(--l) * -1); width: var(--pw); max-width: none; }
+    .orbit__l img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+    .orbit__l--a { --l: 0; --w: 0.5; }        /* the dumbbell */
+    .orbit__l--b { --l: 0.5; --w: 0.325; }    /* the shaker */
+    .orbit__l--c { --l: 0.825; --w: 0.175; }  /* the kettlebell */
+    @media (max-width: 940px) {
+      .obj--orbit { --pw: min(100cqw, 180cqh); --ph: calc(var(--pw) / 1.8); }
+      .orbit__l--a { --l: 0; --w: 0.39; }     /* the kettlebell */
+      .orbit__l--b { --l: 0.39; --w: 0.22; }  /* the shaker */
+      .orbit__l--c { --l: 0.61; --w: 0.39; }  /* the dumbbell */
+    }
+    .fx .final.is-near .orbit__l { will-change: transform; }
+
+    /* Footer: revealed from under the page. With motion, and when the whole footer fits the screen
+       under the nav, it waits at the bottom of the screen behind the page (sticky, under the page's
+       layer) and the final call lifts off it on rounded corners. A taller footer (a short phone) just
+       follows the page, so no part of it is ever out of reach. */
+    .foot-reveal main { position: relative; isolation: isolate; background: var(--band); } /* the band shows only at the lifted corners */
+    .foot-reveal main::before { content: ''; position: absolute; z-index: -1; inset: 0 0 28px; background: var(--black); pointer-events: none; }
+    .foot-reveal .final { border-radius: 0 0 28px 28px; overflow: hidden; overflow: clip; }
+    .foot-reveal .footer { overflow: hidden; overflow: clip; }
+    .foot-reveal .footer.is-live > .container { will-change: transform; }
+
+    /* Opening sequence: the head script sets .intro when motion is allowed and the page opens at its
+       top. It holds the nav above the screen and the green world's foot (lead, button, cue) a little low
+       and unseen. The headline and the badge are the page's largest paint, so they are painted from the
+       first frame, whole and unclipped, just short of their places. On its first frame the GSAP timeline
+       takes over from these same offsets and removes the class; if GSAP never runs, the class goes
+       (on error, or after 2.5s) and everything stands. */
+    .intro .nav { transform: translate3d(0, -100%, 0); }
+    .intro .world__line:first-child { transform: translate3d(0, 0.3em, 0); }
+    .intro .world__slot { transform: translate3d(0, calc(var(--drop, var(--distance-large)) * -1), 0); }
+    @media (max-width: 940px) { .intro .world__slot { --drop: var(--distance-medium); } } /* phones: 16px clear of the headline */
+    .intro .world__foot > * { opacity: 0; transform: translate3d(0, var(--distance-medium), 0); }
+    .world__vl { display: block; } /* the headline's visual lines, only while the opening plays */
 
     @media (max-width: 940px) {
       .fx .ch--goals .ch__pin { --cy: 50%; --edge: var(--gutter); --gw: min(12vw, 9svh); } /* "performance" fits 320px even in the fallback face */
@@ -1118,10 +1346,21 @@
     }
   </style>
   <script>
-    document.documentElement.classList.replace('no-js', 'js');
-    // motion allowed: the scroll story pins from the first paint, so the layout never jumps
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('fx');
+    (function (d) {
+      d.classList.replace('no-js', 'js');
+      // motion allowed: the scroll story pins from the first paint, so the layout never jumps
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      d.classList.add('fx');
+      // the opening sequence, only when the page opens at its top; whatever happens to GSAP, the
+      // offsets it starts from are gone after 2.5s (see .intro)
+      if (location.hash) return;
+      d.classList.add('intro');
+      setTimeout(function () { d.classList.remove('intro'); }, 2500);
+    })(document.documentElement);
   </script>
+  <!-- GSAP core, pinned (3.13.0, assets/js/vendor), for one-shot choreography only: the opening
+       sequence and the magnetic button. Deferred, so it never holds up the first paint. -->
+  <script src="assets/js/vendor/gsap.min.js" defer onerror="document.documentElement.classList.remove('intro')"></script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -1247,7 +1486,7 @@
       </div>
       <div class="container world__foot">
         <p class="world__lead">An all-in-one fitness and nutrition platform powered by AI coaching.</p>
-        <a class="btn btn-ink btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        <span class="magnet" data-magnet><a class="btn btn-ink btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a></span>
         <span class="world__cue" aria-hidden="true">Scroll <i><b></b></i></span>
       </div>
     </div>
@@ -1396,71 +1635,115 @@
     </div>
   </section>
 
-  <!-- ===== Features, grouped by pillar ===== -->
+  <!-- ===== Kinetic band: the brand line as a giant marquee, between the story and the content (decorative) ===== -->
+  <div class="kinetic" data-kinetic aria-hidden="true">
+    <div class="kinetic__row"><div class="kinetic__set"><span class="ks">Train</span><span class="kd"></span><span class="ko">Fuel</span><span class="kd"></span><span class="kg">Become</span><span class="kd"></span><span class="ko">Train</span><span class="kd"></span><span class="ks">Fuel</span><span class="kd"></span><span class="ko">Become</span><span class="kd"></span></div><div class="kinetic__set"><span class="ks">Train</span><span class="kd"></span><span class="ko">Fuel</span><span class="kd"></span><span class="kg">Become</span><span class="kd"></span><span class="ko">Train</span><span class="kd"></span><span class="ks">Fuel</span><span class="kd"></span><span class="ko">Become</span><span class="kd"></span></div></div>
+    <div class="kinetic__row"><div class="kinetic__set"><span class="ko">Train</span><span class="kd"></span><span class="ks">Fuel</span><span class="kd"></span><span class="ko">Become</span><span class="kd"></span><span class="ks">Train</span><span class="kd"></span><span class="ko">Fuel</span><span class="kd"></span><span class="ks">Become</span><span class="kd"></span></div><div class="kinetic__set"><span class="ko">Train</span><span class="kd"></span><span class="ks">Fuel</span><span class="kd"></span><span class="ko">Become</span><span class="kd"></span><span class="ks">Train</span><span class="kd"></span><span class="ko">Fuel</span><span class="kd"></span><span class="ks">Become</span><span class="kd"></span></div></div>
+  </div>
+
+  <!-- ===== Features: the four pillars as stacking cards ===== -->
   <section class="section" id="features">
     <div class="container">
       <div class="head-3d">
         <div class="section-head">
-          <h2 class="h-1" data-words="blur">Everything You Need to Build You.</h2>
+          <h2 class="h-1" data-words="reveal">Everything You Need to Build You.</h2>
           <p class="lead">One app covering nutrition, training and the daily habits that hold the two together.</p>
         </div>
         <div class="obj" data-obj="features" data-float="24,5" aria-hidden="true"><img src="assets/img/3d/features.webp?v=2" alt="" width="600" height="600" loading="lazy" decoding="async"></div>
       </div>
 
-      <div class="feature-group">
-        <div class="feature-group__head">
-          <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg></span>
-          <h3 class="h-3">Nutrition</h3>
-        </div>
-        <div class="feature-body">
-          <div class="feature-list">
-            <div class="feature"><h4>AI personalized diet</h4><p>Meal recommendations built around your goals, preferences and daily targets, regenerated whenever something changes.</p></div>
-            <div class="feature"><h4>Macro balance</h4><p>Protein, carbohydrates and fats tracked against targets, with a clear daily progress view.</p></div>
+      <div class="stack" data-stack>
+        <article class="stack__card" style="--i:0" aria-labelledby="pillar-train">
+          <div class="stack__head">
+            <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg></span>
+            <h3 class="stack__title" id="pillar-train">Train</h3>
+            <p class="stack__line">A weekly plan from your goal, your days and your equipment.</p>
           </div>
-          <details class="feature-more" data-more open>
-            <summary>More on nutrition <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+          <div class="feature-body">
             <div class="feature-list">
-              <div class="feature"><h4>Hydration tracking</h4><p>Water targets split across the day, with small timed reminders instead of one large goal.</p></div>
+              <div class="feature"><h4>AI personal training</h4><p>Workout guidance designed around your goal, experience level and the time you actually have.</p></div>
+              <div class="feature"><h4>Home or gym</h4><p>Exercises for no equipment, the kit you have at home, or a full gym. Change it any week.</p></div>
+            </div>
+            <details class="feature-more" data-more open>
+              <summary>More on training <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+              <div class="feature-list">
+                <div class="feature"><h4>Swap an exercise</h4><p>Pick an alternative for the same muscles that suits your equipment and any injury.</p></div>
+              </div>
+            </details>
+          </div>
+          <i class="stack__dim" aria-hidden="true"></i>
+        </article>
+        <article class="stack__card" style="--i:1" aria-labelledby="pillar-nutrition">
+          <div class="stack__head">
+            <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg></span>
+            <h3 class="stack__title" id="pillar-nutrition">Nutrition</h3>
+            <p class="stack__line">Targets from your body, your goal and your routine, refined as you log meals.</p>
+          </div>
+          <div class="feature-body">
+            <div class="feature-list">
+              <div class="feature"><h4>AI personalized diet</h4><p>Meal recommendations built around your goals, preferences and daily targets, regenerated whenever something changes.</p></div>
+              <div class="feature"><h4>Macro balance</h4><p>Protein, carbohydrates and fats tracked against targets, with a clear daily progress view.</p></div>
+            </div>
+            <details class="feature-more" data-more open>
+              <summary>More on nutrition <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+              <div class="feature-list">
+                <div class="feature"><h4>Hydration tracking</h4><p>Water targets split across the day, with small timed reminders instead of one large goal.</p></div>
+                <div class="feature"><h4>Food photo scan</h4><p>Snap a plate. Get calories, protein, carbs and fat.</p></div>
+              </div>
+            </details>
+          </div>
+          <i class="stack__dim" aria-hidden="true"></i>
+        </article>
+        <article class="stack__card" style="--i:2" aria-labelledby="pillar-coach">
+          <div class="stack__head">
+            <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg></span>
+            <h3 class="stack__title" id="pillar-coach">AI Coach</h3>
+            <p class="stack__line">One coach that knows your whole day.</p>
+          </div>
+          <div class="feature-body">
+            <div class="feature-list">
+              <div class="feature"><h4>A coach that knows you</h4><p>A chat that knows your plan and remembers what you tell it.</p></div>
               <div class="feature"><h4>Recommendations that adapt</h4><p>The app adjusts as your progress, schedule and preferences change over time.</p></div>
             </div>
-          </details>
-        </div>
-      </div>
-
-      <div class="feature-group">
-        <div class="feature-group__head">
-          <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg></span>
-          <h3 class="h-3">Training</h3>
-        </div>
-        <div class="feature-body">
-          <div class="feature-list">
-            <div class="feature"><h4>AI personal training</h4><p>Workout guidance designed around your goal, experience level and the time you actually have.</p></div>
-            <div class="feature"><h4>Goal setting</h4><p>Set a specific target and get a clear, realistic path toward reaching it.</p></div>
+            <details class="feature-more" data-more open>
+              <summary>More on the coach <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+              <div class="feature-list">
+                <div class="feature"><h4>Daily accountability</h4><p>Streaks and daily check-ins turn intention into a routine you keep.</p></div>
+              </div>
+            </details>
           </div>
-          <details class="feature-more" data-more open>
-            <summary>More on training <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+          <i class="stack__dim" aria-hidden="true"></i>
+        </article>
+        <article class="stack__card" style="--i:3" aria-labelledby="pillar-progress">
+          <div class="stack__head">
+            <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg></span>
+            <h3 class="stack__title" id="pillar-progress">Progress</h3>
+            <p class="stack__line">Progress you can see is what keeps people going.</p>
+          </div>
+          <div class="feature-body">
             <div class="feature-list">
-              <div class="feature"><h4>Daily accountability</h4><p>Streaks and daily check-ins turn intention into a routine you keep.</p></div>
               <div class="feature"><h4>Progress tracking</h4><p>Weight, consistency, completion and achievements in one continuous timeline.</p></div>
+              <div class="feature"><h4>Weekly check-ins</h4><p>Weekly weigh-ins and monthly reviews that adjust the plan.</p></div>
             </div>
-          </details>
-        </div>
+            <details class="feature-more" data-more open>
+              <summary>More on progress <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+              <div class="feature-list">
+                <div class="feature"><h4>Goal setting</h4><p>Set a specific target and get a clear, realistic path toward reaching it.</p></div>
+              </div>
+            </details>
+          </div>
+          <i class="stack__dim" aria-hidden="true"></i>
+        </article>
       </div>
     </div>
   </section>
-
-  <!-- ===== Kinetic band: the brand line, moving with the scroll (decorative) ===== -->
-  <div class="kinetic" data-kinetic aria-hidden="true">
-    <div class="kinetic__row"><span class="ks">Train</span><span class="kd">&middot;</span><span class="ko">Fuel</span><span class="kd">&middot;</span><span class="kg">Become</span><span class="kd">&middot;</span><span class="ko">Train</span><span class="kd">&middot;</span><span class="ks">Fuel</span><span class="kd">&middot;</span><span class="ko">Become</span><span class="kd">&middot;</span><span class="ks">Train</span><span class="kd">&middot;</span><span class="ko">Fuel</span><span class="kd">&middot;</span><span class="ks">Become</span><span class="kd">&middot;</span></div>
-    <div class="kinetic__row"><span class="ko">Train</span><span class="kd">&middot;</span><span class="ks">Fuel</span><span class="kd">&middot;</span><span class="ko">Become</span><span class="kd">&middot;</span><span class="ks">Train</span><span class="kd">&middot;</span><span class="ko">Fuel</span><span class="kd">&middot;</span><span class="ks">Become</span><span class="kd">&middot;</span><span class="ko">Train</span><span class="kd">&middot;</span><span class="ks">Fuel</span><span class="kd">&middot;</span><span class="ko">Become</span><span class="kd">&middot;</span></div>
-  </div>
 
   <!-- ===== Nutrition, with the app screen switcher ===== -->
   <section class="section band" id="diet">
     <div class="container split split--3d">
       <div class="split__body" data-reveal>
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-nutrition"/></svg>Nutrition</span>
-        <h2 class="h-1" data-words="blur">A diet plan that adapts to you.</h2>
+        <h2 class="h-1" data-words="reveal">A diet plan that adapts to you.</h2>
         <p class="lead" style="margin-top:24px">Your targets are calculated from your body, your goal and your routine, then refined as you log meals and progress. No rigid meal plans, no guesswork.</p>
         <ul class="check-list">
           <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Breakfast, lunch, dinner and snacks with calories and macros for each.</span></li>
@@ -1583,7 +1866,7 @@
     <div class="container split split--reverse split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-train"/></svg>Train</span>
-        <h2 class="h-1" data-words="blur">Your personal trainer. Always with you.</h2>
+        <h2 class="h-1" data-words="reveal">Your personal trainer. Always with you.</h2>
         <p class="lead" style="margin-top:24px">Every session is matched to your goal, your experience and the time you actually have. Finish a workout and the next one is already adjusted.</p>
         <ul class="check-list">
           <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Workout recommendations that fit your week, not the other way round.</span></li>
@@ -1592,7 +1875,7 @@
         </ul>
         <div class="actions">
           <a class="btn btn-primary" href="#contact" data-topic="early-access">Get early access</a>
-          <a class="link-arrow" href="#features">Explore all features <svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <a class="link-arrow t-learn" href="#features">Explore all features <span class="t-learn-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path class="t-learn-arm t-learn-arm-top" d="M6 4L10 8"/><path class="t-learn-arm t-learn-arm-bot" d="M10 8L6 12"/></svg></span></a>
         </div>
       </div>
 
@@ -1631,7 +1914,7 @@
     <div class="container split split--3d">
       <div class="split__body">
         <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-coach"/></svg>AI Coach</span>
-        <h2 class="h-1" data-words="blur">A Stronger You, Everyday.</h2>
+        <h2 class="h-1" data-words="reveal">A Stronger You, Everyday.</h2>
         <p class="lead" style="margin-top:24px">BUILT isn&rsquo;t a plan you read once. It shows up through your day, quietly and at the right moments, until consistency stops feeling like effort.</p>
       </div>
       <div class="obj" data-obj="accountability" data-float="20,2" aria-hidden="true">
@@ -1664,7 +1947,7 @@
       <div class="head-3d">
         <div class="section-head">
           <span class="tag"><svg class="ico" aria-hidden="true"><use href="#i-progress"/></svg>Progress</span>
-          <h2 class="h-1" data-words="blur">See exactly how far you&rsquo;ve come.</h2>
+          <h2 class="h-1" data-words="reveal">See exactly how far you&rsquo;ve come.</h2>
           <p class="lead">Progress you can see is what keeps people going. Here&rsquo;s an example of what your dashboard can look like after three months.</p>
         </div>
         <div class="obj obj--wide" data-obj="progress" data-float="20,3" aria-hidden="true"><img src="assets/img/3d/progress.webp?v=2" alt="" width="575" height="500" loading="lazy" decoding="async"></div>
@@ -1727,7 +2010,7 @@
         </div>
       </div>
       <div class="section-head section-head--center">
-        <h2 class="h-1" data-words="blur">Your health, for about $1 a day.</h2>
+        <h2 class="h-1" data-words="reveal">Your health, for about $1 a day.</h2>
         <p class="lead">One subscription. Everything included. No tiers to compare, no upsells.</p>
       </div>
 
@@ -1767,7 +2050,7 @@
   <section class="section" id="faq">
     <div class="container">
       <div class="section-head section-head--center">
-        <h2 class="h-1">Good to know.</h2>
+        <h2 class="h-1" data-words="reveal">Good to know.</h2>
       </div>
       <div class="faq">
         <details>
@@ -1798,7 +2081,7 @@
   <section class="section band" id="about">
     <div class="container">
       <div class="about-grid">
-        <h2 class="h-1" data-words="blur">More Than Fitness.</h2>
+        <h2 class="h-1" data-words="reveal">More Than Fitness.</h2>
         <div>
           <p class="lead">We believe a healthier life should be simpler, more personal and easier to keep up.</p>
           <p class="muted">Most people do not fail because they lack discipline. They fail because the plan was never theirs, the advice contradicted itself, and staying on track took more attention than a normal life allows.</p>
@@ -1822,23 +2105,23 @@
   <section class="section" id="contact">
     <div class="container contact-grid">
       <div>
-        <h2 class="h-1">Let&rsquo;s talk.</h2>
+        <h2 class="h-1" data-words="reveal">Let&rsquo;s talk.</h2>
         <p class="lead" style="margin-top:16px">Early access, questions, partnerships or support. Pick a topic, send a message, and we reply by email.</p>
         <div class="shortcuts">
-          <button class="shortcut" type="button" data-topic="question">
+          <button class="shortcut t-learn" type="button" data-topic="question">
             <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-chat"/></svg></span>
             <span><b>Questions</b><small>Anything about the plan, the app or how it works.</small></span>
-            <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="t-learn-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path class="t-learn-arm t-learn-arm-top" d="M6 4L10 8"/><path class="t-learn-arm t-learn-arm-bot" d="M10 8L6 12"/></svg></span>
           </button>
-          <button class="shortcut" type="button" data-topic="partnership">
+          <button class="shortcut t-learn" type="button" data-topic="partnership">
             <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg></span>
             <span><b>Partnerships</b><small>Coaches, clinics and brands are welcome.</small></span>
-            <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="t-learn-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path class="t-learn-arm t-learn-arm-top" d="M6 4L10 8"/><path class="t-learn-arm t-learn-arm-bot" d="M10 8L6 12"/></svg></span>
           </button>
-          <button class="shortcut" type="button" data-topic="support">
+          <button class="shortcut t-learn" type="button" data-topic="support">
             <span class="icon-circle"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg></span>
             <span><b>Support</b><small>Account, billing or technical help.</small></span>
-            <svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="t-learn-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path class="t-learn-arm t-learn-arm-top" d="M6 4L10 8"/><path class="t-learn-arm t-learn-arm-bot" d="M10 8L6 12"/></svg></span>
           </button>
         </div>
       </div>
@@ -1887,7 +2170,7 @@
   <section class="section band" id="legal">
     <div class="container">
       <div class="section-head section-head--center">
-        <h2 class="h-1">Privacy and terms.</h2>
+        <h2 class="h-1" data-words="reveal">Privacy and terms.</h2>
         <p class="lead">Last updated: October 2026.</p>
       </div>
       <div class="faq">
@@ -1928,16 +2211,30 @@
   <!-- ===== Final CTA ===== -->
   <section class="final" id="start" data-final>
     <div class="final__panel" aria-hidden="true"></div>
-    <div class="obj obj--orbit" data-obj="final" data-float="16,0" aria-hidden="true">
-      <picture>
-        <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
-        <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
-      </picture>
+    <div class="obj obj--orbit" data-obj="final" aria-hidden="true">
+      <span class="orbit__l orbit__l--a" data-float="36,0" data-float-self>
+        <picture>
+          <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
+          <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
+        </picture>
+      </span>
+      <span class="orbit__l orbit__l--b" data-float="18,0" data-float-self>
+        <picture>
+          <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
+          <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
+        </picture>
+      </span>
+      <span class="orbit__l orbit__l--c" data-float="54,0" data-float-self>
+        <picture>
+          <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
+          <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
+        </picture>
+      </span>
     </div>
     <div class="container">
-      <h2 class="display" data-words>Train. Fuel. <span class="hl">Become.</span></h2>
+      <h2 class="display" data-words="reveal">Train. Fuel. <span class="hl">Become.</span></h2>
       <p class="lead">One app. One plan. One day at a time.</p>
-      <a class="btn btn-primary btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <span class="magnet" data-magnet><a class="btn btn-primary btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a></span>
       <div class="soon">
         <span><svg class="ico ico--fill" aria-hidden="true"><use href="#i-apple"/></svg>App Store <small>Coming soon</small></span>
         <span><svg class="ico ico--fill" aria-hidden="true"><use href="#i-gplay"/></svg>Google Play <small>Coming soon</small></span>
@@ -2183,11 +2480,13 @@
             if (!part) return;
             if (!part.trim()) { frag.appendChild(document.createTextNode(' ')); return; }
             var w = document.createElement('span');
-            w.className = cls;
+            w.className = cls === 'wr' ? 'wm' : cls;
             w.setAttribute('aria-hidden', 'true');
-            if (cls === 'wm') {
+            if (cls === 'wm' || cls === 'wr') {
+              // a mask (.wm) holding the word: the scrubbed rise (.wm__i) or a line of the texts reveal
               var inner = document.createElement('span');
-              inner.className = 'wm__i';
+              inner.className = cls === 'wm' ? 'wm__i' : 't-stagger-line';
+              if (cls === 'wr') inner.style.setProperty('--i', String(words.length));
               inner.textContent = part;
               w.appendChild(inner);
               words.push(inner);
@@ -2202,12 +2501,6 @@
       })(el);
       return words;
     };
-
-    /* Nav: solid once the page scrolls */
-    fx.push({ update: function () {
-      var on = V.y > 16;
-      if (on !== nav._fxOn) { nav._fxOn = on; nav.classList.toggle('is-scrolled', on); }
-    } });
 
     /* Scroll-spy: a section is current once its top passes the middle of the screen */
     var spy = $$('[data-spy]').map(function (a) { return { link: a, section: document.getElementById(a.dataset.spy) }; })
@@ -2641,92 +2934,165 @@
         });
       });
 
-      /* Key headings: word by word, each rises out of its mask as the heading crosses the lower third */
-      /* Section headlines (data-words="blur", the name kept from the first version): line after line,
-         each word fades in sliding from a quarter of a letter to the right, left to right, as the
-         heading rises through the lower part of the screen. One helper writes a word at k (0 hidden,
-         1 at rest). */
-      var wipe = function (w, k) {
-        put(w, 'opacity', k >= 1 ? '1' : k.toFixed(3));
-        put(w, 'transform', k > 0 && k < 1 ? 'translate3d(' + (0.28 * (1 - k)).toFixed(3) + 'em,0,0)' : '');
-      };
-      var heads = $$('[data-words]').map(function (el) {
-        var b = el.getAttribute('data-words') === 'blur';
-        return { el: el, top: 0, blur: b, words: splitWords(el, b ? 'wb' : 'wm'), at: [] };
+      /* Key headings (How it works): word by word, each rises out of its mask as the heading crosses the lower third */
+      var keyHeads = $$('[data-words]:not([data-words="reveal"])').map(function (el) {
+        return { el: el, top: 0, words: splitWords(el, 'wm') };
       });
+      /* Section headlines (data-words="reveal"): the transitions-dev "Texts reveal". Each visual line (the
+         final call: each word) rises out of its own mask; the heading plays once (.is-shown) as its top
+         comes 12% up the screen, and once it has dropped back below the screen (scrolled back up past
+         it) it resets, out of sight, so it plays again the next time. Only classes are written here;
+         the rise is the snippet's CSS transitions. */
+      var revHeads = $$('[data-words="reveal"]').map(function (el) {
+        var perWord = !!el.closest('.final'); // "Train. Fuel. Become." goes word by word
+        el.classList.add('t-stagger', perWord ? 't-stagger--words' : 't-stagger--lines');
+        if (perWord) splitWords(el, 'wr');
+        else el.setAttribute('aria-label', el.textContent.replace(/\s+/g, ' ').trim());
+        return { el: el, lines: !perWord, html: el.innerHTML, w: -1, top: 0, h: 0, on: false, hid: 0 };
+      });
+      // a section headline's visual lines, each in its own mask; rebuilt only when its width changes
+      // (a measure pass), so a scroll frame never touches them
+      var lineUp = function (h) {
+        var w = h.el.clientWidth;
+        if (!h.lines || w === h.w) return;
+        h.w = w;
+        h.el.innerHTML = h.html;
+        var rows = [], top = null;
+        splitWords(h.el, 'wb').forEach(function (sp) {
+          if (top === null || sp.offsetTop > top + 4) { rows.push([]); top = sp.offsetTop; }
+          rows[rows.length - 1].push(sp);
+        });
+        var frag = document.createDocumentFragment();
+        rows.forEach(function (row, i) {
+          var mask = document.createElement('span'), line = document.createElement('span');
+          mask.className = 'wl';
+          mask.setAttribute('aria-hidden', 'true');
+          line.className = 't-stagger-line';
+          line.style.setProperty('--i', String(i));
+          row.forEach(function (sp, j) {
+            // the word keeps its own markup (a highlighted word stays highlighted)
+            var node = document.createTextNode(sp.textContent);
+            for (var p = sp.parentNode; p && p !== h.el; p = p.parentNode) { var c = p.cloneNode(false); c.appendChild(node); node = c; }
+            if (j) line.appendChild(document.createTextNode(' '));
+            line.appendChild(node);
+          });
+          mask.appendChild(line);
+          frag.appendChild(mask);
+        });
+        h.el.textContent = '';
+        h.el.appendChild(frag);
+      };
+      // a heading met at reading speed plays the reveal; one that flies past in a fast fling (over
+      // 1500px a second) is simply shown, since half a second of motion there is never seen and every
+      // reveal costs the page a layer change. The reset happens below the screen, so it is instant too.
+      var showHead = function (h, fast) {
+        h.on = true;
+        h.el.classList.toggle('is-instant', fast);
+        h.el.classList.add('is-shown');
+      };
+      var hideHead = function (h) {
+        h.on = false;
+        h.el.classList.add('is-instant');
+        h.el.classList.remove('is-shown');
+      };
+      var hY = null, hT = 0, hV = 0;
       fx.push({
         measure: function () {
-          heads.forEach(function (h) {
-            h.top = docTop(h.el);
-            if (!h.blur) return;
-            // each word's start: its line first, then its place along the line
-            var lines = [], top = null;
-            h.words.forEach(function (w) {
-              if (top === null || w.offsetTop > top + 4) { lines.push([]); top = w.offsetTop; }
-              lines[lines.length - 1].push(w);
-            });
-            var L = lines.length, at = [];
-            lines.forEach(function (ln, li) { ln.forEach(function (w, wi) { at.push(li / L * 0.5 + wi / ln.length * 0.16); }); });
-            var max = Math.max.apply(null, at) || 1;
-            h.at = at.map(function (s) { return s / max * 0.55; });
-          });
+          keyHeads.forEach(function (h) { h.top = docTop(h.el); });
+          revHeads.forEach(function (h) { lineUp(h); h.top = docTop(h.el); h.h = h.el.offsetHeight; });
         },
-        update: function () {
-          heads.forEach(function (h) {
-            var P = prog(h.top, 0.98, h.blur ? 0.6 : 0.66), n = h.words.length;
+        update: function (now) {
+          keyHeads.forEach(function (h) {
+            var P = prog(h.top, 0.98, 0.66), n = h.words.length;
             h.words.forEach(function (w, i) {
-              if (h.blur) { wipe(w, outCubic(clamp01((P - (h.at[i] || 0)) / 0.45))); return; }
               var k = outCubic(clamp01((P - (i / n) * 0.5) / 0.5));
               put(w, 'transform', k >= 1 ? 'none' : 'translate3d(0,' + ((1 - k) * 115).toFixed(1) + '%,0) rotate(' + ((1 - k) * 4).toFixed(2) + 'deg)');
             });
           });
-        }
-      });
-
-      /* Features: each card stands up from lying back as it rises; the right column a beat later */
-      var feats = $$('.feature').map(function (el) { return { el: el, top: null, col: 0 }; });
-      fx.push({
-        measure: function () {
-          feats.forEach(function (f) {
-            if (!f.el.offsetParent) { f.top = null; return; } // folded away inside "More" on phones
-            f.top = docTop(f.el);
-            f.col = f.el.offsetLeft > f.el.parentNode.firstElementChild.offsetLeft + 8 ? 1 : 0;
-          });
-        },
-        update: function () {
-          feats.forEach(function (f) {
-            var k = f.top === null ? 1 : outCubic(clamp01(prog(f.top, 0.98, 0.7) * 1.3 - f.col * 0.3));
-            put(f.el, 'transform', k >= 1 ? '' : 'perspective(900px) ' + px((1 - k) * 40) + ' rotateX(' + ((1 - k) * 24).toFixed(2) + 'deg)');
-            put(f.el, 'opacity', k >= 1 ? '' : k.toFixed(3));
+          if (hY !== null && now > hT) hV = Math.abs(V.y - hY) / Math.min(100, now - hT);
+          hY = V.y; hT = now;
+          revHeads.forEach(function (h) {
+            var vt = h.top - V.y;
+            if (!h.on && vt < V.h * 0.88 && vt + h.h > 0) showHead(h, hV > 1.5);
+            else if (h.on && vt > V.h) hideHead(h);
           });
         }
       });
 
-      /* Kinetic band: two rows of the brand line slide against each other with the scroll and lean
-         into its direction a little while it moves */
+      /* Features: the stacking cards. Each card pins (CSS sticky, a little lower than the one before);
+         as the next card slides up over it, the covered card scales to 0.94 from its top edge and dims.
+         Computed from the raw scroll position on every device, so it moves exactly with the sticky
+         cards and scrolling back undoes it. */
+      var stack = $('[data-stack]');
+      if (stack) {
+        var sCards = $$('.stack__card', stack), sDims = sCards.map(function (c) { return $('.stack__dim', c); });
+        var sNat = [], sStick = [], sH = [], sTop = 0, sEnd = 0, sLive = null, sCardH = -1;
+        fx.push({
+          measure: function () {
+            // every row is as tall as the tallest card (grid 1fr). --stack-h lets a card taller than the
+            // screen pin by its bottom edge instead, so all of it can be read before the next one covers it
+            var hh = sCards.length ? sCards[0].offsetHeight : 0;
+            if (hh !== sCardH) { sCardH = hh; stack.style.setProperty('--stack-h', hh + 'px'); }
+            sTop = docTop(stack); sEnd = sTop + stack.offsetHeight;
+            var gap = parseFloat(getComputedStyle(stack).rowGap) || 0, y = 0;
+            sCards.forEach(function (c, i) {
+              sH[i] = c.offsetHeight; sNat[i] = sTop + y; y += sH[i] + gap;
+              sStick[i] = parseFloat(getComputedStyle(c).top) || 0;
+            });
+          },
+          update: function () {
+            var live = sTop - V.y < V.h && sEnd - V.y > 0;
+            if (live !== sLive) { sLive = live; stack.classList.toggle('is-live', live); }
+            else if (!live) return; // off screen: written once on the way out, then left alone
+            for (var i = 0; i < sCards.length - 1; i++) {
+              // 0 while the next card's top is at or below this card's bottom, 1 once it has pinned on top
+              var next = Math.max(sStick[i + 1], sNat[i + 1] - V.y), span = sStick[i] + sH[i] - sStick[i + 1];
+              var k = span > 0 ? clamp01((sStick[i] + sH[i] - next) / span) : 0;
+              put(sCards[i], 'transform', k > 0 ? 'scale(' + (1 - 0.06 * k).toFixed(4) + ')' : '');
+              put(sDims[i], 'opacity', k > 0 ? (0.55 * k).toFixed(3) : '');
+            }
+          }
+        });
+      }
+
+      /* Kinetic band: a marquee. The two rows drift in opposite directions on their own; scrolling speeds
+         them up (with the scroll's speed), turns them with the scroll's direction and leans them up to
+         6 degrees into it, all easing back to the drift when the scroll stops. Each row holds the line
+         twice, so its offset wraps by one set's width without a seam. Transform only; on screen only
+         (off screen it is not stepped at all). */
       var kin = $('[data-kinetic]');
       if (kin) {
-        var kRows = $$('.kinetic__row', kin), kTop = 0, kH = 0, kW = [], kSkew = 0, kLastY = null, kLastT = 0;
+        var kRows = $$('.kinetic__row', kin), kTop = 0, kH = 0, kSet = [], kX = [0, null], kSkew = 0, kBoost = 0, kDir = 1, kLastY = null, kLastT = 0;
         fx.push({
-          measure: function () { kTop = docTop(kin); kH = kin.offsetHeight; kW = kRows.map(function (r) { return r.offsetWidth; }); },
+          measure: function () {
+            kTop = docTop(kin); kH = kin.offsetHeight;
+            kSet = kRows.map(function (r) { return r.firstElementChild ? r.firstElementChild.offsetWidth : 0; });
+            if (kX[1] === null) kX[1] = -0.27 * (kSet[1] || 0); // the second row starts a quarter set along, so no word sits over its twin
+          },
           update: function (now) {
             var vt = kTop - V.y, live = vt < V.h + 40 && vt + kH > -40;
             if (live !== kin._fxLive) { kin._fxLive = live; kin.classList.toggle('is-live', live); }
-            if (!live) { kSkew = 0; kLastY = null; return false; }
-            var dt = kLastY === null ? 16 : Math.max(8, now - kLastT);
+            if (!live) { kSkew = 0; kBoost = 0; kLastY = null; return false; }
+            var dt = kLastY === null ? 16 : Math.min(64, Math.max(1, now - kLastT));
             var vel = kLastY === null ? 0 : (V.y - kLastY) / dt; // px per ms, positive scrolling down
             kLastY = V.y; kLastT = now;
-            var target = Math.max(-6, Math.min(6, vel * 2.4));
-            kSkew += (target - kSkew) * (1 - Math.exp(-dt / 110));
+            if (Math.abs(vel) > 0.05) kDir = vel > 0 ? 1 : -1;
+            var e = 1 - Math.exp(-dt / 110);
+            kSkew += (Math.max(-6, Math.min(6, vel * 2.4)) - kSkew) * e;
+            kBoost += (Math.min(1.6, Math.abs(vel) * 0.9) - kBoost) * e;
             if (Math.abs(kSkew) < 0.05) kSkew = 0;
-            var travel = V.h + kH, p = clamp01((V.h - vt) / travel);
+            // the drift: 72px a second on a 1440px screen, never under 30
+            var d = (Math.max(0.03, V.w * 0.00005) + kBoost) * kDir * dt;
             kRows.forEach(function (r, i) {
-              var R = Math.max(0, Math.min(travel * 0.5, kW[i] - V.w - 8));
-              var x = i ? -R + p * R : -p * R;
-              var sk = (i ? -kSkew : kSkew);
+              var W = kSet[i];
+              if (!W) return;
+              var x = ((kX[i] || 0) + (i ? d : -d)) % W;
+              if (x > 0) x -= W;
+              kX[i] = x;
+              var sk = i ? -kSkew : kSkew;
               put(r, 'transform', 'translate3d(' + x.toFixed(1) + 'px,0,0)' + (sk ? ' skewX(' + sk.toFixed(2) + 'deg)' : ''));
             });
-            return kSkew !== 0;
+            return true; // it drifts on its own while it is on screen
           }
         });
       }
@@ -2859,7 +3225,8 @@
         fx.push({
           measure: function () { finTop = docTop(fin); },
           update: function () {
-            var k = outCubic(prog(finTop, 1, 0.3)), live = k > 0 && k < 1;
+            var k = outCubic(prog(finTop, 1, 0.3)), live = k > 0 && k < 1, near = finTop - V.y < V.h * 1.5;
+            if (near !== fin._fxNear) { fin._fxNear = near; fin.classList.toggle('is-near', near); }
             if (live !== panel._fxLive) { panel._fxLive = live; panel.classList.toggle('is-live', live); }
             put(panel, 'transform', k >= 1 ? 'none' : 'scale(' + (0.96 + 0.04 * k).toFixed(4) + ')');
             put(panel, 'clipPath', k >= 1 ? 'none' : 'inset(0 round ' + (24 * (1 - k)).toFixed(1) + 'px)');
@@ -2869,10 +3236,11 @@
 
       /* Section objects: each image floats a few px against the scroll and leans a degree or two as it
          crosses the screen (data-float="px,deg"), 0 as its middle meets the bottom of the screen and 1
-         at the top, so scrolling back plays it backwards */
+         at the top, so scrolling back plays it backwards. The final call's three objects are three
+         layers of one picture with three distances, so they drift at three depths. */
       var floats = $$('[data-float]').map(function (el) {
         var a = el.getAttribute('data-float').split(',');
-        return { el: el, img: $('img', el), y: parseFloat(a[0]) || 0, r: parseFloat(a[1]) || 0, top: 0, h: 0 };
+        return { el: el, img: el.hasAttribute('data-float-self') ? el : $('img', el), y: parseFloat(a[0]) || 0, r: parseFloat(a[1]) || 0, top: 0, h: 0 };
       });
       if (floats.length) {
         fx.push({
@@ -2884,6 +3252,30 @@
               var q = clamp01((V.h - cy) / V.h) - 0.5;
               put(f.img, 'transform', 'translate3d(0,' + (-q * f.y).toFixed(1) + 'px,0)' + (f.r ? ' rotate(' + (q * f.r).toFixed(2) + 'deg)' : ''));
             });
+          }
+        });
+      }
+
+      /* Footer: revealed from under the page (.foot-reveal) whenever all of it fits the screen under
+         the nav; a taller footer simply follows the page. Its content is held at the bottom of the
+         screen by a transform while the footer's own clipped box rises over it, so it looks pinned under
+         the page without overlapping it (a sticky footer behind the page made the whole page one layer) */
+      var footEl = $('.footer'), footIn = footEl && footEl.firstElementChild;
+      if (footEl && footIn) {
+        var fH = 0, fFits = false;
+        fx.push({
+          measure: function () {
+            fH = footEl.offsetHeight;
+            fFits = fH <= V.h - nav.offsetHeight - 24;
+            if (fFits !== footEl._fxFits) { footEl._fxFits = fFits; docEl.classList.toggle('foot-reveal', fFits); }
+          },
+          update: function () {
+            // the content trails the page's end by exactly the scroll still left, so it rests in place at
+            // the very end whichever way a phone's toolbar is (V.max is measured with it hidden)
+            var left = V.max - V.y, live = fFits && left < fH;
+            if (live !== footEl._fxLive) { footEl._fxLive = live; footEl.classList.toggle('is-live', live); }
+            var shift = live ? -Math.max(0, left) : 0;
+            put(footIn, 'transform', shift < 0 ? px(shift) : '');
           }
         });
       }
@@ -2929,6 +3321,104 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
     if ('ResizeObserver' in window) new ResizeObserver(remeasure).observe(document.body); // details opening, late images
     frame(performance.now());
+
+    /* ---------- Opening sequence and the magnetic call to action (GSAP core) ----------
+       GSAP is for one-shot choreography only; every scroll-driven effect stays in the loop above. It is
+       deferred, so it is ready by DOMContentLoaded. It only ever moves containers and wrappers (the nav,
+       the badge's slot, the headline's lines, the foot's items, .magnet), never a button itself, so each
+       button's press (its CSS scale) stays free. */
+    var unGsap = function (els) {
+      // GSAP leaves translate, rotate and scale set to none inline on what it moved: hand them back to CSS
+      els.forEach(function (el) { el.style.removeProperty('translate'); el.style.removeProperty('rotate'); el.style.removeProperty('scale'); });
+    };
+    // The main calls to action lean toward a mouse pointer over them, 8px across and 5px up or down at
+    // most (desktop pointers only, never with reduced motion)
+    var magnet = function (gsap) {
+      gsap.matchMedia().add('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)', function () {
+        var undo = [];
+        $$('[data-magnet]').forEach(function (m) {
+          var xTo = gsap.quickTo(m, 'x', { duration: 0.4, ease: 'power3' });
+          var yTo = gsap.quickTo(m, 'y', { duration: 0.4, ease: 'power3' });
+          var c = null, lim = function (v, a) { return Math.max(-a, Math.min(a, v)); };
+          var move = function (e) {
+            if (e.pointerType !== 'mouse') return;
+            if (!c) { var b = m.getBoundingClientRect(); c = { x: b.left + b.width / 2 - gsap.getProperty(m, 'x'), y: b.top + b.height / 2 - gsap.getProperty(m, 'y') }; }
+            xTo(lim((e.clientX - c.x) * 0.2, 8));
+            yTo(lim((e.clientY - c.y) * 0.3, 5));
+          };
+          var leave = function () { c = null; xTo(0); yTo(0); };
+          var forget = function () { c = null; };
+          m.addEventListener('pointermove', move);
+          m.addEventListener('pointerleave', leave);
+          window.addEventListener('scroll', forget, { passive: true });
+          undo.push(function () { m.removeEventListener('pointermove', move); m.removeEventListener('pointerleave', leave); window.removeEventListener('scroll', forget); });
+        });
+        return function () { undo.forEach(function (f) { f(); }); };
+      });
+    };
+    // The opening, under 1.2s, once: the nav slides down, the headline rises into place line by line, the
+    // badge drops in and settles once, then the lead, the button and the cue follow on a stagger.
+    var intro = function (gsap, then) {
+      var line = $('.world__line'), slot = $('.world__slot'), foot = $$('.world__foot > *');
+      if (!docEl.classList.contains('intro') || !line || !slot || window.scrollY > 8) { docEl.classList.remove('intro'); then(); return; }
+      // the headline goes on the page whole and is split into its visual lines only once it has been
+      // painted (it is the largest paint on most phones), so neither the first paint nor the LCP sees the split
+      var types = window.PerformanceObserver && PerformanceObserver.supportedEntryTypes;
+      var canSee = !!(types && types.indexOf('paint') >= 0), frames = 0;
+      var painted = function () { return performance.getEntriesByName('first-contentful-paint').length > 0; };
+      var go = function () {
+        if (!docEl.classList.contains('intro')) { then(); return; } // the 2.5s failsafe got there first
+        var text = line.textContent, off = 0.3 * (parseFloat(getComputedStyle(line).fontSize) || 0);
+        var words = text.trim().split(/\s+/), probes = [], rows = [], top = null;
+        line.textContent = '';
+        words.forEach(function (w, i) {
+          var sp = document.createElement('span');
+          sp.textContent = w;
+          line.appendChild(sp);
+          probes.push(sp);
+          if (i < words.length - 1) line.appendChild(document.createTextNode(' '));
+        });
+        probes.forEach(function (sp) { if (top === null || sp.offsetTop > top + 2) { rows.push([]); top = sp.offsetTop; } rows[rows.length - 1].push(sp.textContent); });
+        line.textContent = '';
+        var vls = rows.map(function (r) { var b = document.createElement('span'); b.className = 'world__vl'; b.textContent = r.join(' '); line.appendChild(b); return b; });
+        var moved = [nav, slot].concat(vls, foot);
+        var tl = gsap.timeline({ defaults: { ease: 'expo.out', duration: 0.7 }, onComplete: function () {
+          gsap.set(moved, { clearProps: 'transform,opacity' });
+          unGsap(moved);
+          line.textContent = text;
+          ['wheel', 'touchstart', 'keydown'].forEach(function (t) { window.removeEventListener(t, hurry); });
+          window.removeEventListener('resize', finish);
+          remeasure();
+          then();
+        } });
+        // a scroll, a touch or a key during it: finish quickly rather than fight it; a resize: finish now
+        var hurry = function () { tl.timeScale(3); };
+        var finish = function () { tl.progress(1); };
+        // take over from the .intro offsets in this same frame, then drop the class
+        gsap.set(nav, { y: 0, yPercent: -100 });
+        gsap.set(vls, { y: off });
+        gsap.set(slot, { y: gsap.getProperty(slot, 'y') }); // the drop, read from .intro (less on phones)
+        gsap.set(foot, { y: gsap.getProperty(foot[0], 'y'), opacity: 0 }); // the text-reveal distance, read from .intro
+        docEl.classList.remove('intro');
+        // durations on the token scale's top end (an authored entrance), staggers at its 80ms step
+        tl.to(nav, { yPercent: 0, duration: 0.5 }, 0)
+          .to(vls, { y: 0, duration: 0.6, stagger: 0.08 }, 0.05)
+          .to(slot, { y: 0, duration: 0.7, ease: 'back.out(1.4)' }, 0.1)
+          .to(foot, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out', stagger: 0.08 }, 0.3);
+        ['wheel', 'touchstart', 'keydown'].forEach(function (t) { window.addEventListener(t, hurry, { passive: true }); });
+        window.addEventListener('resize', finish);
+      };
+      (function wait() {
+        if (canSee ? painted() || frames > 30 : frames >= 2) go();
+        else { frames++; requestAnimationFrame(wait); }
+      })();
+    };
+    var choreo = function () {
+      var gsap = window.gsap;
+      if (!gsap || !motion) { docEl.classList.remove('intro'); return; }
+      intro(gsap, function () { magnet(gsap); });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', choreo); else choreo();
 
     /* ---------- Contact form: posts to Supabase, honest about failure ---------- */
     var SUPABASE_URL = 'https://kpsoovvsdunbohezbwnc.supabase.co';
