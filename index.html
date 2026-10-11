@@ -1757,7 +1757,7 @@
       --revert-dur: 280ms;
     }
     /* Border-color tween. Define your input's default / focused
-       / error border-color in your own component CSS — this rule
+       / error border-color in your own component CSS; this rule
        only owns the interpolation. Use a constant border-width
        across states so the tween never shifts inner content. */
     .t-input {
@@ -2000,6 +2000,13 @@
       --dropdown-close-dur: var(--duration-quick);
       --dropdown-ease: var(--ease-smooth-out);
     }
+    /* Layers: the snippets' standing will-change would keep about 30 small layers alive on every phone (13 reel
+       strips, the price, each popped digit, the inputs, the phone's screens and, under them, each of their parts). A running transition or animation is
+       promoted on its own, so these stay unpromoted at rest. */
+    .t-reel-strip, .t-digit, .t-input, .t-page-slide .t-page, .t-tabs .t-tabs-pill, .t-success-check { will-change: auto; }
+    /* the glare blends (mix-blend-mode), which isolates the card: it exists only while the tilt is on */
+    .t-tilt-glare { display: none; }
+    .t-tilt .t-tilt-glare { display: block; }
     /* small blurs only where a fine pointer can hover, and only on small things */
     @media (hover: hover) and (pointer: fine) {
       :root {
@@ -2014,6 +2021,9 @@
     }
     @media (hover: none), (pointer: coarse) {
       .t-acc-panel-inner { filter: none !important; } /* the accordion's blur is a literal in the snippet */
+      /* zero blur is still a filter: drop it, so the phone's screens and the toast carry no filter on touch */
+      .t-page-slide .t-page, .t-toast, .t-icon-swap .t-icon { filter: none !important; }
+      .t-toast { will-change: transform, opacity; }
     }
 
     /* --- Our hooks --- */
@@ -2032,6 +2042,12 @@
     .plans.t-tabs { display: flex; width: 100%; gap: 2px; padding: 4px; margin-bottom: 28px; border-radius: var(--r-pill); background: var(--black); }
     .plans .t-tab { flex: 1 1 0; padding: 0 8px; font-size: 0.875rem; white-space: nowrap; }
     .t-tab:active { scale: var(--scale-large); }
+    /* the selected tab also carries the green itself once the pill has arrived (the pill is exactly its size), so
+       its label is read against green by anything that measures it, and it stays green if the pill is ever off */
+    .t-tabs .t-tab[aria-selected="true"] {
+      background-color: var(--tabs-pill-bg);
+      transition: color var(--tabs-dur) var(--tabs-ease), scale var(--duration-quick) var(--ease-smooth-out), background-color 0s linear var(--tabs-dur);
+    }
     .t-tab:focus-visible { outline-offset: 2px; }
     .no-js .plans { display: none; } /* without the script the monthly price stands, with the other two in words */
     .js .price-alt { display: none; }
@@ -2048,19 +2064,39 @@
       filter: blur(0);
       transition-delay: var(--page-stagger);
     }
+    /* a screen that is not shown is also not painted (as before the slide): the phone repaints as it scrolls,
+       and two hidden screens would double that work; visibility waits for the fade so the leaving one is seen */
+    .phone .t-page-slide .t-page {
+      visibility: hidden;
+      transition: opacity var(--page-fade-dur) var(--page-fade-ease), transform var(--page-slide-dur) var(--page-slide-ease),
+        filter var(--page-slide-dur) var(--page-slide-ease), visibility 0s linear var(--page-fade-dur);
+    }
+    .phone .t-page-slide[data-page="1"] .t-page[data-page-id="1"],
+    .phone .t-page-slide[data-page="2"] .t-page[data-page-id="2"],
+    .phone .t-page-slide[data-page="3"] .t-page[data-page-id="3"] {
+      visibility: visible;
+      transition-delay: var(--page-stagger), var(--page-stagger), var(--page-stagger), 0s;
+    }
     /* numbers on the screen that just arrived pop in; the plain text stays for screen readers */
     .t-digit-group { font-variant-numeric: tabular-nums; }
+    /* the digits are spans inside the number, so the mockup's "span" rules (.macros span, .kv span) must not
+       restyle them: each digit looks exactly like the number it replaced */
+    .screen span[data-pop], .screen [data-pop] span { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
 
     /* Reels: the progress counters and the price. Each cell is taller than the line (so the mask's soft
        edges never touch a resting digit), and the reel's margins give back the difference, so the
        number keeps its line's height and baseline (--lh, the host's line height, set by the script). */
     .cnt, .price .num { font-variant-numeric: tabular-nums; }
     .cnt .t-reel, .price .t-reel { --reel-cell: 1.4em; vertical-align: top; margin-block: calc((var(--lh, 1.4em) - var(--reel-cell)) / 2); }
+    /* one window per number, not one per digit: the clip and the soft-edged mask sit on the reel, so a number
+       costs the page one clip and one mask however many digits it has (each costs a frame while scrolling) */
+    .t-reel { overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%); }
+    .t-reel .t-reel-col { overflow: visible; -webkit-mask-image: none; mask-image: none; }
     .t-reel-sep { display: flex; align-items: center; height: var(--reel-cell); }
     .t-reel-probe { position: absolute; visibility: hidden; }
     .price .t-reel { position: relative; }
     .price .t-reel-col { transition: width var(--reel-dur) var(--reel-ease), opacity var(--duration-fast) var(--ease-smooth-out); }
-    .price .t-reel-col.is-empty { opacity: 0; }
+    .price .t-reel-col.is-empty { opacity: 0; visibility: hidden; transition: width var(--reel-dur) var(--reel-ease), opacity var(--duration-fast) var(--ease-smooth-out), visibility 0s linear var(--duration-fast); }
 
     /* Pricing: the card tilts toward a mouse pointer (the script adds .t-tilt and .t-tilt-card only
        for a fine pointer with motion allowed), its glare follows the pointer. */
@@ -2150,7 +2186,8 @@
     .fv-ring circle { fill: none; stroke-width: 10; stroke-linecap: round; }
     .fv-ring__track { stroke: var(--line-strong); }
     .fv-ring__fill { stroke: var(--green); stroke-dasharray: 100; stroke-dashoffset: 12; }
-    .fv-ring__label { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.2; }
+    .fv-ring__label { position: absolute; inset: 14px; display: grid; place-content: center; text-align: center; line-height: 1.2; }
+    .fv-ring__label small { text-wrap: balance; } /* inside the stroke: on the compact ring "of 2,100 kcal" takes two lines */
     .fv-ring__label b { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
     .fv-ring__label small { font-size: 0.75rem; }
     .fv-macros { display: grid; gap: 14px; }
@@ -2194,6 +2231,7 @@
     .fx .stack__card.is-top .fv-ring__fill { transition: stroke-dashoffset 900ms var(--ease-smooth-out) var(--duration-micro); }
     .fx .stack__card.is-top .fv-line__path { transition: stroke-dashoffset 1100ms var(--ease-smooth-out) var(--duration-micro); }
     .fx .stack__card.is-top .fv-dot { transition: opacity var(--duration-slow) var(--ease-smooth-out) 900ms, transform var(--duration-slow) var(--ease-smooth-out) 900ms; }
+    .fx .stack__card.is-top.is-instant .fviz * { transition: none; } /* reached in a fast fling: shown whole */
 
     /* Wide screens: the piece only takes the space the card already has under its name (the slot is
        size-contained, so it never makes a card taller). Room for the whole piece: it shows whole; room
@@ -3513,6 +3551,7 @@
        point) stand still. The number's text stays for screen readers. No motion blur: these are large
        numbers. Options: len (pad with empty columns on the left), loops (turns in a strip), collapse
        (an empty column narrows to nothing, so 30 and 300 each sit snug). */
+    var reelMs = null;
     var makeReel = function (host, o) {
       o = o || {};
       var text = host.textContent.trim(), len = o.len || text.length, loops = o.loops || 3;
@@ -3532,20 +3571,22 @@
       host.textContent = '';
       host.appendChild(sr);
       host.appendChild(reel);
-      var lh = parseFloat(getComputedStyle(host).lineHeight);
+      // read once and kept (host._lh, reelMs): a reel built mid-scroll must not force a style pass per read
+      var lh = host._lh || parseFloat(getComputedStyle(host).lineHeight);
       if (lh) host.style.setProperty('--lh', lh + 'px');
-      var DUR = msVar('--reel-dur', 1400), STAG = msVar('--reel-stagger', 90), w = 0, cur = text;
+      reelMs = reelMs || { dur: msVar('--reel-dur', 1400), stag: msVar('--reel-stagger', 90) };
+      var DUR = reelMs.dur, STAG = reelMs.stag, w = 0, cur = text;
       var place = function (c, idx, delay, animate) {
         clearTimeout(c.timer);
         c.idx = idx;
         c.strip.style.transition = animate ? 'transform var(--reel-dur) var(--reel-ease) ' + delay + 'ms' : 'none';
-        c.strip.style.transform = 'translate3d(0, calc(var(--reel-cell) * ' + (-idx) + '), 0)';
+        c.strip.style.transform = 'translateY(calc(var(--reel-cell) * ' + (-idx) + '))'; // 2D: a 3D transform would keep every strip a standing layer
         if (!animate) return;
         c.timer = setTimeout(function () {
           c.timer = 0;
           c.strip.style.transition = 'none';
           c.idx = idx % 10;
-          c.strip.style.transform = 'translate3d(0, calc(var(--reel-cell) * ' + (-c.idx) + '), 0)';
+          c.strip.style.transform = 'translateY(calc(var(--reel-cell) * ' + (-c.idx) + '))';
         }, DUR + delay + 40);
       };
       var fit = function () {
@@ -3621,7 +3662,7 @@
       var priceNum = $('[data-price-num]'), planChip = $('[data-plan-chip]'), planPer = $('[data-plan-per]');
       var planAday = $('[data-plan-aday]'), planBill = $('[data-plan-bill]');
       var movePlanPill = tabPill(plansBar), planAt = 0, monthly = +planTabs[0].dataset.price;
-      priceReel = makeReel(priceNum, { len: 3, loops: 10, collapse: true });
+      priceReel = makeReel(priceNum, { len: 3, loops: 4, collapse: true }); // 4 turns: room for two quick changes in a row; fewer cells to lay out
       var money = function (v) { return Math.abs(v - Math.round(v)) < 0.005 ? '$' + Math.round(v) : '$' + v.toFixed(2); };
       var plan = function (t) {
         var price = +t.dataset.price, months = +t.dataset.months, days = +t.dataset.days;
@@ -4336,7 +4377,10 @@
             // well up the screen, and resets once the card is back below the screen, out of sight
             for (var t = 0; t < sCards.length; t++) {
               var ct = sNat[t] - V.y, top = sCards[t]._top, vy = Math.max(sStick[t], ct) + sViz[t]; // the piece's middle on screen
-              if (!top && (vy < V.h * 0.86 || ct <= sStick[t] + 1)) { sCards[t]._top = true; sCards[t].classList.add('is-top'); }
+              if (!top && (vy < V.h * 0.86 || ct <= sStick[t] + 1)) {
+                // met in a fast fling (as the headings): shown whole at once, no transition, so no layer churn mid-fling
+                sCards[t]._top = true; sCards[t].classList.toggle('is-instant', hV > 1.5); sCards[t].classList.add('is-top');
+              }
               else if (top && ct > V.h) { sCards[t]._top = false; sCards[t].classList.remove('is-top'); }
             }
             for (var i = 0; i < sCards.length - 1; i++) {
@@ -4414,7 +4458,9 @@
          landing on its number; one already on screen at load simply stands. The weekly bars grow with the scroll. */
       var counters = $$('[data-count]').map(function (el) {
         el.classList.add('cnt');
-        return { el: el, reel: makeReel(el, { loops: 3 }), top: 0, h: 0, state: null };
+        // the reel is built only for its roll and taken down after it, so at rest a counter is plain text
+        el._lh = parseFloat(getComputedStyle(el).lineHeight);
+        return { el: el, text: el.textContent, top: 0, h: 0, state: null };
       });
       var spark = $('.spark'), sparkBars = spark ? $$('i', spark) : [], sparkTop = 0;
       fx.push({
@@ -4423,12 +4469,26 @@
           if (spark) sparkTop = docTop(spark);
         },
         update: function () {
+          var held = false, roll = [];
           counters.forEach(function (c) {
             if (c.state === 'done') return;
             var vt = c.top - V.y, inside = vt < V.h * 0.92 && vt + c.h > 0;
             if (c.state === null) { c.state = inside ? 'done' : 'wait'; return; }
-            if (inside) { c.state = 'done'; c.reel.spin(); }
+            // in a fast fling it stands on its number (no layer churn mid-fling) and rolls once the page slows;
+            // asking for another frame lets the speed settle even if the scroll has stopped
+            if (inside && hV <= 1.5) { c.state = 'done'; roll.push(c); }
+            else if (inside) held = true;
           });
+          if (roll.length) {
+            // build every reel that rolls this frame, lay them all out once at rest, then roll them together
+            var reels = roll.map(function (c) { return makeReel(c.el, { loops: 3 }); });
+            void document.body.offsetWidth;
+            reels.forEach(function (r) { r.spin(); });
+            roll.forEach(function (c) {
+              var cols = c.text.replace(/\D/g, '').length;
+              setTimeout(function () { c.el.textContent = c.text; }, reelMs.dur + (cols - 1) * reelMs.stag + 80);
+            });
+          }
           if (spark) {
             var p = prog(sparkTop, 0.95, 0.5), n = sparkBars.length;
             sparkBars.forEach(function (b, i) {
@@ -4436,6 +4496,7 @@
               put(b, 'transform', k >= 1 ? 'none' : 'scaleY(' + k.toFixed(3) + ')');
             });
           }
+          return held;
         }
       });
 
@@ -4447,15 +4508,18 @@
         fx.push({
           measure: function () { if (priceEl) priceTop = docTop(priceEl); if (ul) ulTop = docTop(ul.parentNode); },
           update: function () {
+            var held = false;
             if (priceEl && priceState !== 'done') {
               var vt = priceTop - V.y, inside = vt < V.h * 0.85 && vt > -V.h * 0.3;
               if (priceState === null) priceState = inside ? 'done' : 'wait';
-              else if (inside) { priceState = 'done'; priceReel.spin(); }
+              else if (inside && hV <= 1.5) { priceState = 'done'; priceReel.spin(); }
+              else if (inside) held = true; // as the counters: roll once the page slows
             }
             if (ul) {
               var u = outCubic(prog(ulTop, 0.85, 0.6));
               put(ul, 'transform', u >= 1 ? 'none' : 'scaleX(' + u.toFixed(3) + ')');
             }
+            return held;
           }
         });
       }
@@ -4768,6 +4832,14 @@
         toastEl.classList.add('is-open');
         toastTimer = setTimeout(function () { toastEl.classList.remove('is-open'); }, 4200);
       };
+      // the notice the toast repeats must not sit under it: on a phone the form ends at the foot of the
+      // screen, so lift the page until the notice clears the toast (never past the nav)
+      var clearOfToast = function (el) {
+        if (!toastEl) return;
+        var r = el.getBoundingClientRect(), room = window.innerHeight - toastEl.offsetHeight - 40;
+        var by = Math.min(r.bottom - room, r.top - (nav ? nav.offsetHeight : 0) - 16);
+        if (by > 0) window.scrollBy({ top: by, behavior: reduceMotion ? 'auto' : 'smooth' });
+      };
       var okCheck = $('.t-success-check', ok);
       var inputs = $$('#c-name, #c-email, #c-message', form);
       inputs.forEach(function (input) {
@@ -4816,9 +4888,11 @@
           // the success check (transitions-dev 10): it turns upright and its tick draws
           if (okCheck) { okCheck.setAttribute('data-state', 'out'); void okCheck.offsetWidth; okCheck.setAttribute('data-state', 'in'); }
           toast('ok', 'Message sent.');
+          clearOfToast(ok);
         }).catch(function () {
           err.classList.add('is-shown');
           toast('err', 'Not sent. Check your connection and try again.');
+          clearOfToast(err);
         }).then(function () {
           clearTimeout(timeout);
           submit.disabled = false;

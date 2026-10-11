@@ -229,6 +229,15 @@ Each section moves its own way, never the same fade-up twice:
   as tall as the tallest, so none shows below the one on top, and a card taller than the screen pins by
   its bottom edge so all of it is read first. Phones: the same at 360, two features up front and the
   rest under "More". Without motion: a plain list of cards.
+  Each card carries a small piece of the app, drawn in the page's own parts (decorative, hidden from
+  screen readers): Train a workout row and the sets bar, Nutrition a calorie ring and three macro bars,
+  AI Coach a short exchange and a "Plan updated" chip, Progress the kilos lost and a falling line. On wide
+  screens the piece sits under the card's name and only takes the room the card already has (a shorter
+  card gets a compact form, none at all if there is no room); on phones it sits at the foot of the card,
+  compact. It plays once its card reaches the top of the stack (rows rise 12px in turn, bars fill, the
+  ring and the line draw, the dot lands last) and resets once the card is back below the screen. Reached in
+  a fast fling (over 1500px a second, as the headlines) it is simply shown whole. Without motion it stands
+  complete.
 - Kinetic band (between How it works and Features, decorative, hidden from screen readers): "Train ·
   Fuel · Become" in giant Sora Bold caps (72px on phones to 176px), solid and outline words
   alternating, green once, separated by a short bar leaning forward like the B's slots (drawn, not a
@@ -236,13 +245,27 @@ Each section moves its own way, never the same fade-up twice:
   (72px a second on a 1440px screen); scrolling speeds them up, turns them with the scroll's direction
   and leans them up to 6 degrees into it. Paused off screen. The client's own line, kept over a generic
   "Train, eat, recover" because the app has no recovery features.
-- Progress: the counters count up (900ms, ease-out quart) each time they come on screen and reset
-  when they leave; they keep the final number's width, so nothing shifts. The weekly bars grow with
-  the scroll, left to right.
-- Pricing: "$30" rolls up like an odometer as the card arrives (the last digit goes once round) and
-  lands by the time the price is 72% down the screen; "about $1 a day" underlines itself in green.
+- Progress: each counter's digits spin on reels (one column per digit, the left column first, 90ms
+  apart, 1400ms, ease-out expo; the right-hand digit goes round twice) the first time it comes on screen,
+  and land on the number; once, never again on the way back. A counter already on screen at load simply
+  stands; one met in a fast fling stands on its number and rolls once the page slows. Tabular figures, no motion blur, the number's own text kept for screen readers. The weekly bars
+  grow with the scroll, left to right.
+- Pricing: three plans on a segmented toggle in the card (Monthly $30, 3 months $81, Yearly $300;
+  PRODUCT.md), the green pill sliding to the plan. The price is a reel: it rolls once as the card arrives
+  (once the page slows, after a fast fling) and again on each change of plan, an empty column narrowing so $30 and $300 each sit snug. The period,
+  the per-day line (about $1, about $0.90, about $0.82 a day), the chip (All included, Save 10%, Save 17%)
+  and the billing line change in place. The per-day figure and the saving are worked out from each plan's
+  price, months and days, never typed in. "about $1 a day" underlines itself in green with the scroll. With a
+  mouse only, the card tilts toward the pointer (8 degrees at its edges at most) with a soft glare (14%
+  white) and eases back flat over 1s when the pointer leaves; never on touch. Arrow keys, Home and End move
+  through the plans. Without the script the monthly price stands and the other two plans are written under
+  it. The page's structured data lists the three offers.
 - Phone mockup: drifts slower than the page (40px at most, 22px on phones) and its screen scrolls
-  under a pinned status bar and tab bar, as if in use.
+  under a pinned status bar and tab bar, as if in use. Its switcher (Today, Nutrition, Coach; WAI-ARIA tabs,
+  arrow keys, Home and End) slides a green pill to the tab; the screens slide side by side 8px with a fade
+  (250ms; the one leaving goes the way of travel), the numbers on the arriving screen pop in digit by digit,
+  and the pause button's icon swaps (scale 0.25 to 1 with a fade). It rotates every 5s while on screen and
+  stops once the visitor picks a tab (the play button starts it again).
 - Final call: a Deep Black panel opens from a rounded card (scale 0.96, 24px corners) inside a band
   of `#121212` to full bleed as the section arrives. The copy itself never scales. "Train. Fuel.
   Become." reveals a beat per word (80ms apart, the scale's large-stagger step) and "Become." turns
@@ -292,6 +315,20 @@ One timing language, two engines, one rule for touch.
   that ships a small blur may keep it only on small elements and only under `(hover: hover)`.
   Scroll-linked values use the raw scroll position on touch (no easing), transform and opacity only,
   and every effect is stepped only while on screen.
+- Controls (transitions-dev patterns, pasted with their reduced-motion blocks, then pointed at the
+  tokens; their overshoot curves are set to smooth-out and their blurs to zero, small blurs coming back
+  only under `(hover: hover) and (pointer: fine)`): tabs sliding (the switcher and the plan toggle), page
+  side by side (the phone's screens), number pop-in, icon swap, spinning counter (the counters and the
+  price), text swap soft (the plan's lines), card hover tilt (the price card), accordion expand (FAQ,
+  Privacy and terms, the features' More: still `<details>`, the answer grows by grid rows over 250ms and
+  the chevron flips; without the script the native `<details>` works as always), error shake (an invalid
+  field shakes 6px on a send attempt, its border turns red and its message grows in under it; the message
+  stays until the value is fixed), text morph ("Send message" to "Sending…"), success check (the tick
+  turns upright and draws), toast (the outcome repeated at the foot of the screen for about 4s, silent to
+  screen readers since the form's own notice is announced; the page lifts so the notice clears it) and
+  menu dropdown (the phone menu grows from the burger at 0.97, 8px high, its links following 40ms apart;
+  Tab stays inside it, Escape or a tap outside closes it). No standing `will-change` on the small ones:
+  a running transition is promoted on its own.
 - Hover only where a pointer can hover: every colour or arrow hover sits in `@media (hover: hover)`, so
   nothing sticks after a tap. Focus: a 2px green ring on every control at its own corners, the same
   ring 2px outside each form field (red while it is in error); a focused link shows its arrow.
