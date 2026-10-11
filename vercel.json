@@ -4,6 +4,7 @@
   "buildCommand": null,
   "installCommand": null,
   "outputDirectory": ".",
+  "ignoreCommand": "exit 1",
   "headers": [
     {
       "source": "/admin/(.*)",
