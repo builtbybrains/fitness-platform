@@ -199,8 +199,13 @@ with the same look and the same motion. Nothing on the website runs WebGL or dow
 The site runs one scroll loop (the inline script in `index.html`): one passive scroll listener, one
 `requestAnimationFrame` per frame, shared by the solid nav, scroll-spy, the roadmap and every effect
 below. Positions are measured in one pass as document offsets (on load, resize, fonts ready and any
-change in the page's height, via a ResizeObserver), so a frame only reads `scrollY` and writes, and
-only values that changed. Every effect is a function of scroll position: scrolling back plays it
+change of a pixel or more in the page's size, via a ResizeObserver; a sliver under a pixel, such as a
+counter's reel going up, moves nothing and is not worth a full re-measure mid-scroll), so a frame only
+reads `scrollY` and writes, and only values that changed. A frame never reads layout back after a
+write: what has to be built mid-scroll (a counter's reel) is built in one frame and set moving in the
+next, and a value that cannot change while scrolling (the price reel's cell width) is read once.
+Custom properties are not written per frame (one on an ancestor restyles its whole subtree); the
+phone's screens take the `translate` property instead. Every effect is a function of scroll position: scrolling back plays it
 backwards. Transform, opacity, `clip-path` and `stroke-dashoffset` only; `will-change` sits on the
 big movers (kinetic rows, phone, final panel) only while they are on screen. All of it hangs off
 the `.fx` class the script sets when motion is allowed; without it the page is the still page.

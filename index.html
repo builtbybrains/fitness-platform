@@ -896,7 +896,9 @@
     .fx .draw-ul > i { transform: scaleX(0); }
 
     /* Phone mockup: drifts a little slower than the page while its screen scrolls on its own */
-    .fx .screen > :not(.app-tabs) { transform: translate3d(0, var(--app-y, 0px), 0); }
+    /* the phone's screen scrolls under its pinned bars: the loop moves each screen (the CSS translate
+       property, so the page slide's own transform is untouched) and holds its tab bar back by as much.
+       Six small writes a frame; a custom property on the phone restyled every node of all three screens */
     .fx .switcher.is-live, .fx .final__panel.is-live { will-change: transform; }
 
     /* Final call: a black panel opens out to full bleed from a rounded card as it arrives */
@@ -907,6 +909,7 @@
     @media (prefers-reduced-motion: reduce) {
       .scrollbar, .final__panel { display: none !important; }
       .wm__i, .stack__card, .kinetic__row, .kinetic__set, .switcher, .screen > *, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
+      .screen, .app-tabs { translate: none !important; }
       .stack__dim { opacity: 0 !important; }
     }
 
@@ -2093,6 +2096,8 @@
     .t-reel { overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%); }
     .t-reel .t-reel-col { overflow: visible; -webkit-mask-image: none; mask-image: none; }
     .t-reel-sep { display: flex; align-items: center; height: var(--reel-cell); }
+    /* a counter's one roll: the digits a column passes are one block of lines, each line exactly one cell */
+    .t-reel-run { display: block; white-space: pre; text-align: center; line-height: var(--reel-cell); }
     .t-reel-probe { position: absolute; visibility: hidden; }
     .price .t-reel { position: relative; }
     .price .t-reel-col { transition: width var(--reel-dur) var(--reel-ease), opacity var(--duration-fast) var(--ease-smooth-out); }
@@ -3589,9 +3594,11 @@
           c.strip.style.transform = 'translateY(calc(var(--reel-cell) * ' + (-c.idx) + '))';
         }, DUR + delay + 40);
       };
-      var fit = function () {
+      // the cell's width is read only when it can change (built, fonts landing, a resize): a roll in the
+      // scroll loop then only writes, never reading layout back after a write
+      var fit = function (remeasure) {
         if (!o.collapse) return;
-        w = probe.getBoundingClientRect().width;
+        if (remeasure === true || !w) w = probe.getBoundingClientRect().width;
         cols.forEach(function (c) { if (c) c.col.style.width = c.col.classList.contains('is-empty') ? '0px' : w + 'px'; });
       };
       var set = function (t, animate) {
@@ -3600,6 +3607,13 @@
         cols.forEach(function (c, i) {
           if (!c) return;
           var empty = ch[i] === ' ', d = empty ? 0 : +ch[i], target = d;
+          if (empty && o.collapse) {
+            // an empty column is hidden: its strip stays put (it fades out on its last digit), since a roll
+            // nobody sees still runs on the main thread, restyling and re-layering every frame while it spins
+            c.col.classList.add('is-empty');
+            k++;
+            return;
+          }
           if (animate) {
             target = c.idx - (c.idx % 10) + 10 * (i === last ? 2 : 1) + d; // the right-hand digit goes round twice
             if (target >= loops * 10) target = 10 + d; // out of strip (many quick rolls): land one turn in
@@ -3613,10 +3627,48 @@
       };
       set(text, false);
       if (o.collapse) {
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
-        window.addEventListener('resize', fit, { passive: true });
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fit(true); });
+        window.addEventListener('resize', function () { fit(true); }, { passive: true });
       }
       return { set: set, spin: function () { set(cur, true); } };
+    };
+
+    /* A counter's reel, built light for its one roll: each column is its start cell, the digits it passes
+       as one block of lines and its landing cell (four nodes, not thirty), so a counter built mid-scroll
+       is a small style pass. It moves exactly as the full reel: one turn onto the digit, the right-hand
+       digit two, the left column first. */
+    var onceReel = function (host) {
+      var text = host.textContent.trim(), chars = text.split(''), lastDigit = -1, cols = [];
+      var mk = function (cls, txt) { var e = document.createElement('span'); e.className = cls; if (txt != null) e.textContent = txt; return e; };
+      var sr = mk('sr-only', text), reel = mk('t-reel');
+      reel.setAttribute('aria-hidden', 'true');
+      chars.forEach(function (ch, i) { if (/\d/.test(ch)) lastDigit = i; });
+      chars.forEach(function (ch, i) {
+        if (!/\d/.test(ch)) { reel.appendChild(mk('t-reel-sep', ch)); return; }
+        var d = +ch, n = i === lastDigit ? 20 : 10, run = [];
+        for (var j = 1; j < n; j++) run.push((d + j) % 10);
+        var col = mk('t-reel-col'), strip = mk('t-reel-strip');
+        strip.appendChild(mk('t-reel-digit', ch));
+        strip.appendChild(mk('t-reel-run', run.join('\n')));
+        strip.appendChild(mk('t-reel-digit', ch));
+        col.appendChild(strip);
+        reel.appendChild(col);
+        cols.push({ strip: strip, n: n });
+      });
+      host.textContent = '';
+      host.appendChild(sr);
+      host.appendChild(reel);
+      if (host._lh) host.style.setProperty('--lh', host._lh + 'px');
+      reelMs = reelMs || { dur: msVar('--reel-dur', 1400), stag: msVar('--reel-stagger', 90) };
+      return {
+        cols: cols.length,
+        spin: function () {
+          cols.forEach(function (c, k) {
+            c.strip.style.transition = 'transform var(--reel-dur) var(--reel-ease) ' + (k * reelMs.stag) + 'ms';
+            c.strip.style.transform = 'translateY(calc(var(--reel-cell) * ' + (-c.n) + '))';
+          });
+        }
+      };
     };
 
     /* ---------- Text swap soft (transitions-dev 34): a value changes in place ---------- */
@@ -4439,7 +4491,7 @@
       /* Phone mockup: drifts a little slower than the page; its screen scrolls on its own, as if in use */
       var sw = $('.switcher'), scr = $('.phone__screen');
       if (sw && scr) {
-        var swTop = 0, swH = 0;
+        var swTop = 0, swH = 0, scrPages = $$('.screen', scr), scrBars = $$('.screen > .app-tabs', scr);
         fx.push({
           measure: function () { swTop = docTop(sw); swH = sw.offsetHeight; },
           update: function () {
@@ -4449,7 +4501,13 @@
             var cap = V.w < 941 ? 22 : 40;
             put(sw, 'transform', px(Math.max(-cap, Math.min(cap, (c - V.h / 2) * 0.1))));
             var a = -44 * clamp01((clamp01((V.h - c) / V.h) - 0.3) / 0.7);
-            if (a !== scr._fxA) { scr._fxA = a; scr.style.setProperty('--app-y', a.toFixed(1) + 'px'); }
+            // written in half-pixel steps (and always at either end), so a slow scroll does not restyle it every frame
+            if (scr._fxA === undefined || Math.abs(a - scr._fxA) >= 0.5 || ((a === 0 || a === -44) && a !== scr._fxA)) {
+              scr._fxA = a;
+              var ty = '0 ' + a.toFixed(1) + 'px 0', back = '0 ' + (-a).toFixed(1) + 'px 0';
+              for (var q = 0; q < scrPages.length; q++) scrPages[q].style.translate = ty;
+              for (q = 0; q < scrBars.length; q++) scrBars[q].style.translate = back;
+            }
           }
         });
       }
@@ -4462,7 +4520,7 @@
         el._lh = parseFloat(getComputedStyle(el).lineHeight);
         return { el: el, text: el.textContent, top: 0, h: 0, state: null };
       });
-      var spark = $('.spark'), sparkBars = spark ? $$('i', spark) : [], sparkTop = 0;
+      var spark = $('.spark'), sparkBars = spark ? $$('i', spark) : [], sparkTop = 0, spinNext = [];
       fx.push({
         measure: function () {
           counters.forEach(function (c) { c.top = docTop(c.el); c.h = c.el.offsetHeight; });
@@ -4470,6 +4528,14 @@
         },
         update: function () {
           var held = false, roll = [];
+          // the reels built last frame have been laid out at rest by the browser's own pass: roll them now
+          if (spinNext.length) {
+            spinNext.forEach(function (r) {
+              r.spin();
+              setTimeout(function () { r.host.textContent = r.text; }, reelMs.dur + (r.cols - 1) * reelMs.stag + 80);
+            });
+            spinNext = [];
+          }
           counters.forEach(function (c) {
             if (c.state === 'done') return;
             var vt = c.top - V.y, inside = vt < V.h * 0.92 && vt + c.h > 0;
@@ -4480,14 +4546,10 @@
             else if (inside) held = true;
           });
           if (roll.length) {
-            // build every reel that rolls this frame, lay them all out once at rest, then roll them together
-            var reels = roll.map(function (c) { return makeReel(c.el, { loops: 3 }); });
-            void document.body.offsetWidth;
-            reels.forEach(function (r) { r.spin(); });
-            roll.forEach(function (c) {
-              var cols = c.text.replace(/\D/g, '').length;
-              setTimeout(function () { c.el.textContent = c.text; }, reelMs.dur + (cols - 1) * reelMs.stag + 80);
-            });
+            // build every reel that rolls this frame; the next frame rolls them together, so the browser lays
+            // them out at rest in its own pass and the loop never forces a layout
+            roll.forEach(function (c) { var r = onceReel(c.el); r.host = c.el; r.text = c.text; spinNext.push(r); });
+            held = true;
           }
           if (spark) {
             var p = prog(sparkTop, 0.95, 0.5), n = sparkBars.length;
@@ -4624,7 +4686,17 @@
     window.addEventListener('resize', onResize, { passive: true });
     window.addEventListener('load', remeasure);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
-    if ('ResizeObserver' in window) new ResizeObserver(remeasure).observe(document.body); // details opening, late images
+    // details opening, late images. A change under a pixel (a counter's reel going up and coming down
+    // moves the page's height by a sliver) moves no effect, and a full re-measure mid-scroll costs a frame
+    if ('ResizeObserver' in window) {
+      var bodyBox = [-1, -1];
+      new ResizeObserver(function (en) {
+        var r = en[en.length - 1].contentRect;
+        if (Math.abs(r.width - bodyBox[0]) < 1 && Math.abs(r.height - bodyBox[1]) < 1) return;
+        bodyBox = [r.width, r.height];
+        remeasure();
+      }).observe(document.body);
+    }
     frame(performance.now());
 
     /* ---------- Opening sequence and the magnetic call to action (GSAP core) ----------
