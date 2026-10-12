@@ -816,10 +816,6 @@
     .obj--medal { width: 200px; height: 200px; margin: 0 auto 8px; }
     .obj--medal .coin { --coin: 200px; }
 
-    /* Final call: the three objects in the side margins, behind the copy */
-    .final { position: relative; }
-    .final > .container { position: relative; z-index: 2; }
-    .obj--orbit { position: absolute; inset: 0; }
 
     @media (max-width: 1099px) {
       .split--3d { grid-template-areas: 'slot media' 'body media'; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(40px, 6vw, 88px); row-gap: 8px; }
@@ -836,8 +832,6 @@
       .split--3d > .obj { align-self: auto; height: 180px; margin-bottom: calc(8px - clamp(40px, 6vw, 88px)); }
       .obj--medal { width: 180px; height: 180px; }
       .obj--medal .coin { --coin: 180px; }
-      .final { padding-top: 40px; }
-      .obj--orbit { position: relative; inset: auto; height: 200px; margin-bottom: 8px; }
     }
 
     @media (max-width: 620px) {
@@ -899,15 +893,11 @@
     /* the phone's screen scrolls under its pinned bars: the loop moves each screen (the CSS translate
        property, so the page slide's own transform is untouched) and holds its tab bar back by as much.
        Six small writes a frame; a custom property on the phone restyled every node of all three screens */
-    .fx .switcher.is-live, .fx .final__panel.is-live { will-change: transform; }
+    .fx .switcher.is-live, .fx .final__panel.is-live { will-change: transform; } /* the green panel: its own layer while its clip moves */
 
-    /* Final call: a black panel opens out to full bleed from a rounded card as it arrives */
-    .final__panel { display: none; }
-    .fx .final { background: var(--band); }
-    .fx .final__panel { display: block; position: absolute; inset: 0; background: var(--black); pointer-events: none; transform: scale(0.96); clip-path: inset(0 round 24px); }
 
     @media (prefers-reduced-motion: reduce) {
-      .scrollbar, .final__panel { display: none !important; }
+      .scrollbar, .final__panel, .stone-bg { display: none !important; }
       .wm__i, .stack__card, .kinetic__row, .kinetic__set, .switcher, .screen > *, .draw-ul > i, .spark i { transform: none !important; opacity: 1 !important; }
       .screen, .app-tabs { translate: none !important; }
       .stack__dim { opacity: 0 !important; }
@@ -1263,29 +1253,6 @@
 
     /* Final call: "Train. Fuel. Become." a beat per word, and "Become." turns green once it has landed */
     .final .t-stagger--words { --stagger-stagger: var(--duration-micro); } /* three large words: the large-stagger step */
-    .fx .final h2 .hl { color: var(--white); transition: color var(--duration-very-slow) var(--ease-smooth-out); }
-    .fx .final h2.is-shown .hl { color: var(--green); transition-delay: calc(var(--stagger-stagger) * 2 + var(--stagger-dur)); } /* once the last word has landed */
-    /* its three objects drift at three depths: one picture, three layers, each cut to its own object */
-    /* the picture is contained and centred (--pw by --ph); each layer is a crop of it, a band from --l
-       that is --w of its width, cut in the empty space between two objects, so each layer is only as
-       big as its object and moves as one piece */
-    .obj--orbit { container-type: size; --pw: min(100cqw, 190cqh); --ph: calc(var(--pw) / 1.9); }
-    .orbit__l {
-      position: absolute; overflow: hidden; top: calc(50% - var(--ph) / 2); height: var(--ph);
-      left: calc(50% - var(--pw) / 2 + var(--pw) * var(--l)); width: calc(var(--pw) * var(--w));
-    }
-    .orbit__l > picture { position: absolute; top: 0; height: 100%; left: calc(var(--pw) * var(--l) * -1); width: var(--pw); max-width: none; }
-    .orbit__l img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-    .orbit__l--a { --l: 0; --w: 0.5; }        /* the dumbbell */
-    .orbit__l--b { --l: 0.5; --w: 0.325; }    /* the shaker */
-    .orbit__l--c { --l: 0.825; --w: 0.175; }  /* the kettlebell */
-    @media (max-width: 940px) {
-      .obj--orbit { --pw: min(100cqw, 180cqh); --ph: calc(var(--pw) / 1.8); }
-      .orbit__l--a { --l: 0; --w: 0.39; }     /* the kettlebell */
-      .orbit__l--b { --l: 0.39; --w: 0.22; }  /* the shaker */
-      .orbit__l--c { --l: 0.61; --w: 0.39; }  /* the dumbbell */
-    }
-    .fx .final.is-near .orbit__l { will-change: transform; }
 
     /* Footer: revealed from under the page. With motion, and when the whole footer fits the screen
        under the nav, it waits at the bottom of the screen behind the page (sticky, under the page's
@@ -1560,12 +1527,11 @@
       --text-soft-resize-dur: 240ms;
       --text-soft-resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
-    /* Both texts share one grid cell, so they cross-blur in place; the
-       cell's width eases between them. */
+    /* Both texts share one grid cell, so they cross-blur in place. The cell takes its new width at once
+       (a width transition would lay the line out again every frame); the crossfade carries the change. */
     .t-text-soft {
       display: inline-grid;
       justify-items: var(--text-soft-align, start);
-      transition: width var(--text-soft-resize-dur) var(--text-soft-resize-ease);
     }
     .t-text-soft > span {
       grid-area: 1 / 1;
@@ -1602,13 +1568,12 @@
     .t-morph {
       white-space: nowrap;
     }
-    /* The changing part: both versions share one grid cell, so they
-       cross-blur in place; the cell's width eases between them. */
+    /* The changing part: both versions share one grid cell, so they cross-blur in place; the cell takes
+       its new width at once (no width transition, so no layout per frame) and the crossfade carries it. */
     .t-morph-swap {
       display: inline-grid;
       vertical-align: bottom;
       justify-items: start;
-      transition: width var(--text-morph-resize-dur) var(--text-morph-ease);
     }
     .t-morph-swap > span {
       grid-area: 1 / 1;
@@ -2100,8 +2065,14 @@
     .t-reel-run { display: block; white-space: pre; text-align: center; line-height: var(--reel-cell); }
     .t-reel-probe { position: absolute; visibility: hidden; }
     .price .t-reel { position: relative; }
-    .price .t-reel-col { transition: width var(--reel-dur) var(--reel-ease), opacity var(--duration-fast) var(--ease-smooth-out); }
-    .price .t-reel-col.is-empty { opacity: 0; visibility: hidden; transition: width var(--reel-dur) var(--reel-ease), opacity var(--duration-fast) var(--ease-smooth-out), visibility 0s linear var(--duration-fast); }
+    /* the price's empty leading column keeps its width (no layout per frame): the whole price slides left by
+       one cell and the "$" slides right by one, both transforms, so $30 and $300 each sit snug */
+    .price .t-reel-col { transition: opacity var(--duration-fast) var(--ease-smooth-out); }
+    .price .t-reel-col.is-empty { opacity: 0; visibility: hidden; transition: opacity var(--duration-fast) var(--ease-smooth-out), visibility 0s linear var(--duration-fast); }
+    .price, .price .cur { transition: transform var(--reel-dur) var(--reel-ease); }
+    .price.is-short { transform: translateX(calc(var(--cell-w, 0.62em) * -1)); }
+    .price.is-short .cur { transform: translateX(var(--cell-w, 0.62em)); }
+    .price.is-snap, .price.is-snap .cur { transition: none; }
 
     /* Pricing: the card tilts toward a mouse pointer (the script adds .t-tilt and .t-tilt-card only
        for a fine pointer with motion allowed), its glare follows the pointer. */
@@ -2304,6 +2275,177 @@
     @media print {
       .nav, .mobile-menu, .obj, .switcher__bar, .world__cue, .leader { display: none !important; }
       body { background: #fff; color: #000; }
+    }
+
+    /* ============================================================
+       Section worlds (DESIGN.md, "Section worlds"): below the story the page is a paced run of worlds,
+       not one grey band. Black and Carbon for the product, one Stone room for the money, a calm black
+       stretch for the answers and the form, and Built Green again at the end, a bookend to the opening.
+       The story chapters (#home to #how) are untouched: every rule here is scoped below them.
+       ============================================================ */
+    :root {
+      --ink: var(--black);       /* text on Stone, white and green: 16.5, 20 and 16.1 to 1 */
+      --ink-2: #3D3D3D;          /* secondary text on Stone (8.9:1) and white (11.6:1) */
+      --ink-3: #525252;          /* fine print on Stone (6.4:1) and white (7.8:1) */
+      --ink-line: rgba(8, 8, 8, 0.12);
+      --green-ink-2: #334D17;    /* secondary text on green: the green's own hue, darkened (7.6:1) */
+      --section-y-lg: clamp(96px, 12vw, 176px);
+      --section-y-sm: clamp(64px, 8vw, 112px);
+    }
+
+    /* Type below the story: a 1.25+ scale. Body 17px with a little more leading on dark, h2 40 to 88px. */
+    .section:not(:where(#how)) { font-size: 1.0625rem; line-height: 1.65; }
+    .section:not(:where(#how)) .h-1 { font-size: clamp(2.5rem, 1.5rem + 4.2vw, 5.5rem); font-weight: 700; line-height: 1; letter-spacing: -0.035em; }
+    .section:not(:where(#how)) .split .h-1 { font-size: clamp(2.5rem, 1.5rem + 2.2vw, 3.75rem); }
+    .vs .h-2, .values-wrap .h-2 { font-size: clamp(1.75rem, 1.2rem + 1.8vw, 2.5rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; }
+    .section:not(:where(#how)) .lead { font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.3125rem); line-height: 1.6; }
+    .section:not(:where(#how)) .section-head .lead { margin-top: clamp(16px, 2vw, 24px); }
+    .section:not(:where(#how)) > .container > .section-head { margin-bottom: clamp(48px, 6vw, 80px); }
+
+    /* the product sections lose a card where the card was not the affordance: the day's timeline sits on the band */
+    .timeline-card { background: none; padding: 0; border-radius: 0; }
+    .tl-item::before, .js .timeline.is-visible .tl-item::before { box-shadow: 0 0 0 4px var(--band); }
+    .js .tl-item::before { box-shadow: 0 0 0 4px var(--band), inset 0 0 0 2px var(--line-strong); }
+    .tl-body b { font-family: var(--font-display); font-size: 1.125rem; letter-spacing: -0.01em; }
+    .tl-item { padding-bottom: 26px; }
+    @media (max-width: 940px) { .timeline-card { margin-top: 32px; } }
+    /* the phone is the page's main product picture: a little larger on wide screens */
+    @media (min-width: 1100px) { .phone { width: 312px; } }
+
+    /* ---------- Pricing: the Stone world, the one light room ----------
+       Black ink on Stone, a white card, green only as the active plan, the saving chip and the marker
+       behind "about $1 a day" (text on green is always Deep Black; never green text on Stone). */
+    .world-stone { position: relative; isolation: isolate; background: var(--stone); color: var(--ink); padding-block: var(--section-y-lg); }
+    .stone-bg { display: none; }
+    .fx .world-stone { background: var(--black); }
+    .fx .stone-bg { display: block; position: absolute; inset: 0; z-index: -1; background: var(--stone); opacity: 0; pointer-events: none; }
+    .fx .stone-bg.is-live { will-change: opacity; }
+    .world-stone ::selection { background: var(--ink); color: var(--stone); }
+    .world-stone :focus-visible { outline-color: var(--ink); }
+    .world-stone .lead { color: var(--ink-2); }
+    .world-stone .h-1, .world-stone .h-2 { color: var(--ink); }
+    .world-stone .obj--medal { margin-bottom: 20px; }
+    .price-wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; gap: clamp(40px, 6vw, 96px); }
+    .world-stone .price-card {
+      background: var(--white); color: var(--ink);
+      box-shadow: 0 0 0 1px var(--ink-line), 0 2px 4px -2px rgba(8, 8, 8, 0.08), 0 32px 64px -32px rgba(8, 8, 8, 0.32);
+    }
+    .world-stone .plans.t-tabs { --tabs-text-muted: var(--ink-2); background: #ECECEC; }
+    @media (hover: hover) { .world-stone .t-tabs .t-tab:not([aria-selected="true"]):hover { color: var(--ink); } }
+    .world-stone .fine { color: var(--ink-3); font-weight: 500; }
+    .world-stone .chip { justify-content: center; min-width: 8.5em; background: var(--green); box-shadow: none; color: var(--ink); font-weight: 600; }
+    .world-stone .price .cur { color: var(--ink-2); }
+    .world-stone .price .num { font-weight: 700; letter-spacing: -0.04em; }
+    .world-stone .price .per { color: var(--ink-3); }
+    .world-stone .price-aday { color: var(--ink-2); font-size: 1.0625rem; }
+    .world-stone .price-alt { color: var(--ink-3); }
+    /* "about $1 a day": a green marker swipes in behind the words with the scroll (the scroll loop scales it) */
+    .world-stone .draw-ul { isolation: isolate; color: var(--ink); font-weight: 600; }
+    .world-stone .draw-ul > i { z-index: -1; left: -0.2em; right: -0.2em; bottom: 0.06em; height: 0.62em; border-radius: 3px; }
+    .world-stone .price-list { border-top-color: var(--ink-line); }
+    .world-stone .price-list li { color: var(--ink); }
+    .world-stone .price-list .ico { color: var(--ink); }
+    .world-stone .price-note { color: var(--ink-3); --text-soft-align: center; }
+    .world-stone .disclaimer { color: var(--ink-3); max-width: 64ch; margin-top: clamp(56px, 7vw, 88px); }
+    .world-stone .t-tilt-glare { display: none; }
+
+    /* What $1 a day replaces: a real comparison. The BUILT column is a column of Deep Black ink, so its
+       green ticks sit on black (15:1), never on Stone. */
+    .vs .h-2 { margin-bottom: 14px; }
+    .vs__lead { color: var(--ink-2); max-width: 44ch; text-wrap: pretty; }
+    .vs__grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.25fr); margin-top: clamp(28px, 3.4vw, 40px); }
+    .vs__row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+    .vs__row > * { padding: 18px 20px 18px 0; border-top: 1px solid var(--ink-line); }
+    .vs__k { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
+    .vs__old { color: var(--ink-2); font-size: 1rem; line-height: 1.5; text-wrap: pretty; }
+    .vs__new { display: flex; gap: 10px; align-items: flex-start; padding-inline: 20px; background: var(--ink); color: var(--white); border-top-color: rgba(255, 255, 255, 0.1); font-size: 1rem; line-height: 1.5; text-wrap: pretty; }
+    .vs__new .ico { width: 18px; height: 18px; margin-top: 3px; color: var(--green); }
+    .vs__row--head > * { padding-block: 18px 12px; border-top: 0; font-size: 0.875rem; font-weight: 600; color: var(--ink-3); }
+    .vs__row--head .vs__new { padding-top: 18px; border-radius: var(--r-card) var(--r-card) 0 0; color: var(--stone); }
+    .vs__row--sum .vs__new { padding-bottom: 22px; border-radius: 0 0 var(--r-card) var(--r-card); font-family: var(--font-display); font-size: 1.125rem; }
+    .vs__row--sum .vs__new b { color: var(--green); font-weight: 700; }
+    .vs__row--sum .vs__k, .vs__row--sum .vs__old { font-weight: 600; color: var(--ink); }
+
+    /* ---------- FAQ, About, Contact: the calm black world ---------- */
+    .world-calm { background: var(--black); }
+    #faq { padding-block: var(--section-y-lg) var(--section-y-sm); }
+    #about { padding-block: var(--section-y-sm); }
+    #contact { padding-block: var(--section-y-sm) var(--section-y-lg); }
+    .faq-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px clamp(40px, 7vw, 120px); align-items: start; }
+    .faq-grid__head .lead { margin-top: clamp(16px, 2vw, 24px); max-width: 30ch; }
+    #faq .faq { max-width: none; margin: 0; }
+    #faq .faq summary { min-height: 72px; font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem); font-weight: 600; }
+    #faq .faq details p { color: var(--stone); }
+    .about-grid .lead { color: var(--white); font-family: var(--font-display); font-size: clamp(1.375rem, 1.1rem + 1vw, 1.875rem); line-height: 1.3; letter-spacing: -0.015em; font-weight: 500; max-width: 26ch; }
+    .about-grid .muted { color: var(--muted); }
+    .value b { font-size: 1.25rem; letter-spacing: -0.01em; }
+
+    /* ---------- Final call: the green world again ----------
+       A bookend to the opening: Built Green, the words in Deep Black Sora 800 caps, the badge, an ink
+       pill. With motion it wipes in from the left edge as the section arrives, its leading edge leaning
+       forward like the B's slots (clip-path only, from the scroll position, so scrolling back plays it
+       backwards). Without motion it simply stands green. */
+    .final { position: relative; text-align: left; padding-block: clamp(96px, 11vw, 168px) clamp(88px, 10vw, 152px); border-top: 0; background: var(--green); color: var(--ink); }
+    .final ::selection { background: var(--ink); color: var(--green); }
+    .final :focus-visible { outline-color: var(--ink); }
+    .final > .container { position: relative; z-index: 2; }
+    .final__grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(220px, 24vw, 340px); grid-template-areas: 'h obj' 'foot obj'; gap: clamp(32px, 4vw, 56px) clamp(32px, 5vw, 80px); align-items: center; }
+    .final__h {
+      grid-area: h; font-weight: 800; text-transform: uppercase; line-height: 0.86; letter-spacing: -0.03em; text-wrap: nowrap;
+      font-size: clamp(5rem, 1rem + 7.6vw, 8.75rem);
+    }
+    .final__h .hl { display: inline-block; margin-top: 0.06em; padding: 0.04em 0.12em 0; margin-left: -0.12em; border-radius: 0.1em; background: var(--ink); color: var(--green); }
+    .obj--final { grid-area: obj; aspect-ratio: 1; }
+    .final__foot { grid-area: foot; display: grid; justify-items: start; gap: 24px; }
+    .final__lead { font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.3125rem); font-weight: 500; line-height: 1.5; color: var(--ink); max-width: 34ch; }
+    .final .soon { justify-content: flex-start; margin-top: 4px; }
+    .final .soon span { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px rgba(8, 8, 8, 0.28); font-weight: 500; }
+    .final .soon span small { color: var(--green-ink-2); }
+    .final__panel { display: none; }
+    .fx .final { background: var(--black); }
+    .fx .final__panel { display: block; position: absolute; inset: 0; z-index: 0; background: var(--green); pointer-events: none; clip-path: inset(0 100% 0 0); }
+    @media (max-width: 940px) {
+      .final { padding-block: 56px 80px; text-align: center; }
+      .final__grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'obj' 'h' 'foot'; gap: 24px; justify-items: center; }
+      .final__h { font-size: clamp(3.25rem, 15.5vw, 7.5rem); }
+      .final__h .hl { margin-left: 0; }
+      .obj--final { width: 168px; }
+      .final__foot { justify-items: center; }
+      .final .soon { justify-content: center; }
+    }
+    @media (max-width: 620px) { .final .btn, .final .magnet { width: 100%; } .final__foot { width: 100%; } }
+
+    /* ---------- Privacy and terms: the footer's fine print, out of the main flow ---------- */
+    .legal { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: 16px clamp(28px, 4vw, 56px); padding-block: 32px 40px; border-top: 1px solid var(--line); }
+    .legal__list { grid-column: 2 / -1; }
+    .legal__head { padding-top: 12px; }
+    .legal__h { font-family: var(--font-body); font-size: 0.9375rem; font-weight: 600; letter-spacing: 0; }
+    .legal__date { margin-top: 4px; font-size: 0.875rem; color: var(--muted); }
+    .footer .legal__list { max-width: none; margin: 0; }
+    .footer .legal__list details:first-child { border-top: 0; }
+    .footer .legal__list summary { min-height: 48px; padding-block: 10px; font-family: var(--font-body); font-size: 0.9375rem; font-weight: 500; color: var(--stone); }
+    .footer .legal__list summary .t-acc-chevron { color: var(--faint); }
+    .footer .legal__list details p { font-size: 0.9375rem; color: var(--muted); padding-bottom: 20px; }
+    .footer__top { padding-bottom: 32px; }
+    @media (max-width: 1080px) { .legal { grid-template-columns: minmax(0, 1fr); } .legal__list { grid-column: auto; } }
+
+    @media (max-width: 940px) {
+      .price-wrap { grid-template-columns: minmax(0, 1fr); }
+      .faq-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 620px) {
+      /* the comparison on a phone: what it is and the usual way on the left, the BUILT column on the right */
+      .vs__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+      .vs__row { grid-template-rows: auto 1fr; }
+      .vs__row > * { padding: 14px 12px 0 0; font-size: 0.9375rem; }
+      .vs__k { grid-area: 1 / 1; }
+      .vs__old { grid-area: 2 / 1; border-top: 0; padding-top: 2px; padding-bottom: 14px; }
+      .vs__new { grid-area: 1 / 2 / 3 / 3; padding: 14px 14px; }
+      .vs__new .ico { display: none; }
+      .vs__row--head .vs__k, .vs__row--head .vs__old { display: none; }
+      .vs__row--head .vs__new { grid-area: 1 / 2 / 3 / 3; padding-block: 14px 8px; }
+      .vs__row--sum .vs__new { padding-bottom: 18px; font-size: 1rem; }
+      .vs__row--head > *:not(.vs__new) { display: none; }
     }
   </style>
   <script>
@@ -3011,7 +3153,8 @@
   </section>
 
   <!-- ===== Pricing ===== -->
-  <section class="section band" id="pricing">
+  <section class="section world-stone" id="pricing" data-stone>
+    <div class="stone-bg" aria-hidden="true"></div>
     <div class="container">
       <div class="obj obj--medal" data-obj="pricing" aria-hidden="true">
         <div class="coin">
@@ -3030,14 +3173,6 @@
       </div>
 
       <div class="price-wrap">
-        <div>
-          <h3 class="h-2">Less than you already spend without thinking.</h3>
-          <p class="muted" style="margin-top:16px">A personal trainer costs more in one session than BUILT costs in a month. Here&rsquo;s the honest comparison.</p>
-          <div class="compare">
-            <div class="cmp is-us"><span>BUILT, everything, every day</span><b>$30</b></div>
-          </div>
-        </div>
-
         <div class="price-tilt" data-reveal="tilt" data-card-tilt>
         <div class="price-card">
           <div class="plans t-tabs" role="tablist" aria-label="Billing period" data-pill data-plans>
@@ -3063,10 +3198,22 @@
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Goal setting and progress tracking</span></li>
             <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span>Daily accountability</span></li>
           </ul>
-          <a class="btn btn-primary btn-lg btn-block" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
-          <p class="price-note"><span class="t-text-soft" data-plan-bill>Billed monthly.</span> Cancel anytime. No hidden fees.</p>
+          <a class="btn btn-ink btn-lg btn-block" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <p class="price-note"><span class="t-text-soft" data-plan-bill>Billed monthly.</span><br>Cancel anytime. No hidden fees.</p>
           <div class="t-tilt-glare" aria-hidden="true"></div>
         </div>
+        </div>
+        <div class="vs">
+          <h3 class="h-2">What $1 a day replaces.</h3>
+          <p class="vs__lead">The same help you would pay several people for, in one plan, without the appointments.</p>
+          <div class="vs__grid" role="list">
+            <div class="vs__row vs__row--head" aria-hidden="true"><span class="vs__k"></span><span class="vs__old">The usual way</span><span class="vs__new">With BUILT</span></div>
+            <div class="vs__row" role="listitem"><h4 class="vs__k">Training</h4><p class="vs__old"><span class="sr-only">The usual way: </span>A personal trainer, paid by the session.</p><p class="vs__new"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span><span class="sr-only">With BUILT: </span>A weekly plan for your goal, your days and your kit.</span></p></div>
+            <div class="vs__row" role="listitem"><h4 class="vs__k">Food</h4><p class="vs__old"><span class="sr-only">The usual way: </span>A dietitian, paid by the visit.</p><p class="vs__new"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span><span class="sr-only">With BUILT: </span>Daily meals built around your targets, with swaps.</span></p></div>
+            <div class="vs__row" role="listitem"><h4 class="vs__k">Questions</h4><p class="vs__old"><span class="sr-only">The usual way: </span>Wait for the next appointment.</p><p class="vs__new"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span><span class="sr-only">With BUILT: </span>A coach you can message any time.</span></p></div>
+            <div class="vs__row" role="listitem"><h4 class="vs__k">Progress</h4><p class="vs__old"><span class="sr-only">The usual way: </span>A bathroom scale and a guess.</p><p class="vs__new"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg><span><span class="sr-only">With BUILT: </span>Weekly weigh-ins and a monthly review that adjusts the plan.</span></p></div>
+            <div class="vs__row vs__row--sum" role="listitem"><h4 class="vs__k">Cost</h4><p class="vs__old"><span class="sr-only">The usual way: </span>More than $30 for one trainer session.</p><p class="vs__new"><span><span class="sr-only">With BUILT: </span><b>$30 a month.</b> All of it.</span></p></div>
+          </div>
         </div>
       </div>
       <p class="disclaimer">BUILT is a wellness app, not a medical service, and its guidance does not replace advice from a doctor, dietitian or other qualified professional, especially if you are pregnant, have an existing condition, or take medication.</p>
@@ -3074,10 +3221,11 @@
   </section>
 
   <!-- ===== FAQ ===== -->
-  <section class="section" id="faq">
-    <div class="container">
-      <div class="section-head section-head--center">
+  <section class="section world-calm" id="faq">
+    <div class="container faq-grid">
+      <div class="faq-grid__head">
         <h2 class="h-1" data-words="reveal">Good to know.</h2>
+        <p class="lead">The short answers. For anything else, <a class="inline-link" href="#contact" data-topic="question">ask us directly</a>.</p>
       </div>
       <div class="faq">
         <details data-acc>
@@ -3105,7 +3253,7 @@
   </section>
 
   <!-- ===== About ===== -->
-  <section class="section band" id="about">
+  <section class="section world-calm" id="about">
     <div class="container">
       <div class="about-grid">
         <h2 class="h-1" data-words="reveal">More Than Fitness.</h2>
@@ -3129,7 +3277,7 @@
   </section>
 
   <!-- ===== Contact ===== -->
-  <section class="section" id="contact">
+  <section class="section world-calm" id="contact">
     <div class="container contact-grid">
       <div>
         <h2 class="h-1" data-words="reveal">Let&rsquo;s talk.</h2>
@@ -3193,78 +3341,21 @@
     </div>
   </section>
 
-  <!-- ===== Legal ===== -->
-  <section class="section band" id="legal">
-    <div class="container">
-      <div class="section-head section-head--center">
-        <h2 class="h-1" data-words="reveal">Privacy and terms.</h2>
-        <p class="lead">Last updated: October 2026.</p>
-      </div>
-      <div class="faq">
-        <details data-acc>
-          <summary><span>Privacy Policy: what we collect</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>To build your plan we collect what you tell us during setup: your name, phone number, date of birth, gender, height and weight, activity level, goal and timeline, where and when you train, food preferences and allergies, and any injuries or medical conditions you choose to share. We also keep what you log day to day, such as workouts, meals and food photos, activities, weigh-ins, check-ins, body photos, your messages to the coach and any problems you report. If you turn on Apple Health or Health Connect, we read only the steps, active calories, workouts, weight and sleep you allow.</p>
-        </details>
-        <details data-acc>
-          <summary><span>Privacy Policy: body photos</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>You take a body photo at sign-up and again at your monthly check-ins. Your face is blurred on your phone before the photo is uploaded, so an unblurred photo never leaves your device. The photos are stored privately, where only your account can open them. The AI uses them to estimate your starting point and suggest the training approach that suits you. Our support and admin tools never show them.</p>
-        </details>
-        <details data-acc>
-          <summary><span>Privacy Policy: how we use it</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>Your information is used to generate and adapt your nutrition and training recommendations, to send the reminders you have turned on, to answer the problems you report, and to show you your own progress. Your phone number and email are kept on file so we can reach you about your account and invite you to BUILT events. We never sell your phone number or any other personal information, share your health data with advertisers, or use your data to build profiles for third parties.</p>
-        </details>
-        <details data-acc>
-          <summary><span>Privacy Policy: services that handle your data</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>Your account and the data you log are stored with Supabase, the database and sign-in service BUILT runs on.</p>
-          <p>When you send a food photo, a body photo or a message to the coach, it is sent to an outside AI provider to produce the estimate, the suggestion or the reply. Today that provider is OpenRouter, and BUILT uses its free AI models. Free models may keep what they are sent and use it to improve their systems, so leave out anything you would not want stored. Estimates are approximate, so treat them as a guide.</p>
-        </details>
-        <details data-acc>
-          <summary><span>Privacy Policy: security and your rights</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>Data is encrypted in transit and at rest, and access is limited to the people who need it to run and support the service. You can ask us to delete your account data at any time by writing to us through the <a class="inline-link" href="#contact" data-topic="privacy">contact form</a> with the topic &ldquo;Privacy or data&rdquo;. Deleting removes your personal data from our production systems, with backups aging out on a rolling schedule.</p>
-        </details>
-        <details data-acc>
-          <summary><span>Terms of Service: using BUILT</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>BUILT provides personalized nutrition and fitness guidance generated by software. You must be at least 13 years old to use it. If you are 13 to 17, you need the consent of a parent or guardian, which the app asks for at sign-up along with their name; plans for under-18s never set a calorie deficit, give supplement advice or prescribe max-effort lifting. You are responsible for keeping your account credentials secure.</p>
-          <p>BUILT is a wellness product, not a medical service, and its recommendations do not replace advice from a doctor, dietitian or other qualified professional. Everyone accepts a short waiver at sign-up: check with a doctor before starting if you have a medical condition, are pregnant, or have a history of disordered eating, and you train at your own risk.</p>
-        </details>
-        <details data-acc>
-          <summary><span>Terms of Service: billing and acceptable use</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
-          <p>Access is provided through a subscription of $30 a month, $81 every 3 months or $300 a year, billed through the App Store or Google Play, and renews automatically until cancelled; you can cancel anytime and keep access until the end of the paid period. Do not attempt to disrupt the service, reverse engineer it, or use it to distribute unlawful or harmful content. If a change materially reduces what you have paid for, we will tell you in advance. Questions about these terms: use the <a class="inline-link" href="#contact" data-topic="question">contact form</a>.</p>
-        </details>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== Final CTA ===== -->
+  <!-- ===== Final CTA: the green world again, a bookend to the opening ===== -->
   <section class="final" id="start" data-final>
     <div class="final__panel" aria-hidden="true"></div>
-    <div class="obj obj--orbit" data-obj="final" aria-hidden="true">
-      <span class="orbit__l orbit__l--a" data-float="36,0" data-float-self>
-        <picture>
-          <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
-          <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
-        </picture>
-      </span>
-      <span class="orbit__l orbit__l--b" data-float="18,0" data-float-self>
-        <picture>
-          <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
-          <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
-        </picture>
-      </span>
-      <span class="orbit__l orbit__l--c" data-float="54,0" data-float-self>
-        <picture>
-          <source media="(max-width: 940px)" srcset="assets/img/3d/final-sm.webp?v=2" width="720" height="400">
-          <img src="assets/img/3d/final.webp?v=2" alt="" width="1520" height="800" loading="lazy" decoding="async">
-        </picture>
-      </span>
-    </div>
-    <div class="container">
-      <h2 class="display" data-words="reveal">Train. Fuel. <span class="hl">Become.</span></h2>
-      <p class="lead">One app. One plan. One day at a time.</p>
-      <span class="magnet" data-magnet><a class="btn btn-primary btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a></span>
-      <div class="soon">
-        <span><svg class="ico ico--fill" aria-hidden="true"><use href="#i-apple"/></svg>App Store <small>Coming soon</small></span>
-        <span><svg class="ico ico--fill" aria-hidden="true"><use href="#i-gplay"/></svg>Google Play <small>Coming soon</small></span>
+    <div class="container final__grid">
+      <h2 class="final__h" data-words="reveal">Train. <br>Fuel. <br><span class="hl">Become.</span></h2>
+      <div class="obj obj--final" data-float="28,3" aria-hidden="true">
+        <img src="assets/img/story/badge-480.webp" srcset="assets/img/story/badge-480.webp 480w, assets/img/story/badge-960.webp 960w" sizes="(max-width: 940px) 168px, 340px" width="480" height="480" alt="" loading="lazy" decoding="async">
+      </div>
+      <div class="final__foot">
+        <p class="final__lead">One app. One plan. One day at a time.</p>
+        <span class="magnet" data-magnet><a class="btn btn-ink btn-lg" href="#contact" data-topic="early-access">Get early access <svg class="ico ico--arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a></span>
+        <div class="soon">
+          <span><svg class="ico ico--fill" aria-hidden="true"><use href="#i-apple"/></svg>App Store <small>Coming soon</small></span>
+          <span><svg class="ico ico--fill" aria-hidden="true"><use href="#i-gplay"/></svg>Google Play <small>Coming soon</small></span>
+        </div>
       </div>
     </div>
   </section>
@@ -3302,6 +3393,44 @@
         </ul>
       </nav>
     </div>
+    <section class="legal" id="legal" aria-labelledby="legal-title">
+      <div class="legal__head">
+        <h2 class="legal__h" id="legal-title">Privacy and terms.</h2>
+        <p class="legal__date">Last updated: October 2026.</p>
+      </div>
+      <div class="faq legal__list">
+        <details data-acc>
+          <summary><span>Privacy Policy: what we collect</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>To build your plan we collect what you tell us during setup: your name, phone number, date of birth, gender, height and weight, activity level, goal and timeline, where and when you train, food preferences and allergies, and any injuries or medical conditions you choose to share. We also keep what you log day to day, such as workouts, meals and food photos, activities, weigh-ins, check-ins, body photos, your messages to the coach and any problems you report. If you turn on Apple Health or Health Connect, we read only the steps, active calories, workouts, weight and sleep you allow.</p>
+        </details>
+        <details data-acc>
+          <summary><span>Privacy Policy: body photos</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>You take a body photo at sign-up and again at your monthly check-ins. Your face is blurred on your phone before the photo is uploaded, so an unblurred photo never leaves your device. The photos are stored privately, where only your account can open them. The AI uses them to estimate your starting point and suggest the training approach that suits you. Our support and admin tools never show them.</p>
+        </details>
+        <details data-acc>
+          <summary><span>Privacy Policy: how we use it</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>Your information is used to generate and adapt your nutrition and training recommendations, to send the reminders you have turned on, to answer the problems you report, and to show you your own progress. Your phone number and email are kept on file so we can reach you about your account and invite you to BUILT events. We never sell your phone number or any other personal information, share your health data with advertisers, or use your data to build profiles for third parties.</p>
+        </details>
+        <details data-acc>
+          <summary><span>Privacy Policy: services that handle your data</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>Your account and the data you log are stored with Supabase, the database and sign-in service BUILT runs on.</p>
+          <p>When you send a food photo, a body photo or a message to the coach, it is sent to an outside AI provider to produce the estimate, the suggestion or the reply. Today that provider is OpenRouter, and BUILT uses its free AI models. Free models may keep what they are sent and use it to improve their systems, so leave out anything you would not want stored. Estimates are approximate, so treat them as a guide.</p>
+        </details>
+        <details data-acc>
+          <summary><span>Privacy Policy: security and your rights</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>Data is encrypted in transit and at rest, and access is limited to the people who need it to run and support the service. You can ask us to delete your account data at any time by writing to us through the <a class="inline-link" href="#contact" data-topic="privacy">contact form</a> with the topic &ldquo;Privacy or data&rdquo;. Deleting removes your personal data from our production systems, with backups aging out on a rolling schedule.</p>
+        </details>
+        <details data-acc>
+          <summary><span>Terms of Service: using BUILT</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>BUILT provides personalized nutrition and fitness guidance generated by software. You must be at least 13 years old to use it. If you are 13 to 17, you need the consent of a parent or guardian, which the app asks for at sign-up along with their name; plans for under-18s never set a calorie deficit, give supplement advice or prescribe max-effort lifting. You are responsible for keeping your account credentials secure.</p>
+          <p>BUILT is a wellness product, not a medical service, and its recommendations do not replace advice from a doctor, dietitian or other qualified professional. Everyone accepts a short waiver at sign-up: check with a doctor before starting if you have a medical condition, are pregnant, or have a history of disordered eating, and you train at your own risk.</p>
+        </details>
+        <details data-acc>
+          <summary><span>Terms of Service: billing and acceptable use</span><span class="t-acc-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></summary>
+          <p>Access is provided through a subscription of $30 a month, $81 every 3 months or $300 a year, billed through the App Store or Google Play, and renews automatically until cancelled; you can cancel anytime and keep access until the end of the paid period. Do not attempt to disrupt the service, reverse engineer it, or use it to distribute unlawful or harmful content. If a change materially reduces what you have paid for, we will tell you in advance. Questions about these terms: use the <a class="inline-link" href="#contact" data-topic="question">contact form</a>.</p>
+        </details>
+      </div>
+    </section>
     <div class="footer__bottom">
       <p>&copy; <span data-year>2026</span> BUILT. All rights reserved.</p>
     </div>
@@ -3596,10 +3725,17 @@
       };
       // the cell's width is read only when it can change (built, fonts landing, a resize): a roll in the
       // scroll loop then only writes, never reading layout back after a write
+      var row = o.row, first = true;
       var fit = function (remeasure) {
         if (!o.collapse) return;
-        if (remeasure === true || !w) w = probe.getBoundingClientRect().width;
-        cols.forEach(function (c) { if (c) c.col.style.width = c.col.classList.contains('is-empty') ? '0px' : w + 'px'; });
+        if (remeasure === true || !w) { w = probe.getBoundingClientRect().width; if (row && w) row.style.setProperty('--cell-w', w + 'px'); }
+        if (!row) return;
+        // empty leading columns: the row slides left by that many cells and the "$" back right (transforms)
+        var n = 0;
+        for (var i = 0; i < cols.length && cols[i] && cols[i].col.classList.contains('is-empty'); i++) n++;
+        if (first) { first = false; row.classList.add('is-snap'); }
+        row.classList.toggle('is-short', n > 0);
+        if (row.classList.contains('is-snap')) requestAnimationFrame(function () { requestAnimationFrame(function () { row.classList.remove('is-snap'); }); });
       };
       var set = function (t, animate) {
         var ch = pad(t).split(''), k = 0, last = cols.length - 1;
@@ -3686,14 +3822,12 @@
       inn.className = 't-text-soft-new';
       inn.textContent = next;
 
-      var w0 = el.getBoundingClientRect().width;
       el.classList.remove('is-swapping');
       el.replaceChildren(out, inn);
       var w1 = inn.getBoundingClientRect().width;
-      el.style.width = w0 + 'px';
-      void el.offsetWidth; // force reflow so every transition runs
+      void el.offsetWidth; // force reflow so the crossfade runs
       el.classList.add('is-swapping');
-      el.style.width = w1 + 'px';
+      el.style.width = w1 + 'px'; // its new width at once; the old text fades out over it
 
       el._softTimer = setTimeout(function () {
         el.classList.remove('is-swapping');
@@ -3714,7 +3848,7 @@
       var priceNum = $('[data-price-num]'), planChip = $('[data-plan-chip]'), planPer = $('[data-plan-per]');
       var planAday = $('[data-plan-aday]'), planBill = $('[data-plan-bill]');
       var movePlanPill = tabPill(plansBar), planAt = 0, monthly = +planTabs[0].dataset.price;
-      priceReel = makeReel(priceNum, { len: 3, loops: 4, collapse: true }); // 4 turns: room for two quick changes in a row; fewer cells to lay out
+      priceReel = makeReel(priceNum, { len: 3, loops: 4, collapse: true, row: priceNum.closest('.price') }); // 4 turns: room for two quick changes in a row; fewer cells to lay out
       var money = function (v) { return Math.abs(v - Math.round(v)) < 0.005 ? '$' + Math.round(v) : '$' + v.toFixed(2); };
       var plan = function (t) {
         var price = +t.dataset.price, months = +t.dataset.months, days = +t.dataset.days;
@@ -4586,17 +4720,33 @@
         });
       }
 
-      /* Final call: a black panel opens from a rounded card to full bleed as the section arrives */
+      /* Final call: the green world wipes in from the left edge as the section arrives, its leading edge
+         leaning forward like the B's slots (a clip only, from the scroll position, so scrolling back
+         plays it backwards). The words are Deep Black, so they appear as the green passes them. */
       var fin = $('[data-final]'), panel = fin && $('.final__panel', fin), finTop = 0;
       if (panel) {
         fx.push({
           measure: function () { finTop = docTop(fin); },
           update: function () {
-            var k = outCubic(prog(finTop, 1, 0.3)), live = k > 0 && k < 1, near = finTop - V.y < V.h * 1.5;
-            if (near !== fin._fxNear) { fin._fxNear = near; fin.classList.toggle('is-near', near); }
+            var k = outCubic(prog(finTop, 0.98, 0.42)), live = k > 0 && k < 1;
             if (live !== panel._fxLive) { panel._fxLive = live; panel.classList.toggle('is-live', live); }
-            put(panel, 'transform', k >= 1 ? 'none' : 'scale(' + (0.96 + 0.04 * k).toFixed(4) + ')');
-            put(panel, 'clipPath', k >= 1 ? 'none' : 'inset(0 round ' + (24 * (1 - k)).toFixed(1) + 'px)');
+            // the edge runs from off the left (the lean included) to past the right, so 0 and 1 are clean
+            var x = (-16 + 132 * k).toFixed(2);
+            put(panel, 'clipPath', k >= 1 ? 'none' : k <= 0 ? 'inset(0 100% 0 0)' : 'polygon(0 0, calc(' + x + '% + 16vw) 0, ' + x + '% 100%, 0 100%)');
+          }
+        });
+      }
+
+      /* Pricing: the Stone world's ground fades in as the section arrives, as if the lights came on in the
+         one light room (opacity only, from the scroll position) */
+      var stoneSec = $('[data-stone]'), stoneBg = stoneSec && $('.stone-bg', stoneSec), stoneTop = 0;
+      if (stoneBg) {
+        fx.push({
+          measure: function () { stoneTop = docTop(stoneSec); },
+          update: function () {
+            var k = prog(stoneTop, 1, 0.62), live = k > 0 && k < 1;
+            if (live !== stoneBg._fxLive) { stoneBg._fxLive = live; stoneBg.classList.toggle('is-live', live); }
+            put(stoneBg, 'opacity', k >= 1 ? '1' : k.toFixed(3));
           }
         });
       }
@@ -4884,10 +5034,9 @@
         el.textContent = '';
         el.append(next.slice(0, a), swap, next.slice(next.length - b));
 
-        swap.style.width = out.getBoundingClientRect().width + 'px';
-        void swap.offsetWidth; // force reflow so the width transitions
+        swap.style.width = inn.getBoundingClientRect().width + 'px'; // its new width at once
+        void swap.offsetWidth; // force reflow so the crossfade runs
         swap.classList.add('is-morphing');
-        swap.style.width = inn.getBoundingClientRect().width + 'px';
 
         el._morphTimer = setTimeout(function () {
           el.textContent = next;

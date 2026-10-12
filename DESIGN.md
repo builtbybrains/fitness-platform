@@ -86,6 +86,39 @@ Rules:
 - Green is a fill or a mark, rationed to one or two things per screen. On green, text is
   always Deep Black (16:1). Green text is allowed on black/carbon (15:1). Never green text
   on white or Stone.
+- Ink on light and green surfaces (website, Section worlds): text `#080808` (16.5:1 on Stone,
+  20:1 on white, 16.1:1 on green); secondary `#3D3D3D` (8.9:1 on Stone, 10.9:1 on white); fine
+  print `#525252` (6.4:1 on Stone, 7.8:1 on white); a hairline `rgba(8,8,8,0.12)`. Secondary
+  text on green is the green's own hue darkened, `#334D17` (7.6:1), never grey. Focus rings on
+  Stone and green are Deep Black.
+
+## Section worlds (website)
+
+Owner request, 2026-10-12 ("make it look as good as possible"): below the scroll story the page
+is a paced run of worlds instead of one grey band. Consistency of voice, not of treatment.
+
+| World | Sections | Ground | Text | Green |
+| --- | --- | --- | --- | --- |
+| Green (x2) | the opening (`#home`) and the final call (`#start`) | Built Green, full bleed | Deep Black | the ground itself; ink pills on it |
+| Black and Carbon | the story chapters, features, nutrition, train, AI coach, progress | Deep Black and `#121212` bands, Carbon where a card is the affordance | white, Stone, muted | accents only |
+| Stone (x1) | pricing (`#pricing`) | Stone, a white price card | ink scale above | the active plan pill, the saving chip, the marker behind "about $1 a day", and green ticks inside the black BUILT column only |
+| Calm black | FAQ, about, contact | Deep Black, no bands | white, Stone, muted | focus, the chosen chip, the send button |
+
+- Pricing is the one light room: the price card is white on Stone, its button an ink pill. "What
+  $1 a day replaces" is a real comparison (Training, Food, Questions, Progress, Cost: the usual way
+  against BUILT), the BUILT column a solid column of Deep Black so its green ticks and "$30 a month"
+  sit on black. Phones: two columns, the topic and the usual way left, BUILT right.
+- The final call is the green world again, a bookend to the opening: "Train. Fuel. Become." in Deep
+  Black Sora 800 caps, one word a line, "Become." reversed in green on a black slab like the
+  reversed lockup; the badge beside it (above it on phones); an ink pill; the store chips outlined
+  in ink.
+- FAQ: two columns on desktop, the heading and a line pointing to the contact form on the left, the
+  answers on the right.
+- Privacy and terms live in the footer, after the final call: a quiet block (Inter, footer sizes)
+  between the link columns and the copyright, the same seven rows, text, ids and `#legal` anchor,
+  so the footer links still land on it. The page ends on the green call, not on paperwork.
+- Cards only where the card is the thing: the stacking feature cards, the app pieces, the workout
+  list, the progress panels, the price card and the form. The day's timeline sits on its band.
 - No gradients, no gradient text, no neon glows, no blur halos. Highlight words with solid
   Built Green.
 
@@ -99,6 +132,12 @@ Rules:
   hold the splash screen until loaded, fall back to system on failure.
 - Scale ratio about 1.25. Body 16px minimum on phones. Headlines tight (-0.02em), the
   `BUILD YOUR BEST.` tagline wide (about +0.5em as measured on the deck, caps, Light or Regular).
+- Website, below the story (the story keeps its own sizes): body 17px, line height 1.65 (light on
+  dark), measure 68ch at most; lead `clamp(1.125rem, ..., 1.3125rem)`; h3 `clamp(1.75rem, ...,
+  2.5rem)` Sora 700; h2 `clamp(2.5rem, 1.5rem + 4.2vw, 5.5rem)` Sora 700, -0.035em, line height 1,
+  balanced; h2 in a split column caps at 3.75rem so it never runs past three or four lines. The final
+  call is display size, Sora 800 caps, up to 8.75rem (the world headlines' exception). One label
+  system only: the four category tags (Nutrition, Train, AI Coach, Progress); no eyebrows.
 
 ## Shape, space, material
 
@@ -149,7 +188,9 @@ with the same look and the same motion. Nothing on the website runs WebGL or dow
     progress ring (`assets/img/3d/how-*.webp`, 256 in the cards, 640 on the step stage).
   - features: the kettlebell with the B. Diet: the shaker. Training: the plate stack on its pin.
     Accountability: the week streak (narrow column and wide row pictures). Progress: the week of bars,
-    only the latest green. Pricing: the logo badge. Final call: dumbbell, kettlebell and shaker.
+    only the latest green. Pricing: the logo badge. Final call: the logo badge again, face-on
+    (`badge-480|960.webp`), the bookend to chapter 1. The three-object picture (`final*.webp`) stays
+    in the repo, unreferenced.
 - Look: matte black rubber, brushed and knurled steel, Carbon metal, matte cast iron, matte Stone,
   matte black plastic. One green accent per object (a collar, the progress ring's arc, the latest bar,
   the B). One studio light: warm-neutral key top left, cool fill right, faint green rim from behind, no
@@ -218,7 +259,7 @@ Each section moves its own way, never the same fade-up twice:
 - Key heading (How it works): word by word, each word rises out of its own mask with a 4-degree
   settle as the heading crosses the lower third of the screen.
 - Section headlines (Features, Nutrition, Train, AI Coach, Progress, Pricing, FAQ, About, Contact,
-  Privacy and terms, the final call): the texts reveal (see Motion system). Each visual line of the
+  the final call): the texts reveal (see Motion system). Each visual line of the
   heading rises its full height out of its own mask and fades in, 40ms after the line above (the final
   call goes word by word), once the heading's top is 12% up the screen. Met in a fast fling (over
   1500px a second) the heading is simply shown, since a reveal there is never seen and each one costs
@@ -255,12 +296,14 @@ Each section moves its own way, never the same fade-up twice:
   and land on the number; once, never again on the way back. A counter already on screen at load simply
   stands; one met in a fast fling stands on its number and rolls once the page slows. Tabular figures, no motion blur, the number's own text kept for screen readers. The weekly bars
   grow with the scroll, left to right.
-- Pricing: three plans on a segmented toggle in the card (Monthly $30, 3 months $81, Yearly $300;
+- Pricing (the Stone world): its ground fades in from black as the section arrives (opacity of one
+  layer, from the scroll position), as if the lights came on. Three plans on a segmented toggle in the card (Monthly $30, 3 months $81, Yearly $300;
   PRODUCT.md), the green pill sliding to the plan. The price is a reel: it rolls once as the card arrives
-  (once the page slows, after a fast fling) and again on each change of plan, an empty column narrowing so $30 and $300 each sit snug. The period,
+  (once the page slows, after a fast fling) and again on each change of plan, the empty leading column keeping its width while the whole price slides one cell left and the "$" one
+  cell right (transforms only, no width animation), so $30 and $300 each sit snug. The period,
   the per-day line (about $1, about $0.90, about $0.82 a day), the chip (All included, Save 10%, Save 17%)
   and the billing line change in place. The per-day figure and the saving are worked out from each plan's
-  price, months and days, never typed in. "about $1 a day" underlines itself in green with the scroll. With a
+  price, months and days, never typed in. A green marker swipes in behind "about $1 a day" with the scroll (black words on green). With a
   mouse only, the card tilts toward the pointer (8 degrees at its edges at most) with a soft glare (14%
   white) and eases back flat over 1s when the pointer leaves; never on touch. Arrow keys, Home and End move
   through the plans. Without the script the monthly price stands and the other two plans are written under
@@ -271,13 +314,13 @@ Each section moves its own way, never the same fade-up twice:
   (250ms; the one leaving goes the way of travel), the numbers on the arriving screen pop in digit by digit,
   and the pause button's icon swaps (scale 0.25 to 1 with a fade). It rotates every 5s while on screen and
   stops once the visitor picks a tab (the play button starts it again).
-- Final call: a Deep Black panel opens from a rounded card (scale 0.96, 24px corners) inside a band
-  of `#121212` to full bleed as the section arrives. The copy itself never scales. "Train. Fuel.
-  Become." reveals a beat per word (80ms apart, the scale's large-stagger step) and "Become." turns
-  green once the last word has landed. The three
-  objects are three layers of one picture (each cut to its object), drifting 18, 36 and 54px against
-  the scroll, so they sit at three depths.
-- Footer: revealed from under the page. When the whole footer fits the screen under the nav, its
+- Final call (the green world again): Built Green wipes in from the left edge over Deep Black as the
+  section arrives, its leading edge leaning forward like the B's slots (a `clip-path` polygon from
+  the scroll position, so scrolling back plays it backwards); the Deep Black words appear as the green
+  passes them. "Train. Fuel. Become." reveals a beat per word (80ms apart, the scale's large-stagger
+  step), "Become." rising into its black slab. The badge drifts 28px against the scroll with a few
+  degrees of lean. Without motion it simply stands green.
+- Footer (with Privacy and terms): revealed from under the page. When the whole footer fits the screen under the nav, its
   content is held at the bottom of the screen (a transform trailing the page's end by the scroll still
   left) while the footer's own clipped box on `#121212` rises over it, and the final call lifts off it
   on 28px rounded corners. Not CSS sticky: a sticky footer behind the page made the whole page one
@@ -325,10 +368,11 @@ One timing language, two engines, one rule for touch.
   only under `(hover: hover) and (pointer: fine)`): tabs sliding (the switcher and the plan toggle), page
   side by side (the phone's screens), number pop-in, icon swap, spinning counter (the counters and the
   price), text swap soft (the plan's lines), card hover tilt (the price card), accordion expand (FAQ,
-  Privacy and terms, the features' More: still `<details>`, the answer grows by grid rows over 250ms and
+  Privacy and terms in the footer, the features' More: still `<details>`, the answer grows by grid rows over 250ms and
   the chevron flips; without the script the native `<details>` works as always), error shake (an invalid
   field shakes 6px on a send attempt, its border turns red and its message grows in under it; the message
-  stays until the value is fixed), text morph ("Send message" to "Sending…"), success check (the tick
+  stays until the value is fixed), text morph ("Send message" to "Sending…"; the text swaps take their new width at once and crossfade,
+  never a width transition), success check (the tick
   turns upright and draws), toast (the outcome repeated at the foot of the screen for about 4s, silent to
   screen readers since the form's own notice is announced; the page lifts so the notice clears it) and
   menu dropdown (the phone menu grows from the burger at 0.97, 8px high, its links following 40ms apart;
@@ -348,7 +392,7 @@ scroll scrubs it. Progress p runs 0 to 1 across the pinned scroll; the inline sc
 per frame (wheel only; on touch it follows the scroll exactly) and moves the words and the object images with that one value, so they move together, and
 scrolling back plays everything backwards. Native touch scroll, no hijacking.
 
-1. Green world (`#home`): the one full-bleed Built Green surface on the site. The logo badge (the
+1. Green world (`#home`): the opening full-bleed Built Green surface (the final call is the other). The logo badge (the
    green B on a black disc, no ring; it replaced the dumbbell on 2026-10-09) faces the viewer at first
    paint, then makes one coin turn across the chapter (p 0.03 to 0.83, eased at both ends) with a few
    degrees of lean, its edge showing as it passes edge-on, over a soft contact shadow that narrows with
@@ -380,8 +424,8 @@ Recorded exceptions to the rules above, scoped to the story only:
 - Chapter 3 carries a gradient: Deep Black to Carbon (ending in the band colour so it meets the goals
   without a seam), with a green glow at 6% alpha at most. How it works carries the other: the radial
   glow behind its object, green at 12% alpha at most. No other gradients on the site.
-- Sora 800 for the world headlines only.
-- Full-bleed green for chapter 1 only.
+- Sora 800 for the world headlines and the final call only.
+- Full-bleed green for chapter 1 and the final call only (see Section worlds).
 
 Chapter 1 ends in a zoom-through (owner request, second reference video): over its last 15% the
 badge swells toward the viewer (to about 3.6 times) and sweeps out under the frame, fading out by
