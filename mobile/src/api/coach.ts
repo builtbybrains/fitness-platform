@@ -1,0 +1,67 @@
+/* The AI coach (Edge Function `coach`). The coach knows the plan, today,
+   the questionnaire, its memory and the last two weeks; it saves new facts
+   to memory itself. When the reply comes with suggestPlanChange, offer an
+   "Update my plan" button that calls generatePlan(userId, suggestPlanChange).
+   dailyNote writes the short note on Today (mode daily_note: no history,
+   no memory). */
+
+import { invoke, requireAccount } from './client';
+import { todayId } from '../lib/dates';
+import { ApiError } from './errors';
+import type { CoachReply, MemoryFact } from '../types';
+
+export async function sendCoachMessage(userId: string, message: string, conversationId = 'default'): Promise<CoachReply> {
+  requireAccount(userId, 'Your coach needs an account. Sign up free to start chatting.');
+  const text = message.trim();
+  if (!text) throw new ApiError('bad_request', 'Type a message first.', 400);
+  const data = await invoke<Partial<CoachReply>>('coach', { message: text.slice(0, 800), conversationId, localDay: todayId() });
+  return {
+    reply: String(data.reply ?? ''),
+    model: String(data.model ?? ''),
+    saved: data.saved !== false,
+    suggestPlanChange: typeof data.suggestPlanChange === 'string' && data.suggestPlanChange ? data.suggestPlanChange : null,
+    remembered: Array.isArray(data.remembered) ? (data.remembered as MemoryFact[]) : [],
+    ...replyExtras(data as Record<string, unknown>),
+  };
+}
+
+/** The newer reply fields (follow-up suggestions, the thread's title,
+    messages left today), read defensively: an older backend leaves them
+    out and the chat simply goes without. */
+export function replyExtras(data: Record<string, unknown> | null | undefined): Pick<CoachReply, 'suggestions' | 'thread' | 'remainingToday'> {
+  const d = data ?? {};
+  const suggestions = Array.isArray(d.suggestions)
+    ? d.suggestions
+        .filter((s): s is string => typeof s === 'string')
+        .map((s) => s.replace(/\s+/g, ' ').trim())
+        .filter((s) => s.length > 0 && s.length <= 120)
+        .slice(0, 3)
+    : [];
+  const t = d.thread as { id?: unknown; title?: unknown } | null | undefined;
+  const thread = t && typeof t.id === 'string' && t.id ? { id: t.id, title: typeof t.title === 'string' ? t.title.trim().slice(0, 80) : '' } : null;
+  const raw = d.remaining_today ?? d.remainingToday;
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : NaN;
+  return { suggestions, thread, remainingToday: Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null };
+}
+
+/** What the Today note is written from: small, and clamped again on the server. */
+export type DailyNoteSummary = {
+  day: 'workout' | 'rest';
+  focus?: string;
+  minutes?: number;
+  workoutDone?: boolean;
+  /** Workouts done and planned in the last 7 days, today included. */
+  done7: number;
+  planned7: number;
+  streak: number;
+  /** Plan meals ticked yesterday, when yesterday is in this week. */
+  mealsYesterday?: { eaten: number; planned: number } | null;
+};
+
+/** The coach's note for Today (one or two sentences). Resolves '' when the
+    coach has no AI right now; the caller shows a built-in tip instead. */
+export async function dailyNote(userId: string, summary: DailyNoteSummary): Promise<string> {
+  requireAccount(userId);
+  const data = await invoke<{ note?: unknown }>('coach', { mode: 'daily_note', localDay: todayId(), summary });
+  return typeof data?.note === 'string' ? data.note.trim().slice(0, 220) : '';
+}

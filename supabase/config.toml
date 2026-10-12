@@ -1,0 +1,8 @@
+# Supabase CLI settings for the Edge Functions (read by `supabase functions
+# deploy`). Only what differs from the defaults is listed.
+project_id = "fitness-platform"
+
+# The admin dashboard is not a Supabase user, so the admin function checks
+# its own session token instead of a Supabase JWT.
+[functions.admin]
+verify_jwt = false
