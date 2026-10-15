@@ -108,7 +108,7 @@ function ProgressSkeleton() {
 }
 
 export default function ProgressTab() {
-  const { history, schedule, historyLoaded, historyOffline, reload, todayId, todayIdx, days, weekStart, activities, activitiesLoaded, targets } = usePlan();
+  const { history, schedule, historyLoaded, historyOffline, reload, todayId, todayIdx, days, weekStart, activities, activitiesLoaded, sportMinutes, targets } = usePlan();
   const { userId, profile, session, profileLoaded, profileError } = useAuth();
   const [reloadKey, setReloadKey] = useState(0);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
@@ -150,15 +150,19 @@ export default function ProgressTab() {
   useEffect(() => setFoodLoaded(false), [weekStart]);
 
   const now = useMemo(() => parseDay(todayId), [todayId]);
-  const weeks = useMemo(() => weeklyHistory(history, 8, now, schedule), [history, schedule, now]);
-  const streaks = useMemo(() => streakHistory(history, 8, now, schedule), [history, schedule, now]);
+  // Sport of 30 minutes or more counts as a trained day (streak.isTrainedDay).
+  const weeks = useMemo(() => weeklyHistory(history, 8, now, schedule, sportMinutes), [history, schedule, now, sportMinutes]);
+  const streaks = useMemo(() => streakHistory(history, 8, now, schedule, sportMinutes), [history, schedule, now, sportMinutes]);
   const since = profile?.onboarding_done_at?.slice(0, 10) ?? null;
-  const calendar = useMemo(() => trainingCalendar(history, schedule, 8, now, since && Object.keys(history).every((d) => d >= since) ? since : null), [history, schedule, now, since]);
+  const calendar = useMemo(
+    () => trainingCalendar(history, schedule, 8, now, since && Object.keys(history).every((d) => d >= since) ? since : null, sportMinutes),
+    [history, schedule, now, since, sportMinutes],
+  );
   const anyWorkout = weeks.some((w) => w.workoutsDone > 0);
   const currentStreak = streaks.length ? streaks[streaks.length - 1] : 0;
   // Every day of the window, not just each week's Sunday, so a streak that
   // peaked midweek still counts.
-  const bestStreak = useMemo(() => bestStreakIn(history, 8, now, schedule), [history, now, schedule]);
+  const bestStreak = useMemo(() => bestStreakIn(history, 8, now, schedule, sportMinutes), [history, now, schedule, sportMinutes]);
   // The plan's whole week, counted the way Today's week strip counts it.
   const week = useMemo(() => weekCounts(weekStrip(days, todayId)), [days, todayId]);
   const today = days[todayIdx];
@@ -181,7 +185,7 @@ export default function ProgressTab() {
   );
   const macroAvg = useMemo(() => averageMacros(foodDays.filter((d) => d.id <= todayId).map((d) => d.totals)), [foodDays, todayId]);
 
-  const badges = useMemo(() => milestones({ history, schedule, todayId, checkinDays }), [history, schedule, todayId, checkinDays]);
+  const badges = useMemo(() => milestones({ history, schedule, todayId, checkinDays, sport: sportMinutes }), [history, schedule, todayId, checkinDays, sportMinutes]);
 
   const latest = weights.length ? weights[weights.length - 1] : null;
   const first = weights.length ? weights[0] : null;

@@ -33,6 +33,7 @@ import {
   phoneText,
   timeText,
 } from '../../src/components/onboarding/options';
+import { SPORTS } from '../../src/data/activities';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { StateBlock } from '../../src/components/training/Controls';
@@ -47,9 +48,11 @@ function summaries(p: ProfileV2) {
   const allergies = labelsOf(ALLERGIES, p.allergies.filter((a) => a !== 'other'));
   if (p.allergies.includes('other') && p.allergies_other) allergies.push(p.allergies_other);
   const injuries = labelsOf(INJURY_AREAS, p.injury_areas);
+  const sports = labelsOf(SPORTS, (p.sports ?? []).filter((x) => x !== 'other'));
+  if (p.sports?.includes('other') && p.sports_other) sports.push(p.sports_other);
   return {
     about: join([p.name, age != null && `${age} years`, p.height_cm && `${p.height_cm} cm`, p.weight_kg && `${p.weight_kg} kg`]),
-    lifestyle: join([labelOf(ACTIVITY_LEVELS, p.activity_level), labelOf(JOB_ACTIVITIES, p.job_activity), p.sleep_hours != null && `${p.sleep_hours} h sleep`]),
+    lifestyle: join([labelOf(ACTIVITY_LEVELS, p.activity_level), sports.length ? sports.join(', ') : null, labelOf(JOB_ACTIVITIES, p.job_activity), p.sleep_hours != null && `${p.sleep_hours} h sleep`]),
     goal: join([labelOf(GOALS, p.goal), p.timeline_months && `${p.timeline_months} month${p.timeline_months === 1 ? '' : 's'}`, p.target_weight_kg && `target ${p.target_weight_kg} kg`]),
     training: join([labelOf(LOCATIONS, p.train_location), daysText(p.training_days), timeText(p.training_time)]),
     food: join([labelOf(DIETS, p.diet_type), allergies.length ? `No ${allergies.join(', ').toLowerCase()}` : 'No allergies']),

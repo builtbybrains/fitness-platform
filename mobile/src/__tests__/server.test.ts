@@ -279,3 +279,14 @@ describe('push quiet hours and memory', () => {
     expect(ai.extractJson('no json')).toBeNull();
   });
 });
+
+describe('the person for the AI', () => {
+  it('names the sports they play', () => {
+    const p = person({ sports: ['football', 'martial_arts', 'other'], sports_other: 'squash' });
+    expect(p.sports).toEqual(['football', 'martial_arts', 'other']);
+    expect(profile.describePerson(p)).toContain('Plays: football, martial arts, squash.');
+    expect(profile.describePerson(person())).not.toContain('Plays:');
+    // An 'other' without a name adds nothing.
+    expect(profile.sportsText({ sports: ['tennis', 'other'], sports_other: '' })).toBe('tennis');
+  });
+});

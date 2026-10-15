@@ -118,6 +118,10 @@ describe('profile and questionnaire', () => {
     expect(validateProfilePatch({ phone: '70123456' }, p, today)?.code).toBe('bad_request');
     expect(validateProfilePatch({ equipment: ['treadmill' as never] }, p, today)?.code).toBe('bad_request');
     expect(validateProfilePatch({ training_days: [] }, p, today)?.code).toBe('bad_request');
+    expect(validateProfilePatch({ sports: ['football', 'tennis', 'other'], sports_other: 'squash' }, p, today)).toBeNull();
+    expect(validateProfilePatch({ sports: [] }, p, today)).toBeNull();
+    expect(validateProfilePatch({ sports: ['walking' as never] }, p, today)?.code).toBe('bad_request');
+    expect(emptyProfile('y').sports).toEqual([]);
     expect(validateProfilePatch({ training_time: '18:30' }, p, today)).toBeNull();
     expect(validateProfilePatch({ onboarding_done_at: 'now' }, { ...p, birth_date: '1995-05-05' }, today)?.code).toBe('waiver_required');
     const minor = { ...p, birth_date: '2011-03-03', waiver_version: 'v', waiver_accepted_at: 'now' };

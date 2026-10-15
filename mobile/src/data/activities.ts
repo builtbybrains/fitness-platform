@@ -1,12 +1,23 @@
 /* General activities people log outside their plan (walking, football,
    padel …) and the calories they burn: MET × body weight (kg) × hours.
 
+   One list for both ends: the sports someone picks at sign-up
+   (profiles.sports) are activity kinds, so a sport they play is the same
+   thing they log. The kinds match the activities_kind_values_v2 and
+   profiles_sports_values checks in supabase/schema.sql.
+
    MET values follow the 2024 Adult Compendium of Physical Activities,
    rounded, one per effort level. Pure module, no imports. */
 
 export type ActivityKind =
   | 'walking' | 'running' | 'football' | 'basketball' | 'swimming'
-  | 'cycling' | 'padel' | 'hiking' | 'dancing' | 'strength' | 'other';
+  | 'cycling' | 'padel' | 'tennis' | 'pilates' | 'yoga' | 'volleyball'
+  | 'martial_arts' | 'boxing' | 'climbing' | 'crossfit'
+  | 'hiking' | 'dancing' | 'strength' | 'other';
+
+/** The kinds someone can pick as "a sport I play" (everything but walking
+    and gym strength work, which every plan already covers). */
+export type SportKind = Exclude<ActivityKind, 'walking' | 'strength'>;
 
 export type Effort = 'easy' | 'moderate' | 'hard';
 
@@ -36,11 +47,47 @@ export const ACTIVITIES: readonly ActivityDef[] = [
   { kind: 'swimming', label: 'Swimming', met: { easy: 5.8, moderate: 8.3, hard: 10.0 } },
   { kind: 'cycling', label: 'Cycling', met: { easy: 4.0, moderate: 6.8, hard: 10.0 } },
   { kind: 'padel', label: 'Padel', met: { easy: 5.0, moderate: 6.0, hard: 8.0 } },
+  { kind: 'tennis', label: 'Tennis', met: { easy: 5.0, moderate: 7.0, hard: 8.0 } },
+  { kind: 'pilates', label: 'Pilates', met: { easy: 2.8, moderate: 3.8, hard: 5.0 } },
+  { kind: 'yoga', label: 'Yoga', met: { easy: 2.3, moderate: 3.0, hard: 4.0 } },
+  { kind: 'volleyball', label: 'Volleyball', met: { easy: 3.0, moderate: 4.0, hard: 6.0 } },
+  { kind: 'martial_arts', label: 'Martial arts', met: { easy: 5.3, moderate: 7.5, hard: 10.3 } },
+  { kind: 'boxing', label: 'Boxing', met: { easy: 5.5, moderate: 7.8, hard: 10.0 } },
+  { kind: 'climbing', label: 'Climbing', met: { easy: 5.8, moderate: 7.3, hard: 8.0 } },
+  { kind: 'crossfit', label: 'CrossFit', met: { easy: 5.0, moderate: 6.5, hard: 8.0 } },
   { kind: 'hiking', label: 'Hiking', met: { easy: 5.3, moderate: 6.0, hard: 7.8 } },
   { kind: 'dancing', label: 'Dancing', met: { easy: 3.5, moderate: 5.0, hard: 7.3 } },
   { kind: 'strength', label: 'Strength training', met: { easy: 3.5, moderate: 5.0, hard: 6.0 } },
   { kind: 'other', label: 'Other', met: { easy: 3.0, moderate: 4.5, hard: 6.5 } },
 ];
+
+/** The sign-up question's choices, in the order people see them. `other`
+    takes a free-text name (profiles.sports_other). */
+export const SPORTS: readonly { id: SportKind; label: string }[] = [
+  { id: 'pilates', label: 'Pilates' },
+  { id: 'swimming', label: 'Swimming' },
+  { id: 'football', label: 'Football' },
+  { id: 'basketball', label: 'Basketball' },
+  { id: 'tennis', label: 'Tennis' },
+  { id: 'padel', label: 'Padel' },
+  { id: 'running', label: 'Running' },
+  { id: 'cycling', label: 'Cycling' },
+  { id: 'yoga', label: 'Yoga' },
+  { id: 'volleyball', label: 'Volleyball' },
+  { id: 'martial_arts', label: 'Martial arts' },
+  { id: 'boxing', label: 'Boxing' },
+  { id: 'hiking', label: 'Hiking' },
+  { id: 'dancing', label: 'Dance' },
+  { id: 'climbing', label: 'Climbing' },
+  { id: 'crossfit', label: 'CrossFit' },
+  { id: 'other', label: 'Other' },
+];
+
+export const SPORT_KINDS: readonly SportKind[] = SPORTS.map((s) => s.id);
+
+export function isSportKind(kind: string): kind is SportKind {
+  return (SPORT_KINDS as readonly string[]).includes(kind);
+}
 
 /** Used when the person hasn't entered a weight yet. */
 export const DEFAULT_WEIGHT_KG = 70;
@@ -54,6 +101,14 @@ export function activityDef(kind: string): ActivityDef {
 
 export function isActivityKind(kind: string): kind is ActivityKind {
   return BY_KIND.has(kind as ActivityKind);
+}
+
+/** The picker's order: the person's own sports first (in the order they
+    picked them), then everything else in the usual order. */
+export function activitiesFor(sports: readonly string[] | null | undefined): ActivityDef[] {
+  const mine = (sports ?? []).filter((k) => k !== 'other' && isActivityKind(k)) as ActivityKind[];
+  const first = [...new Set(mine)].map((k) => BY_KIND.get(k)!);
+  return [...first, ...ACTIVITIES.filter((a) => !mine.includes(a.kind))];
 }
 
 /** Calories burned: MET × weight (kg) × hours, rounded. Minutes are clamped

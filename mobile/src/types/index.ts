@@ -8,11 +8,11 @@
 
 import type { ActivityLevel, DailyTargets, Goal, JobActivity, PaceCheck, TimelineMonths } from '../api/rules';
 import type { Equipment, InjuryArea, Muscle, TrainLocation } from '../data/exercises';
-import type { ActivityKind, Effort } from '../data/activities';
+import type { ActivityKind, Effort, SportKind } from '../data/activities';
 
 export type { ActivityLevel, DailyTargets, Goal, JobActivity, PaceCheck, TimelineMonths } from '../api/rules';
 export type { Equipment, Exercise, InjuryArea, Level, Muscle, Pattern, TrainLocation } from '../data/exercises';
-export type { ActivityKind, Effort } from '../data/activities';
+export type { ActivityKind, Effort, SportKind } from '../data/activities';
 
 // ═══════════════════════════════ errors ═══════════════════════════════
 
@@ -117,6 +117,10 @@ export type ProfileV2 = {
   birth_date: string | null;
   activity_level: ActivityLevel | null;
   job_activity: JobActivity | null;
+  /** Sports they play (activity kinds, data/activities SPORTS). Empty when none. */
+  sports: SportKind[];
+  /** The name of their 'other' sport; '' when not given. */
+  sports_other: string;
   sleep_hours: number | null;
   goal: Goal | null;
   timeline_months: TimelineMonths | null;

@@ -34,6 +34,7 @@ const L = {
   time: { morning: 'Morning', midday: 'Midday', afternoon: 'Afternoon', evening: 'Evening' },
   diet: { none: 'No restriction', halal: 'Halal', vegetarian: 'Vegetarian', vegan: 'Vegan', pescatarian: 'Pescatarian', lactose_free: 'Lactose-free', gluten_free: 'Gluten-free' },
   gender: { female: 'Female', male: 'Male' },
+  sport: { martial_arts: 'Martial arts', crossfit: 'CrossFit', dancing: 'Dance', strength: 'Strength training' },
   platform: { ios: 'iPhone', android: 'Android', web: 'Web' },
 };
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -930,7 +931,7 @@ function checkinsHtml(list) {
 
 function activitiesHtml(list, kcal30) {
   const rows = list.map((a, i) => `<div class="row"${i >= 6 ? ' hidden' : ''}><span class="row__date">${esc(fDay(a.day))}</span>
-    <span class="row__main"><span class="row__title">${esc(a.label || humanize(a.kind))}</span><span class="row__sub">${esc([a.minutes ? `${a.minutes} min` : '', a.effort ? `${humanize(a.effort)} effort` : '', a.source === 'health' ? 'From the health app' : ''].filter(Boolean).join(' · '))}</span></span>
+    <span class="row__main"><span class="row__title">${esc(a.label || label('sport', a.kind))}</span><span class="row__sub">${esc([a.minutes ? `${a.minutes} min` : '', a.effort ? `${humanize(a.effort)} effort` : '', a.source === 'health' ? 'From the health app' : ''].filter(Boolean).join(' · '))}</span></span>
     <span class="row__side">${a.kcal != null ? `${n(a.kcal)} kcal` : ''}</span></div>`).join('');
   return `<section class="block" aria-labelledby="ud-a"><div class="block__head"><h2 class="sec-title" id="ud-a">Activities</h2><p class="sec-sub">${n(kcal30 || 0)} kcal in the last 30 days</p></div>
     ${list.length ? `<div class="rows" id="act-rows">${rows}</div>${list.length > 6 ? `<button type="button" class="btn btn-ghost btn-sm more" id="act-more">Show all ${n(list.length)}</button>` : ''}` : '<p class="sec-sub">No activities logged yet.</p>'}</section>`;
@@ -957,6 +958,7 @@ function questionnaireHtml(p) {
     ['Goal', [
       ['Goal', label('goal', p.goal)], ['Timeline', p.timeline_months ? `${p.timeline_months} ${p.timeline_months === 1 ? 'month' : 'months'}` : ''],
       ['Target weight', kg(p.target_weight_kg)], ['Activity level', label('activity_level', p.activity_level)],
+      ['Sports', [...(Array.isArray(p.sports) ? p.sports.filter((x) => x !== 'other').map((x) => label('sport', x)) : []), ...(Array.isArray(p.sports) && p.sports.includes('other') && p.sports_other ? [p.sports_other] : [])].join(', ') || 'None'],
       ['Job', label('job', p.job_activity)], ['Sleep', p.sleep_hours ? `${p.sleep_hours} hours a night` : ''],
     ]],
     ['Training', [

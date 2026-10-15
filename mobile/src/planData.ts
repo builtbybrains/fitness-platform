@@ -301,6 +301,9 @@ export type WeekDay = {
   session: PlanWorkoutV2 | PlanRestV2;
   meals: DayMeal[];
   done: DoneRow;
+  /** Minutes of sport and activity logged that day. 30 or more makes it a
+      trained day (streak.isTrainedDay) without ticking the workout. */
+  sportMinutes: number;
 };
 
 /** Structural copy of api/plan's WeekDayView (kept here so this module stays pure). */
@@ -309,7 +312,7 @@ export type WeekViewEntry = { id: string; weekday: number; planIndex: number; mo
 /** Meal swaps for this week, by day id then slot. */
 export type MealSwaps = Record<string, Partial<Record<SlotV2, PlanMealV2>>>;
 
-export function composeWeekV2(view: readonly WeekViewEntry[], done: DoneMap, swaps: MealSwaps = {}): WeekDay[] {
+export function composeWeekV2(view: readonly WeekViewEntry[], done: DoneMap, swaps: MealSwaps = {}, sport: Readonly<Record<string, number>> = {}): WeekDay[] {
   return view.map((v) => ({
     id: v.id,
     index: v.weekday,
@@ -321,6 +324,7 @@ export function composeWeekV2(view: readonly WeekViewEntry[], done: DoneMap, swa
       return s ? { ...s, slot: m.slot, swapped: true } : m;
     }),
     done: done[v.id] ?? EMPTY_DONE,
+    sportMinutes: sport[v.id] ?? 0,
   }));
 }
 

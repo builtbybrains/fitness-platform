@@ -385,6 +385,7 @@ function systemPrompt(p: Person): string {
     'You fill in a weekly plan whose training days, rest days and calorie targets are already fixed. Never change which days are rest days.',
     SAFETY_RULES,
     p.minor ? MINOR_RULES : '',
+    'Sports: if PERSON lists sports ("Plays:"), plan around them. Count their sport sessions as conditioning, so keep extra cardio light; keep the heaviest leg and lower-body work away from the day before they usually play; favour exercises that support their sport and guard its common injuries.',
     'Exercises: use ONLY ids from the ALLOWED EXERCISES list (they already fit the person\'s equipment and injuries). 4 to 7 exercises per workout, sensible sets and reps for the goal. Never prescribe absolute loads.',
     'Meals: Breakfast, Lunch, Dinner and Snack every day. Everyday food the person can get in Lebanon is welcome (labneh, foul, hummus, shish taouk, mujadara, fattoush, grilled fish, rice, bulgur, fruit). Respect diet, allergies and dislikes strictly. Each meal has kcal, protein, carbs and fat (grams) that agree with each other (4/4/9). Each day adds up to the day\'s kcal target. Vary meals across the week.',
     'Answer with ONLY valid JSON, no markdown:',

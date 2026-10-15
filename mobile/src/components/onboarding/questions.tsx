@@ -24,9 +24,11 @@ import type {
   OnboardingStep,
   ProfilePatchV2,
   ProfileV2,
+  SportKind,
   TimelineMonths,
   TrainLocation,
 } from '../../types';
+import { SPORTS } from '../../data/activities';
 import { Caution, ChipGroup, DayPicker, GroupLabel, OptionList, Stepper } from './Controls';
 import { Segmented } from '../training/Controls';
 import {
@@ -60,6 +62,8 @@ export type Draft = {
   weight: string;
   activity_level: ActivityLevel | null;
   job_activity: JobActivity | null;
+  sports: SportKind[];
+  sports_other: string;
   sleep_hours: number;
   goal: Goal | null;
   timeline_months: TimelineMonths | null;
@@ -96,6 +100,8 @@ export function draftFromProfile(p: ProfileV2): Draft {
     weight: p.weight_kg != null ? String(p.weight_kg) : '',
     activity_level: p.activity_level,
     job_activity: p.job_activity,
+    sports: [...(p.sports ?? [])],
+    sports_other: p.sports_other ?? '',
     sleep_hours: p.sleep_hours ?? 7,
     goal: p.goal,
     timeline_months: p.timeline_months,
@@ -152,6 +158,7 @@ export type QuestionId =
   | 'gender'
   | 'body'
   | 'activity'
+  | 'sports'
   | 'job'
   | 'sleep'
   | 'goal'
@@ -321,6 +328,28 @@ export const QUESTIONS: Question[] = [
       <OptionList label="Activity level" options={ACTIVITY_LEVELS} value={draft.activity_level} onChange={(activity_level) => set({ activity_level })} />
     ),
     toPatch: (d) => (d.activity_level ? ok({ activity_level: d.activity_level }) : fix('Pick your activity level to continue.')),
+  },
+  {
+    id: 'sports',
+    step: 'activity',
+    title: 'Which sports do you play?',
+    helper: 'Pick all that apply. We plan your training around them.',
+    short: 'Sports',
+    render: ({ draft, set }) => (
+      <View style={{ gap: 16 }}>
+        <ChipGroup label="Sports" options={SPORTS} values={draft.sports} onChange={(sports) => set({ sports })} />
+        {draft.sports.includes('other') ? (
+          <Field label="Other sport" value={draft.sports_other} onChangeText={(sports_other) => set({ sports_other })} placeholder="e.g. squash, rowing" maxLength={120} />
+        ) : null}
+      </View>
+    ),
+    // Optional: an 'other' without a name is simply dropped, never a blocker.
+    toPatch: (d) => {
+      const other = d.sports.includes('other') ? d.sports_other.trim().slice(0, 120) : '';
+      const sports = d.sports.filter((s) => s !== 'other' || !!other);
+      return ok({ sports, sports_other: other });
+    },
+    cta: (d) => (d.sports.length ? undefined : "I don't play a sport"),
   },
   {
     id: 'job',
@@ -598,7 +627,7 @@ function TimelineQuestion({ draft, set, profile }: QuestionCtx) {
 /** Profile groups: which questions each edit screen shows. */
 export const GROUPS = {
   about: { title: 'About you', questions: ['name', 'phone', 'birth_date', 'gender', 'body'] as QuestionId[] },
-  lifestyle: { title: 'Activity and sleep', questions: ['activity', 'job', 'sleep'] as QuestionId[] },
+  lifestyle: { title: 'Activity and sleep', questions: ['activity', 'sports', 'job', 'sleep'] as QuestionId[] },
   goal: { title: 'Goal and timeline', questions: ['goal', 'timeline'] as QuestionId[] },
   training: { title: 'Training', questions: ['location', 'schedule'] as QuestionId[] },
   food: { title: 'Food', questions: ['diet', 'allergies', 'dislikes'] as QuestionId[] },

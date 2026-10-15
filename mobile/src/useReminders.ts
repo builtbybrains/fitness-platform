@@ -23,6 +23,8 @@ import { DEFAULT_REMINDERS } from './api/profile';
 import { lastMonthlyCheckinDay } from './api/checkins';
 import { registerPushToken } from './api/push';
 import { fetchDayDone } from './data';
+import { listActivities } from './api/activities';
+import { isTrainedDay, minutesByDay } from './streak';
 import { addDays, todayId } from './lib/dates';
 import { ensureCategories, getNotifications, notificationsAvailable, planReminders, probeNotifications, type PlannedReminder } from './lib/notify';
 import { clockOf } from './components/onboarding/options';
@@ -102,9 +104,12 @@ async function schedule(list: PlannedReminder[]): Promise<number> {
 export async function rescheduleReminders(userId: string, profile: ProfileV2): Promise<number> {
   if ((await getReminderPermission()) !== 'granted') return 0;
   const today = todayId();
-  const [lastMonthly, done] = await Promise.all([
+  const [lastMonthly, done, sportToday] = await Promise.all([
     lastMonthlyCheckinDay(userId).catch(() => null),
     fetchDayDone(userId, today).catch(() => null),
+    listActivities(userId, today, today)
+      .then(({ activities }) => minutesByDay(activities)[today] ?? 0)
+      .catch(() => 0),
   ]);
   const list = planReminders({
     prefs: { ...DEFAULT_REMINDERS, ...profile.reminder_prefs },
@@ -114,7 +119,8 @@ export async function rescheduleReminders(userId: string, profile: ProfileV2): P
     trainingClock: clockOf(profile.training_time),
     monthlyDueDay: monthlyDueDay(lastMonthly, profile.onboarding_done_at),
     now: new Date(),
-    workoutDoneToday: !!done?.done?.workout,
+    // A trained day (workout done, or 30+ minutes of sport, walks aside) needs no "streak at risk".
+    workoutDoneToday: isTrainedDay(done?.done, sportToday),
   });
   return schedule(list);
 }

@@ -97,6 +97,10 @@ alter table public.profiles add column if not exists dislikes text not null defa
 alter table public.profiles add column if not exists injuries text not null default '';
 alter table public.profiles add column if not exists injury_areas text[] not null default '{}';
 alter table public.profiles add column if not exists conditions text[] not null default '{}';
+-- Sports they play (activity kinds, the same list as activities.kind minus
+-- walking and strength) and the name of an 'other' sport.
+alter table public.profiles add column if not exists sports text[] not null default '{}';
+alter table public.profiles add column if not exists sports_other text not null default '';
 alter table public.profiles add column if not exists waiver_version text not null default '';
 alter table public.profiles add column if not exists waiver_accepted_at timestamptz;
 alter table public.profiles add column if not exists guardian_name text not null default '';
@@ -140,6 +144,8 @@ select pg_temp.add_check('public.profiles', 'profiles_onboarding_step_len', 'cha
 select pg_temp.add_check('public.profiles', 'profiles_timezone_len', 'char_length(timezone) between 1 and 64');
 select pg_temp.add_check('public.profiles', 'profiles_reminder_prefs_object', $c$jsonb_typeof(reminder_prefs) = 'object'$c$);
 select pg_temp.add_check('public.profiles', 'profiles_health_sync_object', $c$jsonb_typeof(health_sync) = 'object'$c$);
+select pg_temp.add_check('public.profiles', 'profiles_sports_values', $c$sports <@ array['pilates', 'swimming', 'football', 'basketball', 'tennis', 'padel', 'running', 'cycling', 'yoga', 'volleyball', 'martial_arts', 'boxing', 'hiking', 'dancing', 'climbing', 'crossfit', 'other']::text[]$c$);
+select pg_temp.add_check('public.profiles', 'profiles_sports_other_len', 'char_length(sports_other) <= 200');
 
 create index if not exists profiles_created_idx on public.profiles (created_at desc);
 create index if not exists profiles_last_active_idx on public.profiles (last_active_at desc nulls last);
@@ -287,7 +293,10 @@ create table if not exists public.activities (
   created_at timestamptz not null default now(),
   unique (user_id, external_id)
 );
-select pg_temp.add_check('public.activities', 'activities_kind_values', $c$kind in ('walking', 'running', 'football', 'basketball', 'swimming', 'cycling', 'padel', 'hiking', 'dancing', 'strength', 'other')$c$);
+-- v1 had eleven kinds; v2 adds tennis, pilates, yoga, volleyball, martial
+-- arts, boxing, climbing and CrossFit (mobile/src/data/activities.ts).
+alter table public.activities drop constraint if exists activities_kind_values;
+select pg_temp.add_check('public.activities', 'activities_kind_values_v2', $c$kind in ('walking', 'running', 'football', 'basketball', 'swimming', 'cycling', 'padel', 'tennis', 'pilates', 'yoga', 'volleyball', 'martial_arts', 'boxing', 'climbing', 'crossfit', 'hiking', 'dancing', 'strength', 'other')$c$);
 select pg_temp.add_check('public.activities', 'activities_label_len', 'char_length(label) <= 80');
 select pg_temp.add_check('public.activities', 'activities_minutes_range', 'minutes between 1 and 720');
 select pg_temp.add_check('public.activities', 'activities_effort_values', $c$effort in ('easy', 'moderate', 'hard')$c$);
@@ -993,8 +1002,10 @@ as $$
 $$;
 
 -- The workout streak, the same rule as the app (mobile/src/streak.ts): a
--- done workout adds one, a past scheduled training day left undone resets
--- to zero, rest days are neutral, today counts once done. The schedule is
+-- trained day adds one, a past scheduled training day left untrained resets
+-- to zero, rest days are neutral, today counts once trained. A trained day
+-- is a done workout OR 30 minutes or more of logged sport that day
+-- (SPORT_COUNTS_MINUTES in the app). Walking is not a sport and never counts. The schedule is
 -- the active plan's week, else the person's training days, else the
 -- built-in week. Moved days (plan_overrides) are not considered.
 create or replace function public.user_streak(p_user uuid, p_today date default null)
@@ -1026,8 +1037,14 @@ begin
     end loop;
   end if;
 
-  select array_agg(day order by day) into v_done from public.plan_days
-  where user_id = p_user and workout_done and day between v_today - 366 and v_today;
+  select array_agg(day order by day) into v_done from (
+    select day from public.plan_days
+    where user_id = p_user and workout_done and day between v_today - 366 and v_today
+    union
+    select day from public.activities
+    where user_id = p_user and kind <> 'walking' and day between v_today - 366 and v_today
+    group by day having sum(minutes) >= 30
+  ) trained;
   if v_done is null then
     return 0;
   end if;
@@ -1274,7 +1291,7 @@ begin
         union all
         select 'meal', created_at, label || ' (' || kcal || ' kcal)' from public.food_logs where user_id = p_user
         union all
-        select 'activity', created_at, initcap(kind) || ', ' || minutes || ' min' from public.activities where user_id = p_user
+        select 'activity', created_at, initcap(replace(kind, '_', ' ')) || ', ' || minutes || ' min' from public.activities where user_id = p_user
         union all
         select 'weight', (day::timestamp + time '08:00') at time zone 'Asia/Beirut', kg || ' kg' from public.weights where user_id = p_user
         union all

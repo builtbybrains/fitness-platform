@@ -42,7 +42,8 @@ import { useWater } from '../../src/useWater';
 import { useFoodLogs } from '../../src/foodLogs';
 import { useAuth } from '../../src/auth';
 import { daySummary } from '../../src/stats';
-import { activityDef } from '../../src/data/activities';
+import { countsAsSport, isTrainedDay, type MinutesByDay, sportCounts } from '../../src/streak';
+import { ActivityRows, activityName } from '../../src/components/training/ActivityRows';
 import { getHealthDays } from '../../src/api/health';
 import { healthPlatform } from '../../src/api/device/health';
 import type { DailyNoteSummary } from '../../src/api/coach';
@@ -331,7 +332,13 @@ function WorkoutCard({ day }: { day: WeekDay }) {
   const split = rest.length > 0 && w.focus.length * 10.5 > room;
   const title = split ? head : w.focus;
   const meta = [split ? rest.join(' · ') : null, `${w.minutes} min`, plural(w.exercises.length, 'exercise')].filter(Boolean).join(' · ');
-  const status = done ? 'Done today. Nice work.' : s.done > 0 ? `${s.done} of ${s.total} sets logged` : `${s.total} sets to go`;
+  const status = done
+    ? 'Done today. Nice work.'
+    : sportCounts(day.sportMinutes)
+      ? "Your sport counts as today's workout. This one stays open."
+      : s.done > 0
+        ? `${s.done} of ${s.total} sets logged`
+        : `${s.total} sets to go`;
   // The whole card opens the workout on touch and tilts under the finger;
   // screen readers get the play button, which says the same thing.
   return (
@@ -385,23 +392,9 @@ function ActivityCard({ list, health, onRemove }: { list: Activity[]; health: He
         </View>
       ) : null}
       {list.length === 0 ? (
-        <Text style={T.meta}>A walk, a game of football, padel with friends: log it and it counts.</Text>
+        <Text style={T.meta}>A walk, a game of football, padel with friends: log it and it counts. 30 minutes or more of sport counts as the day&apos;s workout.</Text>
       ) : (
-        <View>
-          {list.map((a, i) => (
-            <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 52, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.line }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={T.bodyStrong}>{a.label || activityDef(a.kind).label}</Text>
-                <Text style={T.small}>
-                  {a.minutes} min · {a.effort} · {a.kcal} kcal{a.source === 'health' ? ' · from your health app' : ''}
-                </Text>
-              </View>
-              {a.source === 'manual' ? (
-                <IconButton icon="trash" variant="bare" onPress={() => onRemove(a.id)} accessibilityLabel={`Delete ${a.label || activityDef(a.kind).label}`} />
-              ) : null}
-            </View>
-          ))}
-        </View>
+        <ActivityRows list={list} onRemove={onRemove} />
       )}
       <Button variant="secondary" icon="plus" label="Log an activity" onPress={() => router.push('/activity/log')} />
     </View>
@@ -624,12 +617,21 @@ function syncLine(state: 'local' | 'offline' | 'synced'): string {
 }
 
 /** What the coach's daily note is written from (see api/coach dailyNote). */
-function noteSummary(p: { day: WeekDay; yesterday: WeekDay | undefined; history: DoneMap; schedule: WeekSchedule; streak: number; today: string }): DailyNoteSummary {
+function noteSummary(p: {
+  day: WeekDay;
+  yesterday: WeekDay | undefined;
+  history: DoneMap;
+  sport: MinutesByDay;
+  sportToday: string;
+  schedule: WeekSchedule;
+  streak: number;
+  today: string;
+}): DailyNoteSummary {
   let done7 = 0;
   let planned7 = 0;
   for (let i = 0; i < 7; i++) {
     const id = addDays(p.today, -i);
-    const done = !!p.history[id]?.workout;
+    const done = isTrainedDay(p.history[id], p.sport[id]);
     if (done) done7++;
     if (done || p.schedule[mondayIndex(parseDay(id))] === 'workout') planned7++;
   }
@@ -640,6 +642,7 @@ function noteSummary(p: { day: WeekDay; yesterday: WeekDay | undefined; history:
     focus: w?.focus,
     minutes: w?.minutes,
     workoutDone: p.day.done.workout,
+    sportToday: sportCounts(p.day.sportMinutes) ? p.sportToday : undefined,
     done7,
     planned7,
     streak: p.streak,
@@ -655,7 +658,7 @@ export default function TodayTab() {
   const compact = height < 900;
   const tight = height < 700;
   const ring = compact ? { size: 140, stroke: 12, label: 14, pct: 34 } : { size: 208, stroke: 16, label: 16, pct: 48 };
-  const { days, todayIdx, todayId, syncState, streak, targets, activities, removeActivity, profile, history, historyLoaded, planLoaded, schedule, reload } = usePlan();
+  const { days, todayIdx, todayId, syncState, streak, targets, activities, sportMinutes, removeActivity, profile, history, historyLoaded, planLoaded, schedule, reload } = usePlan();
   const { userId } = useAuth();
   const water = useWater();
   const food = useFoodLogs(todayId);
@@ -696,9 +699,10 @@ export default function TodayTab() {
         : null,
     [day, food.logs, todaysActivities, water.count, water.target, targets],
   );
+  const sportToday = todaysActivities.filter((a) => countsAsSport(a.kind)).map((a) => `${activityName(a).toLowerCase()} ${a.minutes} min`).join(', ');
   const note = useMemo(
-    () => (day ? noteSummary({ day, yesterday: days[todayIdx - 1], history, schedule, streak, today: todayId }) : null),
-    [day, days, todayIdx, history, schedule, streak, todayId],
+    () => (day ? noteSummary({ day, yesterday: days[todayIdx - 1], history, sport: sportMinutes, sportToday, schedule, streak, today: todayId }) : null),
+    [day, days, todayIdx, history, sportMinutes, sportToday, schedule, streak, todayId],
   );
 
   // The numbers count up with the ring (Reduce Motion: shown at once).
@@ -725,13 +729,21 @@ export default function TodayTab() {
   const isWorkout = day.session.kind === 'workout';
   const pct = Math.round(summary.progress * 100);
   const ringLine = [
-    isWorkout ? (day.done.workout ? 'Workout done' : 'Workout open') : todaysActivities.length ? 'Active rest day' : 'Rest day',
+    isWorkout ? (day.done.workout ? 'Workout done' : sportCounts(day.sportMinutes) ? 'Trained with sport' : 'Workout open') : todaysActivities.length ? 'Active rest day' : 'Rest day',
     `${summary.eaten.kcal.toLocaleString()} of ${targets.kcal.toLocaleString()} kcal`,
     `${water.count} of ${plural(water.target, 'glass', 'glasses')}`,
   ].join(' · ');
 
   const s = setsOf(day);
-  const trainDetail = !isWorkout ? (todaysActivities.length ? `${todaysActivities.reduce((a, x) => a + x.minutes, 0)} min active` : 'Rest day') : day.done.workout ? 'Done today' : `${s.done}/${s.total} sets`;
+  const trainDetail = !isWorkout
+    ? todaysActivities.length
+      ? `${todaysActivities.reduce((a, x) => a + x.minutes, 0)} min active`
+      : 'Rest day'
+    : day.done.workout
+      ? 'Done today'
+      : sportCounts(day.sportMinutes)
+        ? 'Sport counted'
+        : `${s.done}/${s.total} sets`;
 
   // The greeting, the note and the ring enter 40ms apart; the rest is in place.
   let block = 0;
