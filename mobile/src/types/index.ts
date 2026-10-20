@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | 'bad_request' // the input was refused (message says why)
   | 'unauthorized' // signed out or the session ended
   | 'forbidden' // not allowed (e.g. under 13)
+  | 'age_required' // AI functions: no date of birth on file yet (HTTP 403)
   | 'not_found'
   | 'payload_too_large' // photo too big
   | 'limit_reached' // today's AI limit (message says which)

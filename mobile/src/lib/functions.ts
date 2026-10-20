@@ -4,6 +4,7 @@
    example the daily limit, HTTP 429) is in the response body, so read it. */
 
 import { supabase } from './supabase';
+import { errorBody, MESSAGES } from '../api/errors';
 
 export class FunctionCallError extends Error {
   /** HTTP status, or 0 when the request never reached the server. */
@@ -40,18 +41,19 @@ export async function callFunction<T = Record<string, unknown>>(name: string, bo
     if (ctx && typeof (ctx as Response).status === 'number' && typeof (ctx as Response).json === 'function') {
       const res = ctx as Response;
       let serverMessage: string | undefined;
+      let code: string | undefined;
       try {
-        const j = (await res.clone().json()) as { error?: unknown };
-        if (typeof j?.error === 'string') serverMessage = j.error;
+        ({ message: serverMessage, code } = errorBody(await res.clone().json()));
       } catch {
         /* not JSON */
       }
+      if (code === 'age_required' && !serverMessage) serverMessage = MESSAGES.ageRequired;
       throw new FunctionCallError(messageForStatus(res.status, serverMessage), res.status);
     }
     const fetchFailed = (error as { name?: string }).name === 'FunctionsFetchError';
     throw new FunctionCallError(fetchFailed ? OFFLINE_MESSAGE : GENERIC_MESSAGE, fetchFailed ? 0 : 500);
   }
-  const maybeError = (data as { error?: unknown } | null)?.error;
-  if (typeof maybeError === 'string' && maybeError) throw new FunctionCallError(maybeError, 200);
+  const maybeError = errorBody(data).message;
+  if (maybeError) throw new FunctionCallError(maybeError, 200);
   return data as T;
 }

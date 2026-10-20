@@ -1,10 +1,11 @@
 /* Profile: the account and phone on file, every questionnaire answer
    (grouped, each group editable), what the coach remembers, check-ins,
-   health apps (phones only), reminders, reports, the privacy note and
-   sign out. */
+   health apps (phones only), reminders, reports, the privacy note, sign
+   out and, last, deleting the account (or, without one, the data on this
+   phone) behind a typed confirmation. */
 
 import { useCallback, useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -12,12 +13,18 @@ import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { isCloudUser } from '../../src/lib/cloud';
 import { showConfirm } from '../../src/lib/dialog';
+import { haptic } from '../../src/lib/haptics';
+import { cancelBuiltReminders } from '../../src/lib/notify';
+import { supabaseConfigured } from '../../supabase.config';
+import { asApiError } from '../../src/api/errors';
+import { clearPersonOnDevice, deleteAccount, deleteConfirmed, DELETE_WORD, forgetDeviceIdentity } from '../../src/api/account';
 import { ageOf } from '../../src/api/profile';
 import { listMyReports, unreadCount } from '../../src/api/reports';
 import { disableHealthSync, enableHealthSync, syncHealth } from '../../src/api/health';
 import { healthPlatform } from '../../src/api/device/health';
 import { Button } from '../../src/components/Button';
 import { Notice, ScreenHeader } from '../../src/components/Bits';
+import { Field } from '../../src/components/Field';
 import { Icon } from '../../src/components/Icon';
 import {
   ACTIVITY_LEVELS,
@@ -38,7 +45,8 @@ import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { StateBlock } from '../../src/components/training/Controls';
 import { Row, RowGroup } from '../../src/components/profile/SubScreen';
-import { ExtraIcon } from '../../src/components/profile/icons';
+import { AnyIcon, ExtraIcon } from '../../src/components/profile/icons';
+import { Sheet } from '../../src/components/training/Sheet';
 import type { ProfileV2 } from '../../src/types';
 
 const join = (parts: (string | number | null | undefined | false)[]) => parts.filter(Boolean).join(' · ');
@@ -142,6 +150,133 @@ function HealthCard() {
   );
 }
 
+/** The last row on Profile: deletes the account, or for a device-only
+    person the data on this phone, once they type DELETE in the sheet. */
+function DeleteData() {
+  const { userId, signOut, continueOffline } = useAuth();
+  const cloud = isCloudUser(userId);
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const ready = deleteConfirmed(typed);
+  const label = cloud ? 'Delete account' : 'Delete my data';
+
+  function show() {
+    setTyped('');
+    setErr(null);
+    setOpen(true);
+  }
+
+  function close() {
+    if (!busy) setOpen(false);
+  }
+
+  async function confirm() {
+    if (!userId || !ready || busy) return;
+    haptic.heavy();
+    setBusy(true);
+    setErr(null);
+    if (cloud) {
+      try {
+        await deleteAccount(userId);
+      } catch (e) {
+        // Nothing on the phone changes and the person stays signed in.
+        setErr(asApiError(e).message);
+        setBusy(false);
+        return;
+      }
+    }
+    await clearPersonOnDevice(userId);
+    if (!cloud) await forgetDeviceIdentity();
+    await signOut();
+    // A reschedule already in flight could land after the first cancel.
+    await cancelBuiltReminders();
+    setBusy(false);
+    setOpen(false);
+    if (!supabaseConfigured) {
+      // No accounts in this build: start again as a new device-only person.
+      await continueOffline();
+      router.replace('/');
+      return;
+    }
+    router.replace('/(auth)/login');
+  }
+
+  return (
+    <>
+      <RowGroup>
+        <Pressable
+          onPress={show}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityHint={cloud ? 'Opens a confirmation. Deleting your account cannot be undone.' : 'Opens a confirmation. Deleting the data on this phone cannot be undone.'}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            minHeight: 56,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            backgroundColor: pressed ? C.raised : C.card,
+          })}
+        >
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <AnyIcon name="trash" size={20} color={C.danger} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 16, lineHeight: 22, color: C.danger }}>{label}</Text>
+            <Text style={T.meta}>{cloud ? 'Removes your account and everything in it' : 'Removes everything BUILT keeps on this phone'}</Text>
+          </View>
+          <Icon name="chevronRight" size={18} color={C.faint} />
+        </Pressable>
+      </RowGroup>
+
+      <Sheet
+        visible={open}
+        onClose={close}
+        title={cloud ? 'Delete your account?' : 'Delete the data on this phone?'}
+        footer={
+          <View style={{ gap: 10 }}>
+            <Button
+              label={busy ? 'Deleting' : label}
+              variant="danger"
+              icon="trash"
+              disabled={!ready}
+              busy={busy}
+              onPress={confirm}
+              accessibilityHint={ready ? undefined : `Type ${DELETE_WORD} above first.`}
+            />
+            <Button label="Cancel" variant="secondary" onPress={close} disabled={busy} />
+          </View>
+        }
+      >
+        <Text style={[T.body, { color: C.stone }]}>
+          {cloud
+            ? 'This permanently deletes your plan, logs, chats, what your coach remembers and your body photos. It cannot be undone.'
+            : 'This permanently deletes your plan, logs, chats, what your coach remembers and your answers from this phone. It cannot be undone.'}
+        </Text>
+        <Field
+          label={`Type ${DELETE_WORD} to confirm`}
+          value={typed}
+          onChangeText={(t) => {
+            setTyped(t);
+            if (err) setErr(null);
+          }}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          autoComplete="off"
+          editable={!busy}
+          returnKeyType="done"
+          onSubmitEditing={() => void confirm()}
+          accessibilityLabel={`Type ${DELETE_WORD} to confirm`}
+        />
+        {err ? <Notice tone="error">{err}</Notice> : null}
+      </Sheet>
+    </>
+  );
+}
+
 export default function ProfileTab() {
   const { signOut, session, profile, userId, profileLoaded, profileError, offline, refreshProfile } = useAuth();
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
@@ -241,6 +376,8 @@ export default function ProfileTab() {
         </View>
 
         <Button label="Sign out" variant="danger" onPress={confirmSignOut} />
+
+        <DeleteData />
       </ScrollView>
     </SafeAreaView>
   );
