@@ -1,8 +1,11 @@
 /* The Today week strip: one state per day of the plan's week (Monday to
-   Sunday, the same week the Plan tab shows). A finished workout always
-   reads as done; otherwise rest days are rest, today is open, earlier
+   Sunday, the same week the Plan tab shows). A trained day (the workout
+   finished, or 30 minutes or more of logged sport: streak.isTrainedDay)
+   always reads as done; otherwise rest days are rest, today is open, earlier
    training days were missed (shown quietly, never as a failure) and later
    ones are planned. Pure: no React, no native modules. */
+
+import { isTrainedDay } from '../streak';
 
 export type StripState = 'done' | 'today' | 'planned' | 'missed' | 'rest';
 
@@ -18,7 +21,7 @@ export type StripDay = {
 };
 
 /** The week's days as the plan store gives them (structural subset of WeekDay). */
-export type StripInput = { id: string; index: number; session: { kind: string }; done: { workout: boolean } };
+export type StripInput = { id: string; index: number; session: { kind: string }; done: { workout: boolean }; sportMinutes?: number };
 
 const LETTER = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 const NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
@@ -32,7 +35,7 @@ const PHRASE: Record<StripState, string> = {
 };
 
 export function stripState(day: StripInput, today: string): StripState {
-  if (day.done.workout) return 'done';
+  if (isTrainedDay(day.done, day.sportMinutes)) return 'done';
   if (day.session.kind !== 'workout') return 'rest';
   if (day.id === today) return 'today';
   return day.id < today ? 'missed' : 'planned';

@@ -50,7 +50,7 @@ function toAnalysis(r: { estimate: FoodEstimate; questions: FoodQuestion[] }, mo
     : { status: 'final', estimate: r.estimate, model };
 }
 
-export async function analyzePhoto(ai: AiProvider, imageBase64: string, note: string, allowQuestions = true): Promise<FoodAnalysis | null> {
+export async function analyzePhoto(ai: AiProvider, imageBase64: string, note: string, allowQuestions = true, deadline?: number): Promise<FoodAnalysis | null> {
   const answer = await chat(
     ai,
     {
@@ -67,6 +67,7 @@ export async function analyzePhoto(ai: AiProvider, imageBase64: string, note: st
       max_tokens: 1200,
       temperature: 0.2,
       timeoutMs: 60_000,
+      deadline,
     },
     acceptEstimate('photo'),
     'meals:photo',
@@ -74,7 +75,7 @@ export async function analyzePhoto(ai: AiProvider, imageBase64: string, note: st
   return answer ? toAnalysis(allowQuestions ? answer.value : { ...answer.value, questions: [] }, answer.model) : null;
 }
 
-export async function analyzeText(ai: AiProvider | null, text: string): Promise<FoodAnalysis> {
+export async function analyzeText(ai: AiProvider | null, text: string, deadline?: number): Promise<FoodAnalysis> {
   if (ai) {
     const answer = await chat(
       ai,
@@ -86,6 +87,7 @@ export async function analyzeText(ai: AiProvider | null, text: string): Promise<
         max_tokens: 1200,
         temperature: 0.2,
         timeoutMs: 45_000,
+        deadline,
       },
       acceptEstimate('text'),
       'meals:text',
@@ -101,6 +103,7 @@ export async function finalise(
   draft: FoodEstimate,
   questions: FoodQuestion[],
   answers: { id: string; answer: string }[],
+  deadline?: number,
 ): Promise<{ estimate: FoodEstimate; model: string }> {
   const ruleIds = answers.every((a) => /^item:\d+$/.test(a.id));
   if (ai && !ruleIds) {
@@ -115,6 +118,7 @@ export async function finalise(
         max_tokens: 1000,
         temperature: 0.1,
         timeoutMs: 45_000,
+        deadline,
       },
       acceptEstimate(draft.source),
       'meals:answer',
@@ -124,7 +128,7 @@ export async function finalise(
   return { estimate: applyAnswers(draft, answers), model: 'rules' };
 }
 
-export async function swapMeal(ai: AiProvider | null, meal: PlanMeal, reason: string, p: Person): Promise<{ options: PlanMeal[]; model: string }> {
+export async function swapMeal(ai: AiProvider | null, meal: PlanMeal, reason: string, p: Person, deadline?: number): Promise<{ options: PlanMeal[]; model: string }> {
   const rules = dietRulesOf(p);
   const ok = (x: PlanMeal) =>
     !violates(x.label, rules) &&
@@ -158,6 +162,7 @@ export async function swapMeal(ai: AiProvider | null, meal: PlanMeal, reason: st
         max_tokens: 900,
         temperature: 0.7,
         timeoutMs: 40_000,
+        deadline,
       },
       (text) => {
         const j = extractJson(text);
@@ -186,7 +191,7 @@ export async function swapMeal(ai: AiProvider | null, meal: PlanMeal, reason: st
 
 export type GeneratedMeal = PlanMeal & { steps: string[] };
 
-export async function generateMeal(ai: AiProvider, have: string, slot: MealSlot, kcal: number | null, p: Person): Promise<{ meal: GeneratedMeal; model: string } | null> {
+export async function generateMeal(ai: AiProvider, have: string, slot: MealSlot, kcal: number | null, p: Person, deadline?: number): Promise<{ meal: GeneratedMeal; model: string } | null> {
   const rules = dietRulesOf(p);
   const answer = await chat(
     ai,
@@ -208,6 +213,7 @@ export async function generateMeal(ai: AiProvider, have: string, slot: MealSlot,
       max_tokens: 800,
       temperature: 0.6,
       timeoutMs: 40_000,
+      deadline,
     },
     (text) => {
       const j = extractJson(text);

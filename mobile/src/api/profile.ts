@@ -15,6 +15,7 @@ import { loadLocal, saveLocal } from '../lib/localFallback';
 import { todayId } from '../lib/dates';
 import { saveWeight } from '../data';
 import { WAIVER_VERSION } from '../legal/waiver';
+import { SPORT_KINDS } from '../data/activities';
 import { ApiError, fromDbError } from './errors';
 import { ageOn, ageRule, dailyTargets, paceCheck, TIMELINES, type DailyTargets, type PaceCheck } from './rules';
 import type { OnboardingStep, ProfilePatchV2, ProfileV2, ReminderPrefs } from '../types';
@@ -46,6 +47,8 @@ export function emptyProfile(id: string, name = ''): ProfileV2 {
     birth_date: null,
     activity_level: null,
     job_activity: null,
+    sports: [],
+    sports_other: '',
     sleep_hours: null,
     goal: null,
     timeline_months: null,
@@ -143,6 +146,7 @@ const ONE_OF: Partial<Record<keyof ProfilePatchV2, readonly string[]>> = {
 };
 const SUBSET: Partial<Record<keyof ProfilePatchV2, readonly string[]>> = {
   equipment: ['dumbbells', 'bands', 'kettlebell', 'pullup_bar', 'bench', 'other'],
+  sports: SPORT_KINDS,
   allergies: ['nuts', 'peanuts', 'dairy', 'eggs', 'gluten', 'shellfish', 'fish', 'soy', 'sesame', 'other'],
   injury_areas: ['knee', 'lower_back', 'shoulder', 'wrist', 'elbow', 'hip', 'ankle', 'neck'],
   conditions: ['high_blood_pressure', 'diabetes', 'asthma', 'heart_condition', 'pregnant', 'postpartum', 'eating_disorder_history', 'joint_pain', 'other'],
@@ -165,6 +169,7 @@ export function validateProfilePatch(patch: ProfilePatchV2, current: ProfileV2, 
   if (patch.target_weight_kg != null && (patch.target_weight_kg < 30 || patch.target_weight_kg > 300)) return bad('Target weight should be between 30 and 300 kg.');
   if (patch.weight_kg != null && (patch.weight_kg < 30 || patch.weight_kg > 300)) return bad('Weight should be between 30 and 300 kg.');
   if (patch.height_cm != null && (patch.height_cm < 100 || patch.height_cm > 250)) return bad('Height should be between 100 and 250 cm.');
+  if (patch.sports_other != null && patch.sports_other.length > 200) return bad('Keep the other sport under 200 characters.');
   if (patch.sleep_hours != null && (patch.sleep_hours < 3 || patch.sleep_hours > 14)) return bad('Sleep should be between 3 and 14 hours.');
   if (patch.training_days != null && (!patch.training_days.length || patch.training_days.some((d) => !Number.isInteger(d) || d < 0 || d > 6))) return bad('Pick at least one training day.');
   if (patch.training_time != null && !/^(morning|midday|evening|([01]\d|2[0-3]):[0-5]\d)$/.test(patch.training_time)) return bad('Pick a time of day.');

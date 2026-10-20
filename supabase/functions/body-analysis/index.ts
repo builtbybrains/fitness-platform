@@ -19,9 +19,9 @@
 
 import { body, fail, json, localDay, preflight, serverError } from '../_shared/http.ts';
 import { requireUser } from '../_shared/env.ts';
-import { aiProvider, chat } from '../_shared/ai.ts';
+import { aiProvider, chat, REQUEST_BUDGET_MS } from '../_shared/ai.ts';
 import { parseBodyAnalysis } from '../_shared/bodyAnalysis.ts';
-import { describePerson, loadPerson } from '../_shared/profile.ts';
+import { ageGate, describePerson, loadPerson } from '../_shared/profile.ts';
 import { BODY_PHOTO_RULES, MINOR_RULES } from '../_shared/safety.ts';
 import { LIMITS, limitReached, takeQuota } from '../_shared/usage.ts';
 
@@ -31,6 +31,7 @@ const MAX_TOTAL_BASE64 = 7_000_000;
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  const deadline = Date.now() + REQUEST_BUDGET_MS;
   try {
     const auth = await requireUser(req, 'Sign in to get a photo estimate.');
     if (auth instanceof Response) return auth;
@@ -38,6 +39,10 @@ Deno.serve(async (req) => {
     const b = await body(req);
     const setId = String(b.photo_set_id ?? '');
     if (!UUID_RE.test(setId)) return fail('bad_request', 'Take your photos first.', 400);
+
+    const person = await loadPerson(supabase, user.id, localDay(b.localDay));
+    const gate = ageGate(person);
+    if (gate) return gate;
 
     const ai = await aiProvider('vision');
     if (!ai) return fail('not_configured', "Photo estimates aren't set up yet. Your plan will use your answers instead.", 503);
@@ -72,7 +77,6 @@ Deno.serve(async (req) => {
     }
     if (!images.length) return fail('not_found', "We couldn't open your photos. Retake them and try again.", 404);
 
-    const person = await loadPerson(supabase, user.id, localDay(b.localDay));
     const answer = await chat(
       ai,
       {
@@ -98,6 +102,7 @@ Deno.serve(async (req) => {
         max_tokens: 900,
         temperature: 0.2,
         timeoutMs: 90_000,
+        deadline,
       },
       parseBodyAnalysis,
       'body-analysis',

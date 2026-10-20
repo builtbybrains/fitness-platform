@@ -1,6 +1,8 @@
 /* Which object image stands above each questionnaire screen. Grouped by what
    the questions are about, so the object changes only when the topic does:
-   - about you, your body, your goal, health: the dumbbell
+   - about you, your body, the sports you play, your goal, health: the
+     dumbbell (sports sit between activity and your day, so the object
+     holds still across all three)
    - the timeline: the medal (the finish line), shown as the B badge
    - where and when you train: the kettlebell
    - food: the shaker

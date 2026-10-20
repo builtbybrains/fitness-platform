@@ -85,6 +85,7 @@ supabase functions deploy meals         --project-ref YOUR-PROJECT-REF
 supabase functions deploy analyze-meal  --project-ref YOUR-PROJECT-REF
 supabase functions deploy body-analysis --project-ref YOUR-PROJECT-REF
 supabase functions deploy checkin       --project-ref YOUR-PROJECT-REF
+supabase functions deploy delete-account --project-ref YOUR-PROJECT-REF
 supabase functions deploy admin --no-verify-jwt --project-ref YOUR-PROJECT-REF
 ```
 
@@ -103,13 +104,21 @@ each function automatically; redeploy a function after changing it or
 | `analyze-meal` | v1 photo estimate, kept for app builds already installed | shares the 30 photos |
 | `body-analysis` | Rough starting point from face-blurred body photos | 6 |
 | `checkin` | Weekly weigh-ins; monthly check-ins review progress and update the plan | 6 monthly reviews |
+| `delete-account` | Deletes the signed-in person's account: their stored photos and screenshots, contact messages, the CRM copy of their details, then the account and every row tied to it. Needs `{ "confirm": "DELETE" }` | n/a |
 | `admin` | The dashboard's API (login, overview, users, CSV, reports, replies) | n/a |
 
 Over a limit a function answers HTTP 429 with a message the app shows as
 is. Days are UTC days. All app functions run with the signed-in person's
 own token, so row-level security applies to everything they read and
-write. Only `admin`, the push sender and the settings lookup use the
-service role, which Supabase provides to functions automatically.
+write. Only `admin`, `delete-account` (for the signed-in person's own
+files and account, after checking their token), the push sender and the
+settings lookup use the service role, which Supabase provides to
+functions automatically.
+
+The coach, planner, meal swaps and meal ideas, check-ins and body analysis
+need a date of birth: without one they answer 403 `age_required`, under 13
+they answer 403 `forbidden`. Each request spends at most about 110 seconds
+on AI models in total, then falls back to the built-in rules.
 
 ### AI key and models
 

@@ -5,11 +5,11 @@
 
 import { supabase } from '../lib/supabase';
 import { isCloudUser } from '../lib/cloud';
-import { ApiError, codeForStatus, MESSAGES, needsAccount } from './errors';
+import { ApiError, codeForStatus, errorBody, MESSAGES, needsAccount } from './errors';
 import type { ApiErrorCode } from '../types';
 
 const KNOWN: readonly ApiErrorCode[] = [
-  'needs_account', 'offline', 'bad_request', 'unauthorized', 'forbidden', 'not_found', 'payload_too_large',
+  'needs_account', 'offline', 'bad_request', 'unauthorized', 'forbidden', 'age_required', 'not_found', 'payload_too_large',
   'limit_reached', 'not_configured', 'ai_busy', 'server_error',
 ];
 
@@ -29,22 +29,20 @@ export async function invoke<T>(name: string, body: Record<string, unknown>): Pr
       let message: string | undefined;
       let code: string | undefined;
       try {
-        const j = (await res.clone().json()) as { error?: unknown; code?: unknown };
-        if (typeof j?.error === 'string') message = j.error;
-        if (typeof j?.code === 'string') code = j.code;
+        ({ message, code } = errorBody(await res.clone().json()));
       } catch {
         /* not JSON */
       }
       const c: ApiErrorCode = code && (KNOWN as readonly string[]).includes(code) ? (code as ApiErrorCode) : code === 'session_expired' ? 'unauthorized' : codeForStatus(res.status);
-      const fallback = res.status === 401 ? MESSAGES.session : MESSAGES.generic;
+      const fallback = res.status === 401 ? MESSAGES.session : c === 'age_required' ? MESSAGES.ageRequired : MESSAGES.generic;
       throw new ApiError(c, message || fallback, res.status);
     }
     const fetchFailed = (error as { name?: string }).name === 'FunctionsFetchError';
     throw new ApiError(fetchFailed ? 'offline' : 'server_error', fetchFailed ? MESSAGES.offline : MESSAGES.generic, fetchFailed ? 0 : 500);
   }
-  const maybe = data as { error?: unknown; code?: unknown } | null;
-  if (typeof maybe?.error === 'string' && maybe.error) {
-    throw new ApiError(typeof maybe.code === 'string' && (KNOWN as readonly string[]).includes(maybe.code) ? (maybe.code as ApiErrorCode) : 'server_error', maybe.error, 200);
+  const maybe = errorBody(data);
+  if (maybe.message) {
+    throw new ApiError(maybe.code && (KNOWN as readonly string[]).includes(maybe.code) ? (maybe.code as ApiErrorCode) : 'server_error', maybe.message, 200);
   }
   return data as T;
 }

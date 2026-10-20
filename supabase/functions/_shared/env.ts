@@ -5,7 +5,8 @@
 //                     row-level security applies to every read and write.
 //                     Every app-facing function uses this for user data.
 //   serviceClient()   the service role. Used only for: reading app_config,
-//                     the admin function, and sending push notifications.
+//                     the admin function, sending push notifications, and
+//                     delete-account (the caller's own files and account).
 //
 // Settings: setting('OPENROUTER_API_KEY') reads the Edge Function secret
 // first and falls back to the service-role-only `app_config` table (key,

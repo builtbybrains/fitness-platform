@@ -273,6 +273,15 @@ export function streakReminderId(day: string): string {
   return `built-streak-${day}`;
 }
 
+/** Cancel every scheduled BUILT reminder (ids starting "built-"), leaving
+    anything else on the phone alone. Safe everywhere; no-op on the web. */
+export async function cancelBuiltReminders(): Promise<void> {
+  const N = getNotifications();
+  if (!N) return;
+  const existing = await N.getAllScheduledNotificationsAsync().catch(() => []);
+  await Promise.all(existing.filter((n) => n.identifier.startsWith('built-')).map((n) => N.cancelScheduledNotificationAsync(n.identifier).catch(() => {})));
+}
+
 /** Cancel the "streak at risk" reminder for a day (call when that day's
     workout is marked done). Safe everywhere; no-op on the web. */
 export async function cancelStreakReminder(day: string): Promise<void> {

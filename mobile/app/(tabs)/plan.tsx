@@ -5,7 +5,11 @@
    and read what changed. Check-offs save to the account, or to this
    device without one. Day chips tilt under the finger; pull down to
    re-read the plan; while it loads, the week's shape stands in. Picking a
-   day slides the Stone pill along the strip to it. */
+   day slides the Stone pill along the strip to it. Under every day's card,
+   "Log a sport" adds football, a swim or anything else to that day and
+   lists what was logged; 30 minutes or more of sport (not walking) counts
+   as the day's workout
+   (streak.isTrainedDay), so its dot fills and the week ring moves. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, ScrollView, Text, View } from 'react-native';
@@ -16,7 +20,7 @@ import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { LOCATION_LABEL, movableDays, setsLabel, setsOf, WeekDay } from '../../src/planData';
 import { usePlan } from '../../src/planStore';
 import { useCelebration } from '../../src/celebration';
-import { Button, IconButton, LinkButton } from '../../src/components/Button';
+import { Button, IconButton } from '../../src/components/Button';
 import { CheckBox, Notice, ProgressBar, ScreenHeader } from '../../src/components/Bits';
 import { MacroLine, Segmented, StateBlock } from '../../src/components/training/Controls';
 import { MoveDaySheet } from '../../src/components/training/MoveDaySheet';
@@ -33,6 +37,10 @@ import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice'
 import { useAuth } from '../../src/auth';
 import { DAY_FULL, DAY_SHORT, plural, timeLabel } from '../../src/components/training/labels';
 import { weekCounts, weekStrip } from '../../src/lib/weekStrip';
+import { countsAsSport, isTrainedDay, SPORT_COUNTS_MINUTES, sportCounts } from '../../src/streak';
+import { Icon } from '../../src/components/Icon';
+import { ActivityRows } from '../../src/components/training/ActivityRows';
+import type { Activity } from '../../src/types';
 import { dateEyebrow, planHeaderStats, weekCountLabel } from '../../src/lib/headerStats';
 import type { PlanWorkoutV2 } from '../../src/types';
 
@@ -59,7 +67,9 @@ function DayChip({
   onPress: () => void;
   onPressed: (on: boolean) => void;
 }) {
-  const workoutDone = day.session.kind === 'workout' && day.done.workout;
+  // The dot marks a trained day: the workout done, or 30+ minutes of sport.
+  const workoutDone = isTrainedDay(day.done, day.sportMinutes);
+  const bySport = workoutDone && !day.done.workout;
   const rest = day.session.kind === 'rest';
   const dark = layered ? lit : selected;
   return (
@@ -70,7 +80,7 @@ function DayChip({
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       aria-selected={selected}
-      accessibilityLabel={`${DAY_FULL[day.index]}${today ? ', today' : ''}. ${rest ? 'Rest day' : day.session.focus}${workoutDone ? ', done' : ''}${day.moved ? ', moved this week' : ''}`}
+      accessibilityLabel={`${DAY_FULL[day.index]}${today ? ', today' : ''}. ${rest ? 'Rest day' : day.session.focus}${workoutDone ? (bySport ? ', trained with sport' : ', done') : ''}${day.moved ? ', moved this week' : ''}`}
       style={({ pressed }) => ({
         flex: 1,
         minWidth: 44,
@@ -263,6 +273,8 @@ export default function PlanTab() {
     replaceExercise,
     regenerate,
     reload,
+    activities,
+    removeActivity,
   } = usePlan();
   const { session, profileLoaded, profile, profileError } = useAuth();
   const celebration = useCelebration();
@@ -287,6 +299,7 @@ export default function PlanTab() {
   // The same done/planned count as Today's week strip.
   const week = useMemo(() => weekCounts(weekStrip(days, todayId)), [days, todayId]);
   const refreshControl = usePullRefresh(reload);
+  const dayActivities = useMemo(() => (day ? activities.filter((a) => a.day === day.id) : []), [activities, day]);
 
   const waiting = !planLoaded || (!!session && !profileLoaded);
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
@@ -383,11 +396,11 @@ export default function PlanTab() {
               <Text style={T.meta}>{day.session.kind === 'rest' ? day.session.note : ''}</Text>
             </View>
             {canMove ? <Button variant="secondary" icon="calendar" label="Move rest day" onPress={() => setMoveOpen(true)} /> : null}
-            <LinkButton align="flex-start" onPress={() => router.push('/activity/log')} accessibilityLabel="Log an activity">
-              <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15, color: C.text }}>Went for a walk or a game? Log it</Text>
-            </LinkButton>
           </View>
         )}
+
+        {/* A day still to come has nothing to log yet. */}
+        {day.id <= todayId ? <SportSection day={day} isToday={selected === todayIdx} list={dayActivities} onRemove={(id) => void removeActivity(id)} /> : null}
 
         {weekChanged ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -507,6 +520,58 @@ function WorkoutCard({
           accessibilityLabel={day.done.workout ? 'Mark as not done' : 'Mark workout complete'}
         />
       </View>
+    </View>
+  );
+}
+
+/** "Log a sport" under the day's card: what was logged that day, and the
+    button that opens the log sheet on that day. 30 minutes or more counts
+    as the day's workout without ticking the generated one. */
+function SportSection({ day, isToday, list, onRemove }: { day: WeekDay; isToday: boolean; list: Activity[]; onRemove: (id: string) => void }) {
+  const total = list.reduce((a, x) => a + x.minutes, 0);
+  // Walking is logged and shown, but only sport counts toward the 30 minutes.
+  const sport = list.reduce((a, x) => a + (countsAsSport(x.kind) ? x.minutes : 0), 0);
+  const counts = sportCounts(sport);
+  const whose = isToday ? "today's" : `${DAY_FULL[day.index]}'s`;
+  const workoutDay = day.session.kind === 'workout';
+  const line = !list.length
+      ? `Played football or went for a swim? Add it. ${SPORT_COUNTS_MINUTES} minutes or more counts as the day's workout.`
+      : day.done.workout
+        ? `${total} min on top of your workout.`
+        : counts
+          ? `${total} min logged.`
+          : sport === 0
+            ? `${total} min logged. Walks don't count as the day's workout; ${SPORT_COUNTS_MINUTES} minutes of sport does.`
+            : `${total} min logged. ${SPORT_COUNTS_MINUTES - sport} more minutes of sport and it counts as the day's workout.`;
+  const countsTitle = workoutDay ? `Counts as ${whose} workout.` : 'Counts as a training day.';
+  const countsDetail = workoutDay ? "The plan's workout stays open if you want it." : 'Your streak keeps going.';
+  return (
+    <View style={[cardStyle, { gap: 12 }]}>
+      <View style={{ gap: 4 }}>
+        <Text style={T.h3} accessibilityRole="header">
+          Sport and activity
+        </Text>
+        <Text style={T.meta}>{line}</Text>
+      </View>
+      {counts && !day.done.workout ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }} accessible accessibilityLabel={`${countsTitle} ${countsDetail}`} accessibilityLiveRegion="polite">
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.greenTint, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="check" size={16} color={C.green} strokeWidth={2.6} />
+          </View>
+          <View style={{ flex: 1, gap: 2, paddingTop: 3 }}>
+            <Text style={T.bodyStrong}>{countsTitle}</Text>
+            <Text style={T.meta}>{countsDetail}</Text>
+          </View>
+        </View>
+      ) : null}
+      {list.length ? <ActivityRows list={list} onRemove={onRemove} /> : null}
+      <Button
+        variant="secondary"
+        icon="plus"
+        label="Log a sport"
+        onPress={() => router.push({ pathname: '/activity/log', params: { day: day.id } })}
+        accessibilityLabel={`Log a sport for ${isToday ? 'today' : DAY_FULL[day.index]}`}
+      />
     </View>
   );
 }

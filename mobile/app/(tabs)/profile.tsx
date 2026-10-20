@@ -1,10 +1,11 @@
 /* Profile: the account and phone on file, every questionnaire answer
    (grouped, each group editable), what the coach remembers, check-ins,
-   health apps (phones only), reminders, reports, the privacy note and
-   sign out. */
+   health apps (phones only), reminders, reports, the privacy note, sign
+   out and, last, deleting the account (or, without one, the data on this
+   phone) behind a typed confirmation. */
 
 import { useCallback, useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -12,12 +13,18 @@ import { C, card as cardStyle, FONT, R, screen, T } from '../../src/design';
 import { useAuth } from '../../src/auth';
 import { isCloudUser } from '../../src/lib/cloud';
 import { showConfirm } from '../../src/lib/dialog';
+import { haptic } from '../../src/lib/haptics';
+import { cancelBuiltReminders } from '../../src/lib/notify';
+import { supabaseConfigured } from '../../supabase.config';
+import { asApiError } from '../../src/api/errors';
+import { clearPersonOnDevice, deleteAccount, deleteConfirmed, DELETE_WORD, forgetDeviceIdentity } from '../../src/api/account';
 import { ageOf } from '../../src/api/profile';
 import { listMyReports, unreadCount } from '../../src/api/reports';
 import { disableHealthSync, enableHealthSync, syncHealth } from '../../src/api/health';
 import { healthPlatform } from '../../src/api/device/health';
 import { Button } from '../../src/components/Button';
 import { Notice, ScreenHeader } from '../../src/components/Bits';
+import { Field } from '../../src/components/Field';
 import { Icon } from '../../src/components/Icon';
 import {
   ACTIVITY_LEVELS,
@@ -33,11 +40,13 @@ import {
   phoneText,
   timeText,
 } from '../../src/components/onboarding/options';
+import { SPORTS } from '../../src/data/activities';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { OfflineBlock, OfflineNotice } from '../../src/components/OfflineNotice';
 import { StateBlock } from '../../src/components/training/Controls';
 import { Row, RowGroup } from '../../src/components/profile/SubScreen';
-import { ExtraIcon } from '../../src/components/profile/icons';
+import { AnyIcon, ExtraIcon } from '../../src/components/profile/icons';
+import { Sheet } from '../../src/components/training/Sheet';
 import type { ProfileV2 } from '../../src/types';
 
 const join = (parts: (string | number | null | undefined | false)[]) => parts.filter(Boolean).join(' · ');
@@ -47,9 +56,11 @@ function summaries(p: ProfileV2) {
   const allergies = labelsOf(ALLERGIES, p.allergies.filter((a) => a !== 'other'));
   if (p.allergies.includes('other') && p.allergies_other) allergies.push(p.allergies_other);
   const injuries = labelsOf(INJURY_AREAS, p.injury_areas);
+  const sports = labelsOf(SPORTS, (p.sports ?? []).filter((x) => x !== 'other'));
+  if (p.sports?.includes('other') && p.sports_other) sports.push(p.sports_other);
   return {
     about: join([p.name, age != null && `${age} years`, p.height_cm && `${p.height_cm} cm`, p.weight_kg && `${p.weight_kg} kg`]),
-    lifestyle: join([labelOf(ACTIVITY_LEVELS, p.activity_level), labelOf(JOB_ACTIVITIES, p.job_activity), p.sleep_hours != null && `${p.sleep_hours} h sleep`]),
+    lifestyle: join([labelOf(ACTIVITY_LEVELS, p.activity_level), sports.length ? sports.join(', ') : null, labelOf(JOB_ACTIVITIES, p.job_activity), p.sleep_hours != null && `${p.sleep_hours} h sleep`]),
     goal: join([labelOf(GOALS, p.goal), p.timeline_months && `${p.timeline_months} month${p.timeline_months === 1 ? '' : 's'}`, p.target_weight_kg && `target ${p.target_weight_kg} kg`]),
     training: join([labelOf(LOCATIONS, p.train_location), daysText(p.training_days), timeText(p.training_time)]),
     food: join([labelOf(DIETS, p.diet_type), allergies.length ? `No ${allergies.join(', ').toLowerCase()}` : 'No allergies']),
@@ -136,6 +147,133 @@ function HealthCard() {
         {on ? <Button compact variant="secondary" icon="refresh" label="Sync now" onPress={syncNow} busy={busy === 'sync'} /> : null}
       </View>
     </View>
+  );
+}
+
+/** The last row on Profile: deletes the account, or for a device-only
+    person the data on this phone, once they type DELETE in the sheet. */
+function DeleteData() {
+  const { userId, signOut, continueOffline } = useAuth();
+  const cloud = isCloudUser(userId);
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const ready = deleteConfirmed(typed);
+  const label = cloud ? 'Delete account' : 'Delete my data';
+
+  function show() {
+    setTyped('');
+    setErr(null);
+    setOpen(true);
+  }
+
+  function close() {
+    if (!busy) setOpen(false);
+  }
+
+  async function confirm() {
+    if (!userId || !ready || busy) return;
+    haptic.heavy();
+    setBusy(true);
+    setErr(null);
+    if (cloud) {
+      try {
+        await deleteAccount(userId);
+      } catch (e) {
+        // Nothing on the phone changes and the person stays signed in.
+        setErr(asApiError(e).message);
+        setBusy(false);
+        return;
+      }
+    }
+    await clearPersonOnDevice(userId);
+    if (!cloud) await forgetDeviceIdentity();
+    await signOut();
+    // A reschedule already in flight could land after the first cancel.
+    await cancelBuiltReminders();
+    setBusy(false);
+    setOpen(false);
+    if (!supabaseConfigured) {
+      // No accounts in this build: start again as a new device-only person.
+      await continueOffline();
+      router.replace('/');
+      return;
+    }
+    router.replace('/(auth)/login');
+  }
+
+  return (
+    <>
+      <RowGroup>
+        <Pressable
+          onPress={show}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityHint={cloud ? 'Opens a confirmation. Deleting your account cannot be undone.' : 'Opens a confirmation. Deleting the data on this phone cannot be undone.'}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            minHeight: 56,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            backgroundColor: pressed ? C.raised : C.card,
+          })}
+        >
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <AnyIcon name="trash" size={20} color={C.danger} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontFamily: FONT.bodyMedium, fontSize: 16, lineHeight: 22, color: C.danger }}>{label}</Text>
+            <Text style={T.meta}>{cloud ? 'Removes your account and everything in it' : 'Removes everything BUILT keeps on this phone'}</Text>
+          </View>
+          <Icon name="chevronRight" size={18} color={C.faint} />
+        </Pressable>
+      </RowGroup>
+
+      <Sheet
+        visible={open}
+        onClose={close}
+        title={cloud ? 'Delete your account?' : 'Delete the data on this phone?'}
+        footer={
+          <View style={{ gap: 10 }}>
+            <Button
+              label={busy ? 'Deleting' : label}
+              variant="danger"
+              icon="trash"
+              disabled={!ready}
+              busy={busy}
+              onPress={confirm}
+              accessibilityHint={ready ? undefined : `Type ${DELETE_WORD} above first.`}
+            />
+            <Button label="Cancel" variant="secondary" onPress={close} disabled={busy} />
+          </View>
+        }
+      >
+        <Text style={[T.body, { color: C.stone }]}>
+          {cloud
+            ? 'This permanently deletes your plan, logs, chats, what your coach remembers and your body photos. It cannot be undone.'
+            : 'This permanently deletes your plan, logs, chats, what your coach remembers and your answers from this phone. It cannot be undone.'}
+        </Text>
+        <Field
+          label={`Type ${DELETE_WORD} to confirm`}
+          value={typed}
+          onChangeText={(t) => {
+            setTyped(t);
+            if (err) setErr(null);
+          }}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          autoComplete="off"
+          editable={!busy}
+          returnKeyType="done"
+          onSubmitEditing={() => void confirm()}
+          accessibilityLabel={`Type ${DELETE_WORD} to confirm`}
+        />
+        {err ? <Notice tone="error">{err}</Notice> : null}
+      </Sheet>
+    </>
   );
 }
 
@@ -238,6 +376,8 @@ export default function ProfileTab() {
         </View>
 
         <Button label="Sign out" variant="danger" onPress={confirmSignOut} />
+
+        <DeleteData />
       </ScrollView>
     </SafeAreaView>
   );
