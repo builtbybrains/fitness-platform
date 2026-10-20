@@ -52,6 +52,15 @@ Every NEEDS OMAR line carries its own link and its own instructions:
   app and which screen, in order.
 - One action per numbered line. Two actions means two lines.
 
+Deliver the whole thing asked for:
+
+- Hand over everything the request names, complete and usable. An account or login
+  means the link to sign in, the email or username, and the password, all three in the
+  reply. Never a "how to make it yourself" in place of the thing.
+- If a tool or permission stops you finishing, say so on the Status line. Put the one
+  approval or setting that unblocks you first under NEEDS OMAR, and say exactly what he
+  gets the moment it is granted. A half-done result is never presented as the answer.
+
 Never hand him a GitHub task:
 
 - Opening a pull request, merging one, deleting a branch, changing who has repo
