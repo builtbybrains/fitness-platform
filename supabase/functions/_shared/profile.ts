@@ -6,6 +6,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { ageOn, ageRule, type AgeRule, type ActivityLevel, type Goal, type JobActivity, trainingSchedule, WEEKDAY_NAMES } from './rules.ts';
 import { availableEquipment, type Equipment, type InjuryArea, injuriesFromText, INJURY_AREAS, type TrainLocation } from './exercises.ts';
+import { fail } from './http.ts';
 
 export type ProfileRow = {
   id: string;
@@ -44,6 +45,8 @@ export type ProfileRow = {
 };
 
 export type Person = ProfileRow & {
+  /** From birth_date only (null without one). The `age` column is written
+      by the client, so it never decides the age rule. */
   ageYears: number | null;
   rule: AgeRule;
   minor: boolean;
@@ -97,7 +100,7 @@ export function toPerson(p: Partial<ProfileRow>, today: string): Person {
     timezone: p.timezone ?? 'Asia/Beirut',
     onboarding_done_at: p.onboarding_done_at ?? null,
   };
-  const ageYears = ageOn(row.birth_date, today) ?? row.age;
+  const ageYears = ageOn(row.birth_date, today);
   const rule = ageRule(ageYears);
   const injuryAreas = [...new Set([
     ...row.injury_areas.filter((a): a is InjuryArea => (INJURY_AREAS as readonly string[]).includes(a)),
@@ -112,6 +115,15 @@ export function toPerson(p: Partial<ProfileRow>, today: string): Person {
     available: availableEquipment(row.train_location ?? 'home_none', row.equipment),
     injuryAreas,
   };
+}
+
+/** The age rule as a response: under 13, or no date of birth, stops the
+    request (call it right after loadPerson, before any quota is taken).
+    null means go ahead (adult, or a minor under the minor rules). */
+export function ageGate(p: Pick<Person, 'rule'>): Response | null {
+  if (p.rule === 'blocked') return fail('forbidden', 'BUILT is for people aged 13 and over.', 403);
+  if (p.rule === 'unknown') return fail('age_required', 'Add your date of birth in Profile to use the coach and plans.', 403);
+  return null;
 }
 
 const LABELS: Record<string, string> = {

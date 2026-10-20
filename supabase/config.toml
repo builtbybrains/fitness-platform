@@ -6,3 +6,8 @@ project_id = "fitness-platform"
 # its own session token instead of a Supabase JWT.
 [functions.admin]
 verify_jwt = false
+
+# Listed although it is the default: delete-account uses the service role,
+# so the platform must check the person's JWT before the code runs.
+[functions.delete-account]
+verify_jwt = true

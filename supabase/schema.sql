@@ -1525,7 +1525,12 @@ revoke update, delete, truncate, references, trigger on public.problem_reports, 
 revoke update, truncate, references, trigger on public.body_photos, public.body_analyses, public.coach_memory from authenticated;
 revoke insert, update on public.push_tokens from authenticated;
 
-grant select, insert, update, delete on public.profiles, public.plan_days,
+grant select, insert, update on public.profiles to authenticated;
+-- No DELETE on profiles: account deletion goes through the delete-account
+-- function, and a deleted profile row would bypass the age rules.
+revoke delete on public.profiles from authenticated;
+
+grant select, insert, update, delete on public.plan_days,
   public.water, public.weights, public.ai_plans, public.plan_overrides,
   public.food_logs, public.activities, public.health_daily, public.checkins
   to authenticated;

@@ -4,7 +4,7 @@
    (supabase-js from esm.sh) mocked and no AI key set, so every path below is
    the built-in rules path. */
 
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({ createClient: () => ({}) }));
 (globalThis as { Deno?: unknown }).Deno = { env: { get: () => undefined }, serve: () => undefined };
@@ -288,5 +288,120 @@ describe('the person for the AI', () => {
     expect(profile.describePerson(person())).not.toContain('Plays:');
     // An 'other' without a name adds nothing.
     expect(profile.sportsText({ sports: ['tennis', 'other'], sports_other: '' })).toBe('tennis');
+  });
+});
+
+describe('the trusted day', () => {
+  let http: Mod;
+  beforeAll(async () => {
+    http = await server('http');
+  });
+  const utc = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+
+  it('accepts today, yesterday and tomorrow (UTC)', () => {
+    for (const d of [utc(0), utc(-1), utc(1)]) expect(http.localDay(d)).toBe(d);
+  });
+
+  it('refuses dates that do not exist, are far away or are not dates', () => {
+    const today = utc(0);
+    for (const v of ['2026-02-31', '2040-01-01', utc(-2), utc(2), '2026-13-01', '0026-01-01', '2026-1-1', '', null, undefined, 20260101]) {
+      expect(http.localDay(v)).toBe(today);
+    }
+  });
+
+  it('works around a fixed server clock', () => {
+    const now = new Date('2026-03-01T03:00:00Z');
+    expect(http.localDay('2026-02-28', now)).toBe('2026-02-28');
+    expect(http.localDay('2026-02-29', now)).toBe('2026-03-01');
+    expect(http.localDay('2026-03-02', now)).toBe('2026-03-02');
+    expect(http.localDay('2026-03-03', now)).toBe('2026-03-01');
+  });
+});
+
+describe('the age gate', () => {
+  it('takes the age rule from the date of birth only, never the age column', () => {
+    const noBirth = person({ birth_date: null, age: 30 });
+    expect(noBirth.rule).toBe('unknown');
+    expect(noBirth.minor).toBe(false);
+    expect(noBirth.ageYears).toBeNull();
+    const teen = person({ birth_date: '2011-09-01', age: 30 });
+    expect(teen.ageYears).toBe(15);
+    expect(teen.rule).toBe('minor');
+    expect(teen.minor).toBe(true);
+    expect(person({ birth_date: '2015-01-01', age: 30 }).rule).toBe('blocked');
+  });
+
+  it('answers 403 for unknown and under 13, nothing for adults and minors', async () => {
+    const unknown = profile.ageGate(person({ birth_date: null, age: 30 }));
+    expect(unknown.status).toBe(403);
+    expect(await unknown.json()).toEqual({ error: 'Add your date of birth in Profile to use the coach and plans.', code: 'age_required' });
+    const blocked = profile.ageGate(person({ birth_date: '2015-01-01' }));
+    expect(blocked.status).toBe(403);
+    expect(await blocked.json()).toEqual({ error: 'BUILT is for people aged 13 and over.', code: 'forbidden' });
+    expect(profile.ageGate(person())).toBeNull();
+    expect(profile.ageGate(person({ birth_date: '2011-09-01' }))).toBeNull();
+  });
+});
+
+describe('one AI deadline per request', () => {
+  const provider = { name: 'openrouter', url: 'https://ai.test/v1/chat', headers: {}, models: ['first:free', 'second:free'] };
+  const req = (extra: Record<string, unknown>) => ({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 10, temperature: 0, timeoutMs: 60_000, ...extra });
+  // A model that never answers: the request only ends when its signal aborts.
+  const hanging = vi.fn((_url: string, init: { signal: AbortSignal }) => new Promise((_, reject) => {
+    init.signal.addEventListener('abort', () => reject(init.signal.reason ?? new Error('aborted')));
+  }));
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    hanging.mockClear();
+  });
+
+  it('cuts the first model to the time left and skips the next one', async () => {
+    // A simulated clock: when a timeout fires, that much time has passed.
+    let clock = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    const timeouts: number[] = [];
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+      timeouts.push(ms);
+      const c = new AbortController();
+      setTimeout(() => {
+        clock += ms;
+        c.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+      }, 20);
+      return c.signal;
+    });
+    vi.stubGlobal('fetch', hanging);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const started = performance.now();
+    const out = await ai.chat(provider, req({ deadline: clock + 6_000 }), (t: string) => t, 'test');
+    expect(out).toBeNull();
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(hanging).toHaveBeenCalledTimes(1);
+    expect(timeouts).toEqual([6_000]);
+    expect(warn.mock.calls.map((c) => String(c[0]))).toContain('[test] deadline reached');
+  });
+
+  it('tries no model when less than 5 s are left', async () => {
+    vi.stubGlobal('fetch', hanging);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(await ai.chat(provider, req({ deadline: Date.now() + 4_000 }), (t: string) => t, 'test')).toBeNull();
+    expect(hanging).not.toHaveBeenCalled();
+  });
+
+  it('without a deadline walks every model with its own timeout', async () => {
+    const timeouts: number[] = [];
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+      timeouts.push(ms);
+      const c = new AbortController();
+      setTimeout(() => c.abort(new DOMException('The operation timed out.', 'TimeoutError')), 5);
+      return c.signal;
+    });
+    vi.stubGlobal('fetch', hanging);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(await ai.chat(provider, req({}), (t: string) => t, 'test')).toBeNull();
+    expect(hanging).toHaveBeenCalledTimes(2);
+    expect(timeouts).toEqual([60_000, 60_000]);
   });
 });

@@ -96,6 +96,8 @@ export type PlanContext = {
       floors are applied again after it. */
   kcalDelta?: number;
   today: string;
+  /** The request's AI deadline (epoch ms, see ai.ts REQUEST_BUDGET_MS). */
+  deadline?: number;
 };
 
 /** Move the calorie target by `delta`, then re-apply every floor: the
@@ -561,6 +563,7 @@ export async function buildPlan(ctx: PlanContext): Promise<{ plan: PlanV2; chang
         max_tokens: 6000,
         temperature: 0.6,
         timeoutMs: 75_000,
+        deadline: ctx.deadline,
       },
       parseFill,
       'planner',

@@ -53,9 +53,9 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { body, fail, json, localDay, preflight, serverError } from '../_shared/http.ts';
 import { requireUser } from '../_shared/env.ts';
-import { aiProvider, chat, clampInt, extractJson, str } from '../_shared/ai.ts';
+import { aiProvider, chat, clampInt, extractJson, REQUEST_BUDGET_MS, str } from '../_shared/ai.ts';
 import { MINOR_RULES, SAFETY_RULES } from '../_shared/safety.ts';
-import { describePerson, loadPerson } from '../_shared/profile.ts';
+import { ageGate, describePerson, loadPerson } from '../_shared/profile.ts';
 import { cleanFacts, loadMemory, memoryForPrompt, type MemoryCategory, saveFacts } from '../_shared/memory.ts';
 import { injuriesFromText } from '../_shared/exercises.ts';
 import { LIMITS, limitReached, utcDayStart } from '../_shared/usage.ts';
@@ -71,13 +71,14 @@ const PLAN_CHANGE_RE = /(change|update|adjust|redo|rebuild|modify|swap|replace|m
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  const deadline = Date.now() + REQUEST_BUDGET_MS;
   try {
     const auth = await requireUser(req, 'Sign in to talk to your coach.');
     if (auth instanceof Response) return auth;
     const { supabase, user } = auth;
 
     const b = await body(req);
-    if (b.mode === 'daily_note') return await dailyNote(supabase, user.id, b);
+    if (b.mode === 'daily_note') return await dailyNote(supabase, user.id, b, deadline);
     const userMessage = str(b.message, 800);
     if (!userMessage) return fail('bad_request', 'Type a message first.', 400);
     const conversationId = str(b.conversationId, 60, 'default');
@@ -111,6 +112,8 @@ Deno.serve(async (req) => {
       supabase.from('coach_messages').select('role, body').eq('user_id', user.id).eq('conversation_id', conversationId).order('created_at', { ascending: false }).order('role', { ascending: true }).limit(10),
       supabase.from('coach_threads').select('title, message_count').eq('user_id', user.id).eq('id', conversationId).maybeSingle(),
     ]);
+    const gate = ageGate(person);
+    if (gate) return gate;
     if (threadRow.error) console.warn('[coach] reading the thread failed:', threadRow.error.message);
 
     // Today against the plan (Monday-first generic week).
@@ -209,7 +212,7 @@ Deno.serve(async (req) => {
     const ai = await aiProvider('text');
     const [replyAnswer, extracted] = await Promise.all([
       ai
-        ? chat(ai, { messages: [{ role: 'system', content: system }, ...turns, { role: 'user', content: userMessage }], max_tokens: 600, temperature: 0.6, timeoutMs: 45_000 }, (t) => cleanReply(t) || null, 'coach')
+        ? chat(ai, { messages: [{ role: 'system', content: system }, ...turns, { role: 'user', content: userMessage }], max_tokens: 600, temperature: 0.6, timeoutMs: 45_000, deadline }, (t) => cleanReply(t) || null, 'coach')
         : Promise.resolve(null),
       ai
         ? chat(
@@ -234,6 +237,7 @@ Deno.serve(async (req) => {
               max_tokens: 400,
               temperature: 0,
               timeoutMs: 25_000,
+              deadline,
             },
             (t) => extractJson(t),
             'coach:memory',
@@ -343,8 +347,11 @@ function cleanNote(text: string): string | null {
   return t.length >= 12 ? t : null;
 }
 
-async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<string, unknown>): Promise<Response> {
+async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<string, unknown>, deadline: number): Promise<Response> {
   const today = localDay(b.localDay);
+  const person = await loadPerson(supabase, userId, today);
+  const gate = ageGate(person);
+  if (gate) return gate;
   const ai = await aiProvider('text');
   if (!ai) return json({ note: '' });
 
@@ -352,7 +359,7 @@ async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<str
   if (quotaErr) throw new Error(`bump_ai_usage failed: ${quotaErr.message}`);
   if (count === null || count === undefined) return limitReached('Your coach already wrote today\'s notes. A new one comes tomorrow.');
 
-  const [person, memory] = await Promise.all([loadPerson(supabase, userId, today), loadMemory(supabase, userId)]);
+  const memory = await loadMemory(supabase, userId);
   const system = [
     'You are the BUILT coach writing the one short note a person sees at the top of their Today screen.',
     `Write ONE or TWO sentences, at most ${NOTE_MAX} characters in total, in the second person ("you").`,
@@ -368,7 +375,7 @@ async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<str
 
   const answer = await chat(
     ai,
-    { messages: [{ role: 'system', content: system }, { role: 'user', content: 'Write my note for today.' }], max_tokens: 120, temperature: 0.7, timeoutMs: 20_000 },
+    { messages: [{ role: 'system', content: system }, { role: 'user', content: 'Write my note for today.' }], max_tokens: 120, temperature: 0.7, timeoutMs: 20_000, deadline },
     cleanNote,
     'coach:note',
   );

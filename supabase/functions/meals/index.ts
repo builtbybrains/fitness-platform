@@ -19,10 +19,10 @@
 
 import { body, fail, json, localDay, preflight, serverError } from '../_shared/http.ts';
 import { requireUser } from '../_shared/env.ts';
-import { aiProvider, str } from '../_shared/ai.ts';
+import { aiProvider, REQUEST_BUDGET_MS, str } from '../_shared/ai.ts';
 import { cleanEstimate, cleanMeal, cleanQuestions, type FoodEstimate } from '../_shared/food.ts';
 import { analyzePhoto, analyzeText, finalise, generateMeal, isSlot, swapMeal } from '../_shared/meals.ts';
-import { loadPerson } from '../_shared/profile.ts';
+import { ageGate, loadPerson } from '../_shared/profile.ts';
 import { LIMITS, limitReached, takeQuota } from '../_shared/usage.ts';
 
 const MAX_IMAGE_BASE64 = 2_500_000;
@@ -30,6 +30,7 @@ const MAX_IMAGE_BASE64 = 2_500_000;
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  const deadline = Date.now() + REQUEST_BUDGET_MS;
   try {
     const auth = await requireUser(req, 'Sign in to log food with BUILT.');
     if (auth instanceof Response) return auth;
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
         if (!(await takeQuota(supabase, 'meal_photo'))) {
           return limitReached(`You've checked ${LIMITS.meal_photo} photos today, the daily limit. Type what you ate instead, or try again tomorrow.`);
         }
-        const result = await analyzePhoto(ai, image, str(b.note, 200));
+        const result = await analyzePhoto(ai, image, str(b.note, 200), true, deadline);
         if (!result) return fail('ai_busy', 'Photo check is busy right now. Try again in a moment, or type what you ate.', 502);
         return json(result);
       }
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
         if (!(await takeQuota(supabase, 'food_text'))) {
           return limitReached(`You've logged ${LIMITS.food_text} foods by text today, the daily limit. Try again tomorrow.`);
         }
-        return json(await analyzeText(await aiProvider('text'), text));
+        return json(await analyzeText(await aiProvider('text'), text, deadline));
       }
 
       case 'answer': {
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
         if (!(await takeQuota(supabase, 'food_text'))) {
           return limitReached(`You've reached today's limit for food estimates. Save this one as it is, or try again tomorrow.`);
         }
-        const { estimate, model } = await finalise(await aiProvider('text'), draft, cleanQuestions(b.questions), answers);
+        const { estimate, model } = await finalise(await aiProvider('text'), draft, cleanQuestions(b.questions), answers, deadline);
         return json({ status: 'final', estimate, model });
       }
 
@@ -86,11 +87,13 @@ Deno.serve(async (req) => {
         const slot = isSlot(raw?.slot) ? raw!.slot : null;
         const meal = raw && slot ? cleanMeal(raw, slot) : null;
         if (!meal) return fail('bad_request', 'Pick a meal from your plan to swap.', 400);
+        const person = await loadPerson(supabase, user.id, localDay(b.localDay));
+        const gate = ageGate(person);
+        if (gate) return gate;
         if (!(await takeQuota(supabase, 'meal_swap'))) {
           return limitReached(`You've swapped ${LIMITS.meal_swap} meals today, the daily limit. Try again tomorrow.`);
         }
-        const person = await loadPerson(supabase, user.id, localDay(b.localDay));
-        const { options, model } = await swapMeal(await aiProvider('text'), meal, str(b.reason, 200), person);
+        const { options, model } = await swapMeal(await aiProvider('text'), meal, str(b.reason, 200), person, deadline);
         if (!options.length) return fail('ai_busy', "We couldn't find a swap that fits your diet right now. Try again in a moment.", 502);
         return json({ options, model });
       }
@@ -102,11 +105,13 @@ Deno.serve(async (req) => {
         const kcal = Number(b.kcal) > 0 ? Math.min(2000, Math.round(Number(b.kcal))) : null;
         const ai = await aiProvider('text');
         if (!ai) return fail('not_configured', "Meal ideas aren't set up yet.", 503);
+        const person = await loadPerson(supabase, user.id, localDay(b.localDay));
+        const gate = ageGate(person);
+        if (gate) return gate;
         if (!(await takeQuota(supabase, 'meal_generate'))) {
           return limitReached(`You've asked for ${LIMITS.meal_generate} meal ideas today, the daily limit. Try again tomorrow.`);
         }
-        const person = await loadPerson(supabase, user.id, localDay(b.localDay));
-        const result = await generateMeal(ai, have, slot, kcal, person);
+        const result = await generateMeal(ai, have, slot, kcal, person, deadline);
         if (!result) return fail('ai_busy', "Couldn't come up with a meal right now. Try again in a moment.", 502);
         return json(result);
       }

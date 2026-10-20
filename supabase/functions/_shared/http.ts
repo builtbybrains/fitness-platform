@@ -21,8 +21,10 @@ export type ErrorCode =
   | 'locked'
   | 'limit_reached'
   | 'needs_profile'
+  | 'age_required'
   | 'not_configured'
   | 'ai_busy'
+  | 'delete_failed'
   | 'server_error';
 
 export function json(body: unknown, status = 200, headers: Record<string, string> = CORS): Response {
@@ -60,8 +62,18 @@ export async function body(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
-/** yyyy-mm-dd from the client (its LOCAL day), or today's UTC day. */
-export function localDay(v: unknown): string {
-  const s = String(v ?? '');
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : new Date().toISOString().slice(0, 10);
+/** The client's LOCAL day (yyyy-mm-dd) when it is a real calendar date
+    within one day of the server's UTC date (every time zone's local day
+    is), else the server's UTC day. Ages are computed from this day, so a
+    client can never move it further. */
+export function localDay(v: unknown, now = new Date()): string {
+  const today = now.toISOString().slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v ?? ''));
+  if (!m) return today;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const at = Date.UTC(y, mo - 1, d);
+  const back = new Date(at);
+  if (back.getUTCFullYear() !== y || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d) return today;
+  const todayAt = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.abs(at - todayAt) <= 86_400_000 ? m[0] : today;
 }
