@@ -70,7 +70,7 @@ function walk(dir, out = []) {
   }
   return out;
 }
-const distDir = ['out', 'dist', '.next/server/app'].map((d) => join(ROOT, d)).find(existsSync);
+const distDir = ['out', 'dist', '.next/server/app', '.output/public'].map((d) => join(ROOT, d)).find(existsSync);
 if (distDir) {
   const files = walk(distDir).filter((f) => /\.(html|js|css|json|txt|svg|rsc)$/.test(f));
   let hits = 0;
@@ -79,7 +79,7 @@ if (distDir) {
     for (const bad of FORBIDDEN) if (c.includes(bad)) { hits++; fail(`forbidden "${bad}" in ${f.replace(ROOT + '/', '')}`); }
   }
   if (!hits) ok(`forbidden-string scan clean across ${files.length} shipped files`);
-} else warn('no out/ dist/ or .next build found; forbidden-string scan skipped (build first)');
+} else warn('no out/ dist/ .next or .output build found; forbidden-string scan skipped (build first)');
 
 // ---------- 3. browser sweep ----------
 let base = opt('--url', '');

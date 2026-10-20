@@ -50,7 +50,11 @@ export type DailyNoteSummary = {
   focus?: string;
   minutes?: number;
   workoutDone?: boolean;
-  /** Workouts done and planned in the last 7 days, today included. */
+  /** Sport logged today when it reaches 30 minutes and so counts as the
+      day's workout, e.g. "football 60 min". */
+  sportToday?: string;
+  /** Trained days (workout done, or 30+ minutes of sport) and planned
+      workouts in the last 7 days, today included. */
   done7: number;
   planned7: number;
   streak: number;

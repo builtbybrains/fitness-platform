@@ -8,11 +8,11 @@
 
 import type { ActivityLevel, DailyTargets, Goal, JobActivity, PaceCheck, TimelineMonths } from '../api/rules';
 import type { Equipment, InjuryArea, Muscle, TrainLocation } from '../data/exercises';
-import type { ActivityKind, Effort } from '../data/activities';
+import type { ActivityKind, Effort, SportKind } from '../data/activities';
 
 export type { ActivityLevel, DailyTargets, Goal, JobActivity, PaceCheck, TimelineMonths } from '../api/rules';
 export type { Equipment, Exercise, InjuryArea, Level, Muscle, Pattern, TrainLocation } from '../data/exercises';
-export type { ActivityKind, Effort } from '../data/activities';
+export type { ActivityKind, Effort, SportKind } from '../data/activities';
 
 // ═══════════════════════════════ errors ═══════════════════════════════
 
@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | 'bad_request' // the input was refused (message says why)
   | 'unauthorized' // signed out or the session ended
   | 'forbidden' // not allowed (e.g. under 13)
+  | 'age_required' // AI functions: no date of birth on file yet (HTTP 403)
   | 'not_found'
   | 'payload_too_large' // photo too big
   | 'limit_reached' // today's AI limit (message says which)
@@ -117,6 +118,10 @@ export type ProfileV2 = {
   birth_date: string | null;
   activity_level: ActivityLevel | null;
   job_activity: JobActivity | null;
+  /** Sports they play (activity kinds, data/activities SPORTS). Empty when none. */
+  sports: SportKind[];
+  /** The name of their 'other' sport; '' when not given. */
+  sports_other: string;
   sleep_hours: number | null;
   goal: Goal | null;
   timeline_months: TimelineMonths | null;

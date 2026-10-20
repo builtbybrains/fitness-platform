@@ -13,7 +13,7 @@
 
 import type { DoneMap, WeekSchedule } from '../planData';
 import { RULES_SCHEDULE } from '../planData';
-import { streakSeries } from '../streak';
+import { type MinutesByDay, streakSeries } from '../streak';
 
 export type MilestoneId =
   | 'first_workout'
@@ -46,6 +46,8 @@ export type MilestoneInput = {
   /** Days with a saved check-in, weekly or monthly, any order. */
   checkinDays: readonly string[];
   lifts?: readonly LiftLog[];
+  /** Activity minutes per day: 30 or more counts as a trained day for streaks. */
+  sport?: MinutesByDay;
 };
 
 const COPY: Record<MilestoneId, { title: string; description: string }> = {
@@ -95,7 +97,7 @@ export function milestones(input: MilestoneInput): Milestone[] {
     .sort();
 
   const workouts = past.filter((id) => history[id]?.workout);
-  const series = streakSeries(history, schedule, todayId);
+  const series = streakSeries(history, schedule, todayId, input.sport);
   const streakNow = series.get(todayId) ?? 0;
 
   // Sets done per session, in day order.

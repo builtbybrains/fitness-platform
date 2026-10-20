@@ -1,5 +1,6 @@
-/* Global celebration: a finished workout, or (variant 'milestone') a
-   milestone earned on the Progress tab. Any screen can trigger it; the
+/* Global celebration: a finished workout, a sport that counts as the
+   day's workout (variant 'sport', 30 minutes or more), or (variant
+   'milestone') a milestone earned on the Progress tab. Any screen can trigger it; the
    overlay renders above everything and optionally calls onDone when it
    closes (used to navigate back to the Plan tab). Tap to dismiss early.
    It fades and settles in over 300ms and closes itself at 2.2s; with
@@ -24,6 +25,15 @@ export type CelebrationOpts =
       done: number;
       total: number;
       focus: string;
+      caption?: string;
+      onDone?: () => void;
+    }
+  | {
+      variant: 'sport';
+      /** "Counts as today's workout". */
+      title: string;
+      /** "Football · 60 min". */
+      line: string;
       caption?: string;
       onDone?: () => void;
     }
@@ -60,9 +70,14 @@ function Overlay({ opts, onPress }: { opts: CelebrationOpts; onPress: () => void
 
   const scale = t.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
   const milestone = opts.variant === 'milestone';
-  const heading = milestone ? opts.title : 'Workout complete';
-  const line = milestone ? 'New milestone' : `${opts.done}/${opts.total} sets · ${opts.focus}`;
-  const spoken = milestone ? `New milestone: ${opts.title}. ${opts.detail}` : `Workout complete. ${opts.done} of ${opts.total} sets. ${opts.focus}.`;
+  const heading = opts.variant === 'milestone' || opts.variant === 'sport' ? opts.title : 'Workout complete';
+  const line = opts.variant === 'milestone' ? 'New milestone' : opts.variant === 'sport' ? opts.line : `${opts.done}/${opts.total} sets · ${opts.focus}`;
+  const spoken =
+    opts.variant === 'milestone'
+      ? `New milestone: ${opts.title}. ${opts.detail}`
+      : opts.variant === 'sport'
+        ? `${opts.title}. ${opts.line}.`
+        : `Workout complete. ${opts.done} of ${opts.total} sets. ${opts.focus}.`;
 
   return (
     <Pressable
@@ -83,10 +98,10 @@ function Overlay({ opts, onPress }: { opts: CelebrationOpts; onPress: () => void
         }}
       >
         <Animated.View style={{ transform: [{ scale }], alignItems: 'center', gap: 12 }}>
-          <CelebrationObject kind={milestone ? 'medal' : 'dumbbell'} icon={milestone ? opts.icon : undefined} />
+          <CelebrationObject kind={milestone ? 'medal' : 'dumbbell'} icon={opts.variant === 'milestone' ? opts.icon : undefined} />
           <Text style={[T.hero, { textAlign: 'center' }]}>{heading}</Text>
           <Text style={{ fontFamily: FONT.displayMedium, fontSize: 16, color: C.green, textAlign: 'center' }}>{line}</Text>
-          {milestone ? <Text style={[T.body, { color: C.stone, textAlign: 'center', maxWidth: 320 }]}>{opts.detail}</Text> : null}
+          {opts.variant === 'milestone' ? <Text style={[T.body, { color: C.stone, textAlign: 'center', maxWidth: 320 }]}>{opts.detail}</Text> : null}
           <Text style={[T.meta, { textAlign: 'center' }]}>{opts.caption ?? 'Tap to continue'}</Text>
         </Animated.View>
       </Animated.View>

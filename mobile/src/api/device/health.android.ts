@@ -41,13 +41,17 @@ async function init(): Promise<HC | null> {
   }
 }
 
-// Health Connect ExerciseType values.
+// Health Connect ExerciseType values (10 boot camp, 11 boxing, 36 HIIT,
+// 44 martial arts, 48 pilates, 51 rock climbing, 76 tennis, 78 volleyball,
+// 83 yoga).
 const TYPE_TO_KIND: Record<number, ActivityKind> = {
   79: 'walking', 56: 'running', 64: 'football', 5: 'basketball', 74: 'swimming', 73: 'swimming', 8: 'cycling', 9: 'cycling',
-  50: 'padel', 76: 'padel', 37: 'hiking', 16: 'dancing', 70: 'strength', 81: 'strength',
+  50: 'padel', 76: 'tennis', 48: 'pilates', 83: 'yoga', 78: 'volleyball', 44: 'martial_arts', 11: 'boxing',
+  51: 'climbing', 10: 'crossfit', 36: 'crossfit', 37: 'hiking', 16: 'dancing', 70: 'strength', 81: 'strength',
 };
 const KIND_TO_TYPE: Record<ActivityKind, number> = {
   walking: 79, running: 56, football: 64, basketball: 5, swimming: 74, cycling: 8, padel: 50,
+  tennis: 76, pilates: 48, yoga: 83, volleyball: 78, martial_arts: 44, boxing: 11, climbing: 51, crossfit: 36,
   hiking: 37, dancing: 16, strength: 70, other: 0,
 };
 

@@ -34,14 +34,18 @@ const READ = [
 ] as const;
 const WRITE = ['HKWorkoutTypeIdentifier', 'HKQuantityTypeIdentifierActiveEnergyBurned'] as const;
 
-// HKWorkoutActivityType raw values.
+// HKWorkoutActivityType raw values (8 boxing, 9 climbing, 11 cross
+// training, 28 martial arts, 48 tennis, 51 volleyball, 57 yoga, 63 HIIT,
+// 65 kickboxing, 66 pilates).
 const TYPE_TO_KIND: Record<number, ActivityKind> = {
   52: 'walking', 37: 'running', 41: 'football', 6: 'basketball', 46: 'swimming', 13: 'cycling',
-  31: 'padel', 34: 'padel', 48: 'padel', 79: 'padel', 24: 'hiking', 77: 'dancing', 78: 'dancing',
-  50: 'strength', 20: 'strength',
+  31: 'padel', 34: 'padel', 79: 'padel', 48: 'tennis', 66: 'pilates', 57: 'yoga', 51: 'volleyball',
+  28: 'martial_arts', 8: 'boxing', 65: 'boxing', 9: 'climbing', 11: 'crossfit', 63: 'crossfit',
+  24: 'hiking', 77: 'dancing', 78: 'dancing', 50: 'strength', 20: 'strength',
 };
 const KIND_TO_TYPE: Record<ActivityKind, number> = {
   walking: 52, running: 37, football: 41, basketball: 6, swimming: 46, cycling: 13, padel: 31,
+  tennis: 48, pilates: 66, yoga: 57, volleyball: 51, martial_arts: 28, boxing: 8, climbing: 9, crossfit: 11,
   hiking: 24, dancing: 77, strength: 50, other: 3000,
 };
 

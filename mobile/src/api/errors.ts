@@ -27,7 +27,21 @@ export const MESSAGES = {
   offline: "You're offline. Try again when you're connected.",
   generic: 'Something went wrong on our side. Try again in a moment.',
   session: 'Your session has ended. Sign in again to continue.',
+  ageRequired: 'Add your date of birth in Profile to use the coach and plans.',
 } as const;
+
+/** Read a function's error body. Two shapes are in use:
+    `{ error: "message", code }` and `{ error: { code, message } }`. */
+export function errorBody(j: unknown): { message?: string; code?: string } {
+  if (!j || typeof j !== 'object') return {};
+  const o = j as { error?: unknown; code?: unknown; message?: unknown };
+  if (typeof o.error === 'string') return { message: o.error || undefined, code: typeof o.code === 'string' ? o.code : undefined };
+  if (o.error && typeof o.error === 'object') {
+    const e = o.error as { code?: unknown; message?: unknown };
+    return { message: typeof e.message === 'string' && e.message ? e.message : undefined, code: typeof e.code === 'string' ? e.code : undefined };
+  }
+  return {};
+}
 
 export function needsAccount(message: string = MESSAGES.needsAccount): ApiError {
   return new ApiError('needs_account', message);

@@ -3,7 +3,8 @@
 //
 // POST {
 //   kind: "weekly" | "monthly",
-//   day?: "yyyy-mm-dd" (the person's local day; default today),
+//   day?: "yyyy-mm-dd" (the person's local day, today; a day more than one
+//         day away from the server's UTC date is replaced by the UTC date),
 //   weight_kg?: number,
 //   measurements?: { waist_cm?, hips_cm?, chest_cm?, arm_cm?, thigh_cm? },
 //   answers?: { energy?, sleep?, hunger?, difficulty? (1..5), adherence? (0..100), notes? },
@@ -23,8 +24,8 @@
 
 import { body, fail, json, localDay, preflight, serverError } from '../_shared/http.ts';
 import { requireUser, serviceClient } from '../_shared/env.ts';
-import { aiProvider, chat, str } from '../_shared/ai.ts';
-import { loadPerson } from '../_shared/profile.ts';
+import { aiProvider, chat, REQUEST_BUDGET_MS, str } from '../_shared/ai.ts';
+import { ageGate, loadPerson } from '../_shared/profile.ts';
 import { loadMemory, saveFacts, type MemoryCategory } from '../_shared/memory.ts';
 import { asPlanV2, type BodyAnalysisResult, buildPlan } from '../_shared/plan.ts';
 import { storePlan } from '../_shared/planStore.ts';
@@ -38,6 +39,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  const deadline = Date.now() + REQUEST_BUDGET_MS;
   try {
     const auth = await requireUser(req, 'Sign in to check in.');
     if (auth instanceof Response) return auth;
@@ -56,6 +58,11 @@ Deno.serve(async (req) => {
     const measurements = cleanMeasurements(b.measurements);
     const answers = cleanAnswers(b.answers);
     const photoSet = UUID_RE.test(String(b.photo_set_id ?? '')) ? String(b.photo_set_id) : null;
+
+    // Age rule first, before the quota and any write. The person is read
+    // again below, after the new weight is saved to the profile.
+    const gate = ageGate(await loadPerson(supabase, user.id, day));
+    if (gate) return gate;
 
     if (kind === 'monthly' && !(await takeQuota(supabase, 'checkin'))) {
       return limitReached(`You've sent ${LIMITS.checkin} monthly check-ins today, the daily limit. Try again tomorrow.`);
@@ -139,6 +146,7 @@ Deno.serve(async (req) => {
       kcalDelta: rev.kcalDelta,
       extra,
       today: day,
+      deadline,
     });
     const stored = await storePlan(supabase, user.id, plan, planRow.data?.change_log, day);
 
@@ -163,6 +171,7 @@ Deno.serve(async (req) => {
           max_tokens: 400,
           temperature: 0.5,
           timeoutMs: 30_000,
+          deadline,
         },
         (t) => (t.length > 20 ? t : null),
         'checkin:summary',

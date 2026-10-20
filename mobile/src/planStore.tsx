@@ -11,8 +11,11 @@
      this device and defaults to the questionnaire answer.
    - Meal swaps are kept per week on this device (the API has no table for
      them); the coach is told about them as behaviour.
-   - Activities (walking, football …) for the last 8 weeks live here too,
-     so Today and Progress update the moment one is logged.
+   - Activities (walking, football …) for the streak's horizon (a year)
+     live here too, so Today, Plan and Progress update the moment one is
+     logged. A day whose sport (walking aside) adds up to 30 minutes or
+     more counts as trained (streak.isTrainedDay): the streak, the week ring and the day
+     strips all follow it, and the generated workout stays open.
    - Completion rows (`history`) cover the past year plus this week, so the
      streak and Progress follow real history across weeks.
    - Every toggle computes the next state from the LATEST state, updates the
@@ -38,7 +41,8 @@ import {
   WeekSchedule,
 } from './planData';
 import { clearDaysProgress, fetchDoneRange, saveDayProgress } from './data';
-import { currentStreak, STREAK_HORIZON_DAYS } from './streak';
+import { countsAsSport, currentStreak, minutesByDay, type MinutesByDay, sportCounts, STREAK_HORIZON_DAYS } from './streak';
+import { cancelStreakReminder } from './lib/notify';
 import { useAuth } from './auth';
 import { emptyOverrides, exerciseOptions, generatePlan, getPlan, getWeekOverrides, moveWorkoutDay, planForLocation, replaceExercise as apiReplaceExercise, resetWeek as apiResetWeek, swapDays, weekView } from './api/plan';
 import { deleteActivity, listActivities, logActivity as apiLogActivity } from './api/activities';
@@ -108,6 +112,8 @@ type PlanStore = {
   swapMeal: (dayId: string, slot: MealSlot, meal: PlanMealV2 | null) => Promise<void>;
   activities: Activity[];
   activitiesLoaded: boolean;
+  /** Sport minutes per day, walking aside (30 or more: a trained day). */
+  sportMinutes: MinutesByDay;
   logActivity: (input: ActivityInput) => Promise<{ ok: boolean; activity?: Activity; error?: string }>;
   removeActivity: (id: string) => Promise<void>;
   toggleWorkout: (dayId: string) => Promise<void>;
@@ -133,7 +139,9 @@ function isMinor(p: ProfileV2 | null, today: string): boolean {
   return ageRule(ageOn(p.birth_date, today) ?? p.age) === 'minor';
 }
 
-const ACTIVITY_WEEKS = 8;
+/** Activities are read as far back as the streak looks, so a sport that
+    kept a streak going months ago still counts. */
+const activityFrom = (weekStart: string) => addDays(weekStart, -STREAK_HORIZON_DAYS);
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
@@ -244,7 +252,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     let alive = true;
-    listActivities(userId, addDays(weekStart, -7 * (ACTIVITY_WEEKS - 1)), addDays(weekStart, 6))
+    listActivities(userId, activityFrom(weekStart), addDays(weekStart, 6))
       .then(({ activities: list }) => alive && setActivities(list))
       .catch(() => undefined)
       .finally(() => alive && setActivitiesLoaded(true));
@@ -281,14 +289,20 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const location: TrainLocation = locations.includes(preferred) ? preferred : locations.includes(basePlan.location) ? basePlan.location : locations[0];
   const shownPlan = useMemo(() => (location === basePlan.location ? basePlan : planForLocation(basePlan, location)), [basePlan, location]);
 
-  const days = useMemo(() => composeWeekV2(weekView(shownPlan, overrides, weekStart), done, mealSwaps), [shownPlan, overrides, weekStart, done, mealSwaps]);
+  const sportMinutes = useMemo(() => minutesByDay(activities), [activities]);
+  const sportRef = useRef(sportMinutes);
+  sportRef.current = sportMinutes;
+  const days = useMemo(
+    () => composeWeekV2(weekView(shownPlan, overrides, weekStart), done, mealSwaps, sportMinutes),
+    [shownPlan, overrides, weekStart, done, mealSwaps, sportMinutes],
+  );
   const daysRef = useRef(days);
   daysRef.current = days;
   const basePlanRef = useRef(basePlan);
   basePlanRef.current = basePlan;
 
   const schedule = useMemo(() => scheduleOf(days), [days]);
-  const streak = useMemo(() => currentStreak(done, schedule, today), [done, schedule, today]);
+  const streak = useMemo(() => currentStreak(done, schedule, today, sportMinutes), [done, schedule, today, sportMinutes]);
   const weekChanged = overrides.day_order.some((p, i) => p !== i) || Object.keys(overrides.exercise_swaps).length > 0;
 
   const targets = useMemo<Targets>(() => {
@@ -526,13 +540,15 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       if (!userId) return { ok: false, error: 'Sign in first.' };
       try {
         const a = await apiLogActivity(userId, input, profile?.weight_kg);
+        // Today just became a trained day: no "streak at risk" tonight.
+        if (a.day === today && countsAsSport(a.kind) && sportCounts((sportRef.current[a.day] ?? 0) + a.minutes)) void cancelStreakReminder(a.day);
         setActivities((prev) => [a, ...prev.filter((x) => x.id !== a.id)].sort((x, y) => (x.day === y.day ? (x.created_at < y.created_at ? 1 : -1) : x.day < y.day ? 1 : -1)));
         return { ok: true, activity: a };
       } catch (e) {
         return { ok: false, error: asApiError(e).message };
       }
     },
-    [userId, profile?.weight_kg],
+    [userId, profile?.weight_kg, today],
   );
 
   const removeActivity = useCallback(
@@ -553,7 +569,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       getWeekOverrides(userId, weekStart)
         .then(setOverrides)
         .catch(() => undefined),
-      listActivities(userId, addDays(weekStart, -7 * (ACTIVITY_WEEKS - 1)), addDays(weekStart, 6))
+      listActivities(userId, activityFrom(weekStart), addDays(weekStart, 6))
         .then(({ activities: list }) => setActivities(list))
         .catch(() => undefined),
       loadHistory(() => true),
@@ -596,6 +612,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       swapMeal,
       activities,
       activitiesLoaded,
+      sportMinutes,
       logActivity,
       removeActivity,
       toggleWorkout,
@@ -604,7 +621,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       toggleSet,
       toggleMeal,
     }),
-    [days, todayIdx, today, weekStart, syncState, generating, rawPlan, planLoaded, basePlan, profile, targets, location, locations, setLocation, weekChanged, schedule, done, historyLoaded, historyOffline, reload, streak, regenerate, moveDay, resetWeek, optionsFor, replaceExercise, swapMeal, activities, activitiesLoaded, logActivity, removeActivity, toggleWorkout, setWorkoutDone, toggleExercise, toggleSet, toggleMeal],
+    [days, todayIdx, today, weekStart, syncState, generating, rawPlan, planLoaded, basePlan, profile, targets, location, locations, setLocation, weekChanged, schedule, done, historyLoaded, historyOffline, reload, streak, regenerate, moveDay, resetWeek, optionsFor, replaceExercise, swapMeal, activities, activitiesLoaded, sportMinutes, logActivity, removeActivity, toggleWorkout, setWorkoutDone, toggleExercise, toggleSet, toggleMeal],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

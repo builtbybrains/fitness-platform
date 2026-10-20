@@ -92,9 +92,14 @@ export async function bodyPhotoUrl(path: string, expiresInSeconds = 3600): Promi
 /** Delete a whole set (files and rows). */
 export async function deletePhotoSet(userId: string, setId: string): Promise<void> {
   requireAccount(userId, PHOTO_ACCOUNT);
-  const { data } = await supabase.from('body_photos').select('storage_path').eq('user_id', userId).eq('set_id', setId);
+  const { data, error: readErr } = await supabase.from('body_photos').select('storage_path').eq('user_id', userId).eq('set_id', setId);
+  if (readErr) throw fromDbError(readErr, "Couldn't delete those photos. Try again.");
   const paths = (data ?? []).map((r) => String(r.storage_path));
-  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+  if (paths.length) {
+    // Files first: if they stay, the rows stay too, so the set can be deleted again.
+    const removed = await supabase.storage.from(BUCKET).remove(paths);
+    if (removed.error) throw new ApiError('server_error', "Couldn't delete those photos. Try again.", 500);
+  }
   const { error } = await supabase.from('body_photos').delete().eq('user_id', userId).eq('set_id', setId);
   if (error) throw fromDbError(error, "Couldn't delete those photos. Try again.");
 }

@@ -44,19 +44,39 @@ function persist(userId: string) {
   void saveLocal(userId, 'outbox', boxes.get(userId) ?? {});
 }
 
-/** Postgres rejected the row itself (constraint, permission). Retrying will
-    never succeed, so the entry is dropped instead of queued forever. */
-function isPermanent(error: { code?: string } | null): boolean {
-  return !!error?.code && /^[0-9A-Z]{5}$/.test(error.code);
+type WriteError = { code?: string; status?: number } | null;
+
+/** The write was refused because of who sent it, not what it holds: an
+    expired token that couldn't be refreshed makes supabase-js fall back to
+    the publishable key, and row-level security then answers 42501. The
+    PostgREST JWT errors (PGRST301 to 303) and HTTP 401 mean the same. These
+    succeed once the session is back, so they are retried, never dropped. */
+const AUTH_CODES = new Set(['42501', 'PGRST301', 'PGRST302', 'PGRST303']);
+
+function isAuthError(error: WriteError): boolean {
+  return !!error && ((!!error.code && AUTH_CODES.has(error.code)) || error.status === 401);
+}
+
+/** Postgres rejected the row itself (a check or unique constraint).
+    Retrying will never succeed, so the entry is dropped instead of queued
+    forever. */
+function isPermanent(error: WriteError): boolean {
+  return !!error?.code && /^[0-9A-Z]{5}$/.test(error.code) && !isAuthError(error);
 }
 
 async function perform(entry: OutboxEntry): Promise<'ok' | 'retry' | 'drop'> {
   try {
-    const { error } =
+    // No session (signed out, or the refresh failed): keep the entry for
+    // when the person is signed in again rather than send it unsigned.
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return 'retry';
+    const res =
       entry.op === 'upsert'
         ? await supabase.from(entry.table).upsert(entry.row, { onConflict: entry.onConflict })
         : await supabase.from(entry.table).delete().match(entry.match);
-    if (!error) return 'ok';
+    if (!res.error) return 'ok';
+    const error: WriteError = { code: res.error.code, status: (res.error as { status?: number }).status ?? res.status };
+    if (isAuthError(error)) return 'retry';
     return isPermanent(error) ? 'drop' : 'retry';
   } catch {
     return 'retry';
@@ -107,4 +127,12 @@ export async function pendingEntries(userId: string, prefix: string): Promise<[s
 
 export async function pendingCount(userId: string): Promise<number> {
   return Object.keys(await box(userId)).length;
+}
+
+/** Forget everything queued for this user, in memory and on the device
+    (the account was deleted). */
+export async function forgetOutbox(userId: string): Promise<void> {
+  const b = await box(userId);
+  for (const key of Object.keys(b)) delete b[key];
+  boxes.delete(userId);
 }

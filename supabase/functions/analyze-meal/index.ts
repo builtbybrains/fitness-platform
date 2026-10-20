@@ -11,13 +11,14 @@
 
 import { fail, json, preflight, serverError } from '../_shared/http.ts';
 import { requireUser } from '../_shared/env.ts';
-import { aiProvider } from '../_shared/ai.ts';
+import { aiProvider, REQUEST_BUDGET_MS } from '../_shared/ai.ts';
 import { analyzePhoto } from '../_shared/meals.ts';
 import { LIMITS, limitReached, takeQuota } from '../_shared/usage.ts';
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  const deadline = Date.now() + REQUEST_BUDGET_MS;
   try {
     const ai = await aiProvider('vision');
     if (!ai) return fail('not_configured', "Photo estimates aren't set up yet.", 503);
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
       return limitReached(`You've checked ${LIMITS.meal_photo} photos today, the daily limit. Try again tomorrow.`);
     }
 
-    const result = await analyzePhoto(ai, image, '', false);
+    const result = await analyzePhoto(ai, image, '', false, deadline);
     if (!result) return fail('ai_busy', 'Photo check is busy right now. Try again in a moment.', 502);
     const est = result.status === 'final' ? result.estimate : result.draft;
     return json({ estimate: est, model: result.model });

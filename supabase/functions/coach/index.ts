@@ -39,8 +39,10 @@
 // Daily note (the card on Today, asked for at most once a day per device):
 // POST { mode: "daily_note", localDay?: "yyyy-mm-dd", summary: {
 //   day: "workout" | "rest", focus?: string, minutes?: number,
-//   workoutDone?: boolean, done7?: number, planned7?: number, streak?: number,
-//   mealsYesterday?: { eaten: number, planned: number } | null } }
+//   workoutDone?: boolean, sportToday?: string, done7?: number, planned7?: number,
+//   streak?: number, mealsYesterday?: { eaten: number, planned: number } | null } }
+//   sportToday: today's sport when it reaches 30 minutes ("football 60 min"),
+//   which counts as the day's workout.
 // → 200 { note }   one or two sentences, at most 200 characters. An empty
 //                  note means "no AI right now": the app shows its own tip.
 // Reads the profile and coach memory; never writes chat history or memory.
@@ -51,26 +53,32 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { body, fail, json, localDay, preflight, serverError } from '../_shared/http.ts';
 import { requireUser } from '../_shared/env.ts';
-import { aiProvider, chat, clampInt, extractJson, str } from '../_shared/ai.ts';
+import { aiProvider, chat, clampInt, extractJson, REQUEST_BUDGET_MS, str } from '../_shared/ai.ts';
 import { MINOR_RULES, SAFETY_RULES } from '../_shared/safety.ts';
-import { describePerson, loadPerson } from '../_shared/profile.ts';
+import { ageGate, describePerson, loadPerson } from '../_shared/profile.ts';
 import { cleanFacts, loadMemory, memoryForPrompt, type MemoryCategory, saveFacts } from '../_shared/memory.ts';
 import { injuriesFromText } from '../_shared/exercises.ts';
 import { LIMITS, limitReached, utcDayStart } from '../_shared/usage.ts';
 import { cleanReply, cleanSuggestions, cleanTitle, cutTitle, needsTitle, previewText, rulesSuggestions } from '../_shared/coachExtras.ts';
+
+/** A day with this many minutes of logged sport (walking never counts) counts as trained,
+    the same rule as the app (mobile/src/streak.ts SPORT_COUNTS_MINUTES)
+    and the database (user_streak). */
+const SPORT_COUNTS_MINUTES = 30;
 
 const PLAN_CHANGE_RE = /(change|update|adjust|redo|rebuild|modify|swap|replace|move|switch)\b.{0,40}\b(plan|workouts?|training|program|schedule|days?|meals?|diet|exercises?)|\bonly\s+(\d|one|two|three|four|five|six)\s+days?\b|\b(my|the)\s+(knee|back|shoulder|wrist|elbow|hip|ankle|neck)\b.{0,20}\b(hurts?|pain|sore|injur\w*)|\bno (equipment|gym)\b|\b(travel|traveling|travelling)\b.{0,30}\bweek\b|\btoo (hard|easy)\b/i;
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
   if (pre) return pre;
+  const deadline = Date.now() + REQUEST_BUDGET_MS;
   try {
     const auth = await requireUser(req, 'Sign in to talk to your coach.');
     if (auth instanceof Response) return auth;
     const { supabase, user } = auth;
 
     const b = await body(req);
-    if (b.mode === 'daily_note') return await dailyNote(supabase, user.id, b);
+    if (b.mode === 'daily_note') return await dailyNote(supabase, user.id, b, deadline);
     const userMessage = str(b.message, 800);
     if (!userMessage) return fail('bad_request', 'Type a message first.', 400);
     const conversationId = str(b.conversationId, 60, 'default');
@@ -98,12 +106,14 @@ Deno.serve(async (req) => {
       supabase.from('ai_plans').select('plan').eq('user_id', user.id).maybeSingle(),
       supabase.from('plan_days').select('day, workout_done').eq('user_id', user.id).gte('day', since).lte('day', today),
       supabase.from('plan_overrides').select('week_start, exercise_swaps, day_order').eq('user_id', user.id).gte('week_start', shift(since, -6)),
-      supabase.from('activities').select('day, kind, minutes, kcal').eq('user_id', user.id).gte('day', since).order('day', { ascending: false }).limit(20),
+      supabase.from('activities').select('day, kind, label, minutes, kcal').eq('user_id', user.id).gte('day', since).lte('day', today).order('day', { ascending: false }).limit(100),
       supabase.from('checkins').select('kind, day, ai_summary').eq('user_id', user.id).order('day', { ascending: false }).limit(1).maybeSingle(),
       // Same-time pairs (older rows) come back reply first, so reversed they read in order.
       supabase.from('coach_messages').select('role, body').eq('user_id', user.id).eq('conversation_id', conversationId).order('created_at', { ascending: false }).order('role', { ascending: true }).limit(10),
       supabase.from('coach_threads').select('title, message_count').eq('user_id', user.id).eq('id', conversationId).maybeSingle(),
     ]);
+    const gate = ageGate(person);
+    if (gate) return gate;
     if (threadRow.error) console.warn('[coach] reading the thread failed:', threadRow.error.message);
 
     // Today against the plan (Monday-first generic week).
@@ -123,8 +133,22 @@ Deno.serve(async (req) => {
     const loggedKcal = logged.reduce((a, f) => a + (Number(f.kcal) || 0), 0);
     const kcalTarget = person.kcal_target ?? 2200;
 
-    // Behaviour over the last 14 days.
+    // Sport per day: 30 minutes or more counts as that day's workout.
+    // Walking is not a sport (a daily walk never keeps a streak).
+    const sportRows = (activities.data ?? []).filter((a) => a.kind !== 'walking');
+    const sportMinutes = new Map<string, number>();
+    for (const a of sportRows) {
+      const d = String(a.day).slice(0, 10);
+      sportMinutes.set(d, (sportMinutes.get(d) ?? 0) + (Number(a.minutes) || 0));
+    }
+    const sportName = (a: { kind?: unknown; label?: unknown }) => String(a.label || a.kind || 'activity').replace(/_/g, ' ');
+    const sportToday = sportRows.filter((a) => String(a.day).slice(0, 10) === today).map((a) => `${sportName(a)} ${a.minutes} min`).join(', ');
+    const sportCountsToday = (sportMinutes.get(today) ?? 0) >= SPORT_COUNTS_MINUTES;
+    const trainedToday = !!day.data?.workout_done || sportCountsToday;
+
+    // Behaviour over the last 14 days (a trained day: workout done, or 30+ minutes of sport).
     const doneDays = new Set((recentDays.data ?? []).filter((r) => r.workout_done).map((r) => String(r.day).slice(0, 10)));
+    for (const [d, m] of sportMinutes) if (m >= SPORT_COUNTS_MINUTES) doneDays.add(d);
     let planned = 0;
     let missed = 0;
     for (let i = 13; i >= 1; i--) {
@@ -140,13 +164,17 @@ Deno.serve(async (req) => {
       .map((s) => (s.replaced_from ? `${s.replaced_from} → ${s.name}` : s.name))
       .filter(Boolean);
     const moved = (overrides.data ?? []).filter((o) => Array.isArray(o.day_order) && o.day_order.some((v: number, i: number) => v !== i)).length;
-    const acts = (activities.data ?? []).map((a) => `${a.kind} ${a.minutes} min`);
+    const acts = (activities.data ?? []).map((a) => `${sportName(a)} ${a.minutes} min`);
 
     const waterCount = Number(waterRow.data?.count) || 0;
     const waterTarget = person.water_target ?? 8;
     const dayFacts = [
       isRestDay ? 'Plan today: REST / recovery day.' : planDay ? `Plan today: ${planDay.session?.focus ?? 'workout'} with ${plannedExercises.length} exercises (${plannedExercises.map((e) => e.name).filter(Boolean).slice(0, 6).join(', ')}).` : 'No AI plan yet (the built-in week).',
-      `Workout: ${day.data?.workout_done ? 'DONE' : 'not done yet'} (${exercisesDone} of ${plannedExercises.length || 'unknown'} exercises started).`,
+      day.data?.workout_done
+        ? `Workout: DONE (${exercisesDone} of ${plannedExercises.length || 'unknown'} exercises started).`
+        : sportCountsToday
+          ? `Workout: DONE (${sportToday}; 30+ minutes of sport counts as today's workout and keeps the streak. The planned workout is still open if they want it.)`
+          : `Workout: not done yet (${exercisesDone} of ${plannedExercises.length || 'unknown'} exercises started).`,
       `Estimated intake so far: about ${checkedKcal + loggedKcal} of ${kcalTarget} kcal.`,
       `Water: ${waterCount} of ${waterTarget} glasses.`,
     ];
@@ -158,7 +186,7 @@ Deno.serve(async (req) => {
       logged.length ? `Other food logged today: ${logged.map((f) => `${f.label} (${f.kcal} kcal)`).join(', ')}.` : 'No other food logged today.',
       dayFacts[2],
       dayFacts[3],
-      `Last 14 days: ${planned - missed} of ${planned} planned workouts done${missed ? `, ${missed} missed` : ''}.`,
+      `Last 14 days: ${planned - missed} of ${planned} planned workouts done (a day with 30+ minutes of sport counts)${missed ? `, ${missed} missed` : ''}.`,
       swaps.length ? `Recent exercise swaps: ${swaps.slice(0, 5).join('; ')}.` : '',
       moved ? `Moved workout days in ${moved} recent week(s).` : '',
       acts.length ? `Recent activities: ${acts.slice(0, 6).join(', ')}.` : '',
@@ -184,7 +212,7 @@ Deno.serve(async (req) => {
     const ai = await aiProvider('text');
     const [replyAnswer, extracted] = await Promise.all([
       ai
-        ? chat(ai, { messages: [{ role: 'system', content: system }, ...turns, { role: 'user', content: userMessage }], max_tokens: 600, temperature: 0.6, timeoutMs: 45_000 }, (t) => cleanReply(t) || null, 'coach')
+        ? chat(ai, { messages: [{ role: 'system', content: system }, ...turns, { role: 'user', content: userMessage }], max_tokens: 600, temperature: 0.6, timeoutMs: 45_000, deadline }, (t) => cleanReply(t) || null, 'coach')
         : Promise.resolve(null),
       ai
         ? chat(
@@ -209,6 +237,7 @@ Deno.serve(async (req) => {
               max_tokens: 400,
               temperature: 0,
               timeoutMs: 25_000,
+              deadline,
             },
             (t) => extractJson(t),
             'coach:memory',
@@ -230,7 +259,7 @@ Deno.serve(async (req) => {
       suggestions = rulesSuggestions({
         hasPlan: !!planDay,
         restDay: isRestDay,
-        workoutDone: !!day.data?.workout_done,
+        workoutDone: trainedToday,
         waterCount,
         waterTarget,
         kcalSoFar: checkedKcal + loggedKcal,
@@ -285,12 +314,14 @@ function noteFacts(raw: unknown, today: string): string {
   const done7 = clampInt(s.done7, 0, 7, 0);
   const planned7 = Math.max(done7, clampInt(s.planned7, 0, 7, 0));
   const streak = clampInt(s.streak, 0, 366, 0);
+  const sport = str(s.sportToday, 120);
   const y = s.mealsYesterday && typeof s.mealsYesterday === 'object' ? (s.mealsYesterday as Record<string, unknown>) : null;
   const yPlanned = y ? clampInt(y.planned, 0, 8, 0) : 0;
   const yEaten = y ? Math.min(yPlanned, clampInt(y.eaten, 0, 8, 0)) : 0;
   return [
     `Today is ${today} (the user's local date).`,
     rest ? 'Plan today: rest day.' : `Plan today: ${focus || 'workout'}${minutes ? `, about ${minutes} min` : ''}, ${s.workoutDone === true ? 'already done' : 'not done yet'}.`,
+    sport ? `Sport today: ${sport}. 30+ minutes of sport counts as today's workout and keeps the streak.` : '',
     `Last 7 days: ${done7} of ${planned7} planned workouts done.`,
     `Workout streak: ${streak}.`,
     yPlanned ? `Yesterday: ${yEaten} of ${yPlanned} planned meals ticked off.` : '',
@@ -316,8 +347,11 @@ function cleanNote(text: string): string | null {
   return t.length >= 12 ? t : null;
 }
 
-async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<string, unknown>): Promise<Response> {
+async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<string, unknown>, deadline: number): Promise<Response> {
   const today = localDay(b.localDay);
+  const person = await loadPerson(supabase, userId, today);
+  const gate = ageGate(person);
+  if (gate) return gate;
   const ai = await aiProvider('text');
   if (!ai) return json({ note: '' });
 
@@ -325,7 +359,7 @@ async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<str
   if (quotaErr) throw new Error(`bump_ai_usage failed: ${quotaErr.message}`);
   if (count === null || count === undefined) return limitReached('Your coach already wrote today\'s notes. A new one comes tomorrow.');
 
-  const [person, memory] = await Promise.all([loadPerson(supabase, userId, today), loadMemory(supabase, userId)]);
+  const memory = await loadMemory(supabase, userId);
   const system = [
     'You are the BUILT coach writing the one short note a person sees at the top of their Today screen.',
     `Write ONE or TWO sentences, at most ${NOTE_MAX} characters in total, in the second person ("you").`,
@@ -341,7 +375,7 @@ async function dailyNote(supabase: SupabaseClient, userId: string, b: Record<str
 
   const answer = await chat(
     ai,
-    { messages: [{ role: 'system', content: system }, { role: 'user', content: 'Write my note for today.' }], max_tokens: 120, temperature: 0.7, timeoutMs: 20_000 },
+    { messages: [{ role: 'system', content: system }, { role: 'user', content: 'Write my note for today.' }], max_tokens: 120, temperature: 0.7, timeoutMs: 20_000, deadline },
     cleanNote,
     'coach:note',
   );

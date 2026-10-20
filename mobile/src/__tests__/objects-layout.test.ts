@@ -180,7 +180,7 @@ describe('questionnaire object', () => {
   });
 
   it('groups the screens by topic', () => {
-    for (const id of ['name', 'phone', 'birth_date', 'guardian', 'gender', 'body', 'activity', 'job', 'sleep', 'goal', 'injuries', 'conditions', 'photo']) {
+    for (const id of ['name', 'phone', 'birth_date', 'guardian', 'gender', 'body', 'activity', 'sports', 'job', 'sleep', 'goal', 'injuries', 'conditions', 'photo']) {
       expect(objectForScreen(id)).toBe('dumbbell');
     }
     expect(objectForScreen('location')).toBe('kettlebell');

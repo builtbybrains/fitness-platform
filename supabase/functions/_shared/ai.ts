@@ -65,20 +65,40 @@ export async function aiProvider(kind: 'text' | 'vision'): Promise<AiProvider | 
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: unknown };
 
+/** How long one request may spend on AI calls in total. The platform stops
+    a function at 150 s; this leaves room for the reads and writes around
+    the AI and for the built-in fallback. Each entry point sets
+    `deadline = Date.now() + REQUEST_BUDGET_MS` when the request arrives and
+    passes it to every chat() call. */
+export const REQUEST_BUDGET_MS = 110_000;
+/** A model is not tried when less than this is left before the deadline. */
+export const MIN_MODEL_MS = 5_000;
+
 /** Walk the model chain until one answer passes `accept`. Resolves null when
-    every model failed (errors are logged, never returned to clients). */
+    every model failed or the request's deadline (epoch ms) is too close
+    (errors are logged, never returned to clients). Each model gets
+    `timeoutMs`, cut to what is left before `deadline`. */
 export async function chat<T>(
   ai: AiProvider,
-  req: { messages: ChatMessage[]; max_tokens: number; temperature: number; timeoutMs: number },
+  req: { messages: ChatMessage[]; max_tokens: number; temperature: number; timeoutMs: number; deadline?: number },
   accept: (text: string) => T | null,
   where: string,
 ): Promise<{ value: T; model: string } | null> {
   for (const model of ai.models) {
+    let timeoutMs = req.timeoutMs;
+    if (req.deadline !== undefined) {
+      const left = req.deadline - Date.now();
+      if (left < MIN_MODEL_MS) {
+        console.warn(`[${where}] deadline reached`);
+        return null;
+      }
+      timeoutMs = Math.min(timeoutMs, left);
+    }
     try {
       const r = await fetch(ai.url, {
         method: 'POST',
         headers: ai.headers,
-        signal: AbortSignal.timeout(req.timeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
           model,
           messages: req.messages,
