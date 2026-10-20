@@ -106,6 +106,8 @@
 .site-nav { height: 86px; position: absolute; inset: 0 0 auto; z-index: 30; border-bottom: 1px solid var(--border); }
 .nav-inner { height: 100%; display: flex; justify-content: space-between; align-items: center; gap: 28px; }
 .wordmark { display: inline-flex; align-items: center; }
+/* 44px tap area around the same-size logo */
+.site-nav .wordmark { min-height: 44px; }
 .brand-logo { height: 26px; width: auto; display: block; }
 .nav-links { display: flex; gap: 29px; align-items: center; }
 .nav-links a { color: var(--muted-foreground); font-size: 12px; transition: color .2s; }
@@ -116,7 +118,8 @@
 .built-button:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
 .built-button svg { transition: transform .3s; }
 .built-button:hover svg { transform: translateX(3px); }
-.nav-cta { min-height: 38px; padding: 0 16px; font-size: 11px; }
+/* The pill still paints 38px tall; a 3px clear border above and below makes the tap area 44px. */
+.nav-cta { min-height: 44px; padding: 0 16px; font-size: 11px; border-block: 3px solid transparent; background-clip: padding-box; border-radius: 5px / 8px; }
 .menu-toggle { display: none; }
 .hero { height: min(850px, 94svh); min-height: 660px; position: relative; display: flex; align-items: center; overflow: clip; }
 .hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: var(--hero-shade); }
@@ -133,7 +136,7 @@
 .proof-icon { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; color: var(--primary); }
 .hero-proof strong { display: block; color: var(--foreground); font-size: 11px; margin-bottom: 4px; }
 .hero-caption { position: absolute; bottom: 39px; left: 64px; right: 64px; z-index: 3; display: flex; align-items: center; justify-content: space-between; font-size: 9px; color: var(--muted-foreground); text-transform: uppercase; }
-.scroll-link { display: flex; align-items: center; gap: 9px; }
+.scroll-link { display: flex; align-items: center; gap: 9px; padding-block: 16px; margin-block: -16px; }
 .scroll-link svg { animation: bob 2s infinite; }
 .floating-stat { position: absolute; z-index: 3; right: 7%; bottom: 24%; padding: 16px 20px; background: var(--surface-glass); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; gap: 17px; box-shadow: var(--shadow-float); animation: float 5s ease-in-out infinite; }
 .stat-icon { display: grid; place-items: center; width: 36px; height: 36px; background: var(--accent); color: var(--primary); border-radius: 5px; }
@@ -260,6 +263,7 @@
 .price-fine { font-size: 9px; color: var(--muted-foreground); text-align: center; margin-top: 14px; }
 .faq-layout { display: grid; grid-template-columns: 1fr 1.4fr; gap: 100px; }
 .faq-intro p { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; margin-top: 20px; }
+.faq-talk { min-height: 44px; margin-block: -4px; }
 .faq-list { border-top: 1px solid var(--border); }
 .faq-item { border-bottom: 1px solid var(--border); }
 .faq-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 66px; text-align: left; white-space: normal; padding: 18px 0; font-size: 12px; gap: 20px; }
@@ -275,7 +279,9 @@
 footer { padding-block: 42px 25px; }
 .footer-top { display: flex; justify-content: space-between; align-items: center; gap: 30px; }
 .footer-top .brand-logo { height: 22px; }
-.footer-links { display: flex; gap: 24px; font-size: 10px; color: var(--muted-foreground); }
+.footer-top .wordmark { min-height: 44px; margin-block: -11px; }
+.footer-links { display: flex; gap: 24px; font-size: 10px; color: var(--muted-foreground); margin-block: -14.5px; }
+.footer-links a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 7px; margin-inline: -7px; }
 .footer-bottom { margin-top: 35px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; color: var(--muted-foreground); font-size: 9px; }
 .dialog-body { line-height: 1.8; font-size: 13px; color: var(--muted-foreground); }
 .dialog-body p + p { margin-top: 15px; }
@@ -313,7 +319,7 @@ footer { padding-block: 42px 25px; }
 @media (max-width: 760px) {
   .wrap { padding-inline: 23px; } .site-nav { height: 74px; }
   .brand-logo { height: 21px; }
-  .nav-links,.login-link { display: none; } .nav-actions { gap: 10px; } .menu-toggle { display: inline-flex; }
+  .nav-links,.login-link { display: none; } .nav-actions { gap: 10px; } .menu-toggle { display: inline-flex; width: 44px; height: 44px; margin-inline: -4px; }
   .nav-links.mobile-open { display: flex; position: absolute; top: 74px; inset-inline: 0; padding: 24px; background: var(--background); flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--border); gap: 0; }
   .nav-links.mobile-open a { padding: 14px 0; font-size: 15px; }
   .hero { height: auto; min-height: 0; max-height: none; flex-direction: column; align-items: stretch; padding-bottom: 84px; --hero-lift-at: 50% 78%; }
@@ -330,13 +336,13 @@ footer { padding-block: 42px 25px; }
   .pillar { aspect-ratio: 1 / 1.12; } .pillar-content { inset-inline: 25px; bottom: 26px; }
   .pillar-content p { max-width: 300px; font-size: 12px; } .pillar-label h3 { font-size: 44px; }
   .demo-layout,.pricing-layout,.faq-layout { grid-template-columns: 1fr; gap: 40px; }
-  .demo-tabs .demo-tab { padding-inline: 17px; } .phone-stage { min-height: 550px; }
+  .demo-tabs .demo-tab { padding-inline: 17px; height: 44px; padding-block: 18px 10px; margin-top: -8px; } .phone-stage { min-height: 550px; }
   .phone-float { left: 0; bottom: 60px; } .demo-copy .built-button { margin-top: 25px; }
   .steps { grid-template-columns: 1fr 1fr; gap: 35px 25px; margin-top: 35px; } .step::after { display: none; }
   .step h3 { font-size: 14px; } .price-card { padding: 26px; }
   .end-cta { padding: 60px 23px; } .end-cta h2 { font-size: 38px; }
   .footer-top { flex-direction: column; align-items: flex-start; gap: 23px; }
-  .footer-links { flex-wrap: wrap; gap: 20px; } .footer-bottom { gap: 20px; line-height: 1.6; }
+  .footer-links { flex-wrap: wrap; gap: 0 20px; } .footer-bottom { gap: 20px; line-height: 1.6; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
