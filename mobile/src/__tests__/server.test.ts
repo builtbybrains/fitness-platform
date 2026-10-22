@@ -194,7 +194,7 @@ describe('planner without AI', () => {
       why: '',
       days: skeleton.map((_: Mod, i: number) => ({
         focus: 'AI focus',
-        exercises: [{ id: 'barbell_bench', sets: 9, reps: 99 }, { id: 'not_real' }, { id: 'push_up', sets: 3, reps: 12, note: 'Use 40 kg' }, { id: 'bodyweight_squat' }, { id: 'glute_bridge' }],
+        exercises: [{ id: 'barbell_bench', sets: 9, reps: 99 }, { id: 'not_real' }, { id: 'kb_halo' }, { id: 'swimming_laps' }, { id: 'push_up', sets: 3, reps: 12, note: 'Use 40 kg' }, { id: 'bodyweight_squat' }, { id: 'glute_bridge' }],
         meals: [
           { slot: 'Breakfast', label: 'Hummus and pita', kcal: 400, protein: 15, carbs: 50, fat: 15 },
           { slot: 'Lunch', label: 'Grilled chicken and rice', kcal: 600, protein: 45, carbs: 60, fat: 15 },
@@ -209,6 +209,10 @@ describe('planner without AI', () => {
       const ids = d.session.exercises.map((e: Mod) => e.id);
       expect(ids).not.toContain('barbell_bench'); // needs a barbell
       expect(ids).not.toContain('not_real');
+      expect(ids).not.toContain('kb_halo'); // an old library id, not in the exercise sheet
+      expect(ids).not.toContain('russian_twist'); // ...and not quietly swapped for its legacy match
+      expect(ids).not.toContain('swimming_laps'); // in the sheet, never prescribed
+      for (const id of ids) expect(ex.findExercise(id, { legacy: false }).sheetId).toBeGreaterThan(0);
       const pu = d.session.exercises.find((e: Mod) => e.id === 'push_up');
       expect(pu.note).not.toMatch(/40 kg/);
       for (const m of d.meals) expect(food.violates(m.label, plan.dietRulesOf(p))).toBeNull(); // hummus replaced

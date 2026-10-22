@@ -1,1 +1,275 @@
-{}
+{
+  "incline_db_press": {
+    "videoId": "IP4oeKh1Sd4",
+    "title": "How to do the INCLINE DUMBBELL BENCH PRESS! | 2 Minute Tutorial",
+    "channel": "Max Euceda",
+    "seconds": 120,
+    "source": "api"
+  },
+  "incline_barbell_press": {
+    "videoId": "SrqOu55lrYU",
+    "title": "How To: Incline Barbell Bench Press | 3 GOLDEN RULES! (MADE BETTER!)",
+    "channel": "ScottHermanFitness",
+    "seconds": 334,
+    "source": "api"
+  },
+  "pec_deck_machine": {
+    "videoId": "3jYo5cMU3d4",
+    "title": "The Chest PEC DEC FLY | Exercise Form Guide",
+    "channel": "Max Euceda",
+    "seconds": 168,
+    "source": "api"
+  },
+  "close_grip_bench": {
+    "videoId": "vEUyEOVn3yM",
+    "title": "Close-Grip Bench Press Guide | 3 Mistakes to AVOID",
+    "channel": "BarBend",
+    "seconds": 223,
+    "source": "api"
+  },
+  "pull_up": {
+    "videoId": "ScGObDq1DSo",
+    "title": "Fix your pull-up form before it fixes you",
+    "channel": "Yellow Dude",
+    "seconds": 355,
+    "source": "api"
+  },
+  "seated_cable_row": {
+    "videoId": "xQNrFHEMhI4",
+    "title": "Seated Cable Row | Exercise Guide",
+    "channel": "Bodybuilding.com",
+    "seconds": 93,
+    "source": "api"
+  },
+  "chest_supported_db_row": {
+    "videoId": "ro2vfHfD0DQ",
+    "title": "How To Do A Chest Supported Dumbbell Row Correctly",
+    "channel": "Jack Hanrahan Fitness ",
+    "seconds": 458,
+    "source": "api"
+  },
+  "back_squat": {
+    "videoId": "my0tLDaWyDU",
+    "title": "How To Squat Correctly (NO BACK PAIN)",
+    "channel": "Squat University",
+    "seconds": 458,
+    "source": "api"
+  },
+  "walking_lunge": {
+    "videoId": "Pbmj6xPo-Hw",
+    "title": "Walking Lunges Exercise Tutorial | Build Legendary Legs & Cardio",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 110,
+    "source": "api"
+  },
+  "leg_extension": {
+    "videoId": "TeWSOxCRU1c",
+    "title": "How to do a Leg Extension (Alternate Exercise): Health e-University",
+    "channel": "Health e-University",
+    "seconds": 73,
+    "source": "api"
+  },
+  "lateral_raise": {
+    "videoId": "PzsMitRdI_8",
+    "title": "How to do the DUMBBELL LATERAL RAISE! | 2 Minute Tutorial",
+    "channel": "Max Euceda",
+    "seconds": 121,
+    "source": "api"
+  },
+  "barbell_curl": {
+    "videoId": "kwG2ipFRgfo",
+    "title": "How to Do a Barbell Curl | Arm Workout",
+    "channel": "Howcast",
+    "seconds": 119,
+    "source": "api"
+  },
+  "db_overhead_extension": {
+    "videoId": "fYqswDVbJDg",
+    "title": "HOW TO: Overhead Triceps Extension (BEST EXERCISE FOR HUGE TRICEPS) || PERFECT FORM (POWERBOMB)",
+    "channel": "ScottHermanFitness",
+    "seconds": 202,
+    "source": "api"
+  },
+  "hammer_curl": {
+    "videoId": "BRVDS6HVR9Q",
+    "title": "How To Perform HAMMER CURLS | Biceps Exercise Tutorial",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 90,
+    "source": "api"
+  },
+  "cable_pushdown": {
+    "videoId": "-zLyUAo1gMw",
+    "title": "How to do the CABLE TRICEP PUSHDOWN! | 2 Minute Tutorial",
+    "channel": "Max Euceda",
+    "seconds": 120,
+    "source": "api"
+  },
+  "hanging_leg_raise": {
+    "videoId": "Pr1ieGZ5atk",
+    "title": "Hanging Leg Raise | HOW-TO",
+    "channel": "ATHLEAN-X™",
+    "seconds": 276,
+    "source": "api"
+  },
+  "farmer_carry": {
+    "videoId": "NH7Xv-7NQNQ",
+    "title": "How To Perform Farmer Walks Exercise Tutorial",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 90,
+    "source": "api"
+  },
+  "burpee": {
+    "videoId": "qLBImHhCXSw",
+    "title": "How To Do A Burpee | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 204,
+    "source": "api"
+  },
+  "box_jump": {
+    "videoId": "kNIInK_Le8I",
+    "title": "How to Do Beginner Box Jump Exercises",
+    "channel": "National Academy of Sports Medicine (NASM)",
+    "seconds": 62,
+    "source": "api"
+  },
+  "battle_ropes": {
+    "videoId": "R7qd3Moor-s",
+    "title": "20 Battle rope exercises for Bootcamp and personal Trainers",
+    "channel": "Bootcamp Co.",
+    "seconds": 85,
+    "source": "api"
+  },
+  "incline_push_up": {
+    "videoId": "cfns5VDVVvk",
+    "title": "How To Do An Incline Push Up",
+    "channel": "Train With Adby - Personal Training Gym",
+    "seconds": 133,
+    "source": "api"
+  },
+  "decline_push_up": {
+    "videoId": "O7dVvwEK9J4",
+    "title": "Decline Push-Up Tutorial True Form",
+    "channel": "The Health Alchemist",
+    "seconds": 222,
+    "source": "api"
+  },
+  "machine_chest_press": {
+    "videoId": "sqNwDkUU_Ps",
+    "title": "How To Use The Chest Press Machine",
+    "channel": "PureGym",
+    "seconds": 61,
+    "source": "api"
+  },
+  "high_to_low_cable_fly": {
+    "videoId": "8Um35Es-ROE",
+    "title": "How To: Cable Fly (High-To-Low) || 3 GOLDEN RULES",
+    "channel": "ScottHermanFitness",
+    "seconds": 233,
+    "source": "api"
+  },
+  "low_to_high_cable_fly": {
+    "videoId": "eQ_NBB6OBH4",
+    "title": "HOW TO: Chest \"Low-To-High\" Cable Fly (BIGGER UPPER CHEST) || PERFECT FORM",
+    "channel": "ScottHermanFitness",
+    "seconds": 188,
+    "source": "api"
+  },
+  "assisted_chest_dip": {
+    "videoId": "kbmVlw-i0Vs",
+    "title": "Exercise Tutorial: Assisted Dips",
+    "channel": "Travis Tarrant",
+    "seconds": 141,
+    "source": "api"
+  },
+  "chin_up": {
+    "videoId": "pspXcUhoygA",
+    "title": "How to Perform Beginner Chin Ups",
+    "channel": "eHowFitness",
+    "seconds": 133,
+    "source": "api"
+  },
+  "neutral_grip_pull_up": {
+    "videoId": "tSRo8ksP27I",
+    "title": "How to perform a Neutral Grip Pull Up",
+    "channel": "Dimitri Giankoulas",
+    "seconds": 60,
+    "source": "api"
+  },
+  "wide_grip_lat_pulldown": {
+    "videoId": "lueEJGjTuPQ",
+    "title": "Wide-Grip Lat Pulldown | Back Exercise Guide",
+    "channel": "Bodybuilding.com",
+    "seconds": 65,
+    "source": "api"
+  },
+  "single_arm_cable_row": {
+    "videoId": "_z5NMUxkxxw",
+    "title": "Standing Single Arm Cable Row - The Proper Lift - BPI Sports",
+    "channel": "BPI Sports",
+    "seconds": 92,
+    "source": "api"
+  },
+  "machine_high_row": {
+    "videoId": "nhWPIm0tcTI",
+    "title": "Hammer Strength High Row (How To Use It)",
+    "channel": "Darryl Mayo",
+    "seconds": 114,
+    "source": "api"
+  },
+  "inverted_row": {
+    "videoId": "hXTc1mDnZCw",
+    "title": "Inverted Row Guide | Form Tips, Muscles Worked, and Mistakes",
+    "channel": "BarBend",
+    "seconds": 486,
+    "source": "api"
+  },
+  "pendlay_row": {
+    "videoId": "h4nkoayPFWw",
+    "title": "How to Perform the Pendlay Row - Exercise Tutorial",
+    "channel": "Buff Dudes",
+    "seconds": 234,
+    "source": "api"
+  },
+  "scapular_pull_up": {
+    "videoId": "-ZIpSoTRsuE",
+    "title": "Scapular Pull Ups (Beginner to Advanced Progressions)",
+    "channel": "Zack Henderson",
+    "seconds": 256,
+    "source": "api"
+  },
+  "machine_seated_row": {
+    "videoId": "TeFo51Q_Nsc",
+    "title": "How To Use The Seated Row Machine",
+    "channel": "PureGym",
+    "seconds": 61,
+    "source": "api"
+  },
+  "front_squat": {
+    "videoId": "v-mQm_droHg",
+    "title": "HOW TO FRONT SQUAT: Build Bigger Quads & A Stronger Squat",
+    "channel": "Jeff Nippard",
+    "seconds": 537,
+    "source": "api"
+  },
+  "hack_squat": {
+    "videoId": "0tn5K9NlCfo",
+    "title": "Hack Squat | Exercise Guide",
+    "channel": "Bodybuilding.com",
+    "seconds": 83,
+    "source": "api"
+  },
+  "dumbbell_squat": {
+    "videoId": "MJao9o7ROs0",
+    "title": "Dumbbell Front Squat | Exercise Guide",
+    "channel": "Bodybuilding.com",
+    "seconds": 65,
+    "source": "api"
+  },
+  "split_squat": {
+    "videoId": "SGHnCftrZkA",
+    "title": "Beginner's Guide: Split Squat",
+    "channel": "SilverSneakers",
+    "seconds": 146,
+    "source": "api"
+  }
+}

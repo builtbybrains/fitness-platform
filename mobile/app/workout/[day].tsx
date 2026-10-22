@@ -4,8 +4,10 @@
    Swapped exercises say what they replace, every exercise shows its coaching
    note, and any exercise can be replaced from here. The header maps the
    muscles the session works (a smaller map and a one-line key on phones
-   under 700px tall, so the first sets sit above the Complete bar). Ticking the last set completes the workout
-   and triggers the celebration. */
+   under 700px tall, so the first sets sit above the Complete bar). Each
+   exercise carries its tutorial: a 16:9 frame on top of the open card, a
+   small chip beside the name on the others. Ticking the last set completes
+   the workout and triggers the celebration. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -26,7 +28,8 @@ import { PlateStack } from '../../src/components/training/PlateStack';
 import { MuscleLegend, MuscleMap } from '../../src/components/training/MuscleMap';
 import { muscleNames, musclesForExercises } from '../../src/lib/muscles';
 import { BackHeader } from '../../src/components/training/BackHeader';
-import { useExerciseVideo, WatchHowButton } from '../../src/components/training/ExerciseVideo';
+import { useExerciseVideo } from '../../src/components/training/ExerciseVideo';
+import { COMPACT_W, ExerciseTutorial } from '../../src/components/training/ExerciseTutorial';
 import type { PlanWorkoutV2 } from '../../src/types';
 
 function mmss(sec: number): string {
@@ -174,48 +177,70 @@ export default function WorkoutScreen() {
           const all = setDone.length >= ex.sets;
           return (
             <View key={`${ex.name}-${i}`} style={[cardStyle, { gap: 14, padding: 16 }]}>
-              <Pressable
-                onPress={() => setExpanded(open ? null : i)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: open }}
-                accessibilityLabel={`${ex.name}, ${exerciseLabel(ex)}, ${setDone.length} of ${ex.sets} sets done`}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 48 }}
-              >
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: all ? C.greenTint : C.raised,
-                    borderWidth: all ? 2 : 0,
-                    borderColor: C.green,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+              {open ? <ExerciseTutorial exercise={ex} onWatch={video.watch} /> : null}
+
+              {/* The name toggles the card. On its right, one fixed 64px
+                  column: the tutorial chip, and under it the set count and
+                  chevron (they toggle too). Side by side they left the name
+                  about 100px at 360 wide; stacked it gets 164. The chip is a
+                  sibling, never a button inside a button. When the card opens
+                  its video moves up into the big frame and the column keeps
+                  its size, so the row never reflows. */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 }}>
+                <Pressable
+                  onPress={() => setExpanded(open ? null : i)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: open }}
+                  aria-expanded={open}
+                  accessibilityLabel={`${ex.name}, ${exerciseLabel(ex)}, ${setDone.length} of ${ex.sets} sets done`}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 }}
                 >
-                  {all ? (
-                    <Icon name="check" size={20} color={C.green} strokeWidth={2.6} />
-                  ) : (
-                    <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>{i + 1}</Text>
-                  )}
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: all ? C.greenTint : C.raised,
+                      borderWidth: all ? 2 : 0,
+                      borderColor: C.green,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {all ? (
+                      <Icon name="check" size={20} color={C.green} strokeWidth={2.6} />
+                    ) : (
+                      <Text style={{ fontFamily: FONT.displaySemi, fontSize: 15, color: C.text }}>{i + 1}</Text>
+                    )}
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[T.h3, { color: all ? C.muted : C.text }]}>{ex.name}</Text>
+                    <Text style={T.small}>
+                      {exerciseLabel(ex)} · rest {restFor(ex)}s
+                    </Text>
+                  </View>
+                </Pressable>
+                <View style={{ width: COMPACT_W, alignItems: 'center' }}>
+                  {open ? <View style={{ height: 44 }} /> : <ExerciseTutorial variant="compact" exercise={ex} onWatch={video.watch} />}
+                  <Pressable
+                    onPress={() => setExpanded(open ? null : i)}
+                    accessible={false}
+                    importantForAccessibility="no-hide-descendants"
+                    accessibilityElementsHidden
+                    style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 24 }}
+                  >
+                    <Text style={[T.small, { color: all ? C.green : C.muted }]}>
+                      {setDone.length}/{ex.sets}
+                    </Text>
+                    <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
+                      <Icon name="chevronRight" size={16} color={C.muted} />
+                    </View>
+                  </Pressable>
                 </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[T.h3, { color: all ? C.muted : C.text }]}>{ex.name}</Text>
-                  <Text style={T.small}>
-                    {exerciseLabel(ex)} · rest {restFor(ex)}s
-                  </Text>
-                </View>
-                <Text style={[T.small, { color: all ? C.green : C.muted }]}>
-                  {setDone.length}/{ex.sets}
-                </Text>
-                <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
-                  <Icon name="chevronRight" size={18} color={C.muted} />
-                </View>
-              </Pressable>
+              </View>
 
               {ex.replaced_from ? <Text style={[T.small, { color: C.stone }]}>Replaces {ex.replaced_from}</Text> : null}
               {ex.note ? <Text style={T.small}>{ex.note}</Text> : null}
-              <WatchHowButton exercise={ex} onWatch={video.watch} />
 
               {open ? (
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>

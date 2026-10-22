@@ -1,0 +1,244 @@
+ID,Muscle Group,Exercise Name,Primary Muscle,Secondary Muscles,Equipment,Movement Pattern,Difficulty,Unilateral,Exercise Type,Entry Type,Original Group
+1,Chest,Barbell Bench Press,Chest,"Triceps, front delts","Barbell, bench",Horizontal Push,Intermediate,No,Strength,Original,Chest
+2,Chest,Incline Dumbbell Press,Upper chest,"Front delts, triceps","Dumbbells, incline bench",Incline Push,Beginner,No,Strength,Original,Chest
+3,Chest,Cable Chest Fly,Chest,Front delts,Cable machine,Chest Isolation,Beginner,No,Strength,Original,Chest
+4,Chest,Dips (chest lean),Chest,"Triceps, front delts",Parallel bars,Horizontal Push,Intermediate,No,Strength,Original,Chest
+5,Chest,Incline Barbell Press,Upper chest,"Front delts, triceps","Barbell, incline bench",Incline Push,Intermediate,No,Strength,Original,Chest
+6,Chest,Flat Dumbbell Press,Chest,"Triceps, front delts","Dumbbells, bench",Horizontal Push,Beginner,No,Strength,Original,Chest
+7,Chest,Pec Deck Machine,Chest,Front delts,Pec deck machine,Chest Isolation,Beginner,No,Strength,Original,Chest
+8,Arms,Close-Grip Bench Press,Triceps,"Chest, front delts","Barbell, bench",Horizontal Push,Intermediate,No,Strength,Original,Chest
+9,Back,Pull-Ups,Lats,"Biceps, upper back",Pull-up bar,Vertical Pull,Intermediate,No,Strength,Original,Back
+10,Back,Lat Pulldown,Lats,"Biceps, upper back",Cable machine,Vertical Pull,Beginner,No,Strength,Original,Back
+11,Back,Seated Cable Row,Mid back,"Lats, biceps",Cable machine,Horizontal Pull,Beginner,No,Strength,Original,Back
+12,Back,Straight-Arm Pulldown,Lats,Core,Cable machine,Vertical Pull,Beginner,No,Strength,Original,Back
+13,Back,Barbell Bent-Over Row,Mid back,"Lats, biceps",Barbell,Horizontal Pull,Intermediate,No,Strength,Original,Back
+14,Back,Single-Arm Dumbbell Row,Lats,"Mid back, biceps","Dumbbell, bench",Horizontal Pull,Beginner,Yes,Strength,Original,Back
+15,Back,Chest-Supported Row,Mid back,"Lats, biceps","Dumbbells, incline bench",Horizontal Pull,Beginner,No,Strength,Original,Back
+16,Shoulders,Face Pulls,Rear delts,"Mid traps, rotator cuff",Cable machine,Horizontal Pull,Beginner,No,Strength,Original,Back
+17,Legs,Back Squat,Quads,"Glutes, adductors","Barbell, squat rack",Squat,Intermediate,No,Strength,Original,Legs
+18,Legs,Leg Press,Quads,Glutes,Leg press machine,Squat,Beginner,No,Strength,Original,Legs
+19,Legs,Walking Lunges,Quads,"Glutes, hamstrings",Bodyweight,Lunge,Beginner,Yes,Strength,Original,Legs
+20,Legs,Leg Extension,Quads,—,Leg extension machine,Knee Extension,Beginner,No,Strength,Original,Legs
+21,Legs,Standing Calf Raise,Calves,—,Calf raise machine,Calf Raise,Beginner,No,Strength,Original,Legs
+22,Legs,Romanian Deadlift,Hamstrings,"Glutes, spinal erectors",Barbell,Hip Hinge,Intermediate,No,Strength,Original,Legs
+23,Glutes,Hip Thrust,Glutes,Hamstrings,"Barbell, bench",Hip Extension,Beginner,No,Strength,Original,Legs
+24,Legs,Lying Leg Curl,Hamstrings,—,Leg curl machine,Knee Flexion,Beginner,No,Strength,Original,Legs
+25,Legs,Bulgarian Split Squat,Quads,Glutes,"Dumbbells, bench",Lunge,Intermediate,Yes,Strength,Original,Legs
+26,Legs,Seated Calf Raise,Calves,—,Seated calf machine,Calf Raise,Beginner,No,Strength,Original,Legs
+27,Shoulders,Overhead Press,Front delts,"Side delts, triceps",Barbell,Vertical Push,Intermediate,No,Strength,Original,Shoulders
+28,Shoulders,Dumbbell Lateral Raise,Side delts,—,Dumbbells,Shoulder Isolation,Beginner,No,Strength,Original,Shoulders
+29,Shoulders,Rear Delt Fly,Rear delts,Mid traps,Dumbbells,Shoulder Isolation,Beginner,No,Strength,Original,Shoulders
+30,Shoulders,Arnold Press,Front delts,"Side delts, triceps",Dumbbells,Vertical Push,Intermediate,No,Strength,Original,Shoulders
+31,Arms,Barbell Curl,Biceps,Forearms,Barbell,Arm Curl,Beginner,No,Strength,Original,Arms
+32,Arms,Overhead Triceps Extension,Triceps,—,Dumbbell,Triceps Extension,Beginner,No,Strength,Original,Arms
+33,Arms,Hammer Curl,Brachialis,"Biceps, forearms",Dumbbells,Arm Curl,Beginner,No,Strength,Original,Arms
+34,Arms,Triceps Pushdown,Triceps,—,Cable machine,Triceps Extension,Beginner,No,Strength,Original,Arms
+35,Arms,Incline Dumbbell Curl,Biceps,—,"Dumbbells, incline bench",Arm Curl,Intermediate,No,Strength,Original,Arms
+36,Core,Hanging Leg Raise,Abs,Hip flexors,Pull-up bar,Core Flexion,Intermediate,No,Strength,Original,Core
+37,Core,Cable Crunch,Abs,—,Cable machine,Core Flexion,Beginner,No,Strength,Original,Core
+38,Core,Ab Wheel Rollout,Abs,"Shoulders, lats",Ab wheel,Anti-Extension,Intermediate,No,Strength,Original,Core
+39,Core,Plank,Abs,"Glutes, shoulders",Mat,Anti-Extension,Beginner,No,Strength,Original,Core
+40,Full Body,Deadlift,Glutes,"Hamstrings, quads, back",Barbell,Hip Hinge,Intermediate,No,Strength,Original,Full Body
+41,Legs,Goblet Squat,Quads,Glutes,Dumbbell or kettlebell,Squat,Beginner,No,Strength,Original,Full Body
+42,Chest,Push-Ups,Chest,"Triceps, front delts",Bodyweight,Horizontal Push,Beginner,No,Strength,Original,Full Body
+43,Back,Dumbbell Row,Lats,"Mid back, biceps",Dumbbells,Horizontal Pull,Beginner,Yes,Strength,Original,Full Body
+44,Full Body,Farmer's Carry,Grip / forearms,"Core, traps",Dumbbells or kettlebells,Carry,Beginner,No,Strength,Original,Full Body
+45,Full Body,Kettlebell Swing,Glutes,"Hamstrings, core",Kettlebell,Hip Hinge,Intermediate,No,Power,Original,Full Body
+46,Full Body,Burpees,Full body,Cardiorespiratory system,Bodyweight,Conditioning,Intermediate,No,Conditioning,Original,Full Body
+47,Legs,Box Jump,Quads,"Glutes, calves",Plyo box,Jump / Land,Intermediate,No,Power,Original,Full Body
+48,Cardio,Battle Ropes,Full body,"Shoulders, core",Battle ropes,Conditioning,Beginner,No,Conditioning,Original,Full Body
+49,Chest,Incline Push-Up,Chest,"Triceps, shoulders",Bench or box,Horizontal Push,Beginner,No,Strength,Added,—
+50,Chest,Decline Push-Up,Upper chest,"Triceps, front delts","Bodyweight, box",Horizontal Push,Intermediate,No,Strength,Added,—
+51,Chest,Weighted Push-Up,Chest,"Triceps, front delts",Weight plate or vest,Horizontal Push,Intermediate,No,Strength,Added,—
+52,Chest,Knee Push-Up,Chest,"Triceps, front delts",Bodyweight,Horizontal Push,Beginner,No,Strength,Added,—
+53,Chest,Machine Chest Press,Chest,"Triceps, front delts",Chest press machine,Horizontal Push,Beginner,No,Strength,Added,—
+54,Chest,Smith Machine Bench Press,Chest,"Triceps, front delts","Smith machine, bench",Horizontal Push,Beginner,No,Strength,Added,—
+55,Chest,Dumbbell Floor Press,Chest,Triceps,Dumbbells,Horizontal Push,Beginner,No,Strength,Added,—
+56,Chest,Incline Dumbbell Fly,Upper chest,Front delts,"Dumbbells, incline bench",Chest Isolation,Intermediate,No,Strength,Added,—
+57,Chest,High-to-Low Cable Fly,Lower chest,Front delts,Cable machine,Chest Isolation,Beginner,No,Strength,Added,—
+58,Chest,Low-to-High Cable Fly,Upper chest,Front delts,Cable machine,Chest Isolation,Beginner,No,Strength,Added,—
+59,Chest,Single-Arm Cable Chest Press,Chest,"Triceps, core",Cable machine,Horizontal Push,Intermediate,Yes,Strength,Added,—
+60,Chest,Resistance Band Chest Press,Chest,Triceps,Resistance band,Horizontal Push,Beginner,No,Strength,Added,—
+61,Chest,Assisted Chest Dip,Chest,"Triceps, front delts",Assisted dip machine,Horizontal Push,Beginner,No,Strength,Added,—
+62,Chest,Svend Press,Chest,Front delts,Weight plate,Chest Isolation,Beginner,No,Strength,Added,—
+63,Back,Assisted Pull-Up,Lats,"Biceps, upper back",Assisted pull-up machine,Vertical Pull,Beginner,No,Strength,Added,—
+64,Back,Chin-Up,Lats,"Biceps, upper back",Pull-up bar,Vertical Pull,Intermediate,No,Strength,Added,—
+65,Back,Neutral-Grip Pull-Up,Lats,"Biceps, upper back",Pull-up bar,Vertical Pull,Intermediate,No,Strength,Added,—
+66,Back,Wide-Grip Lat Pulldown,Lats,"Upper back, biceps",Cable machine,Vertical Pull,Beginner,No,Strength,Added,—
+67,Back,Neutral-Grip Lat Pulldown,Lats,Biceps,Cable machine,Vertical Pull,Beginner,No,Strength,Added,—
+68,Back,Close-Grip Seated Cable Row,Mid back,"Lats, biceps",Cable machine,Horizontal Pull,Beginner,No,Strength,Added,—
+69,Back,Single-Arm Cable Row,Lats,"Mid back, biceps",Cable machine,Horizontal Pull,Beginner,Yes,Strength,Added,—
+70,Back,T-Bar Row,Mid back,"Lats, biceps",T-bar row machine,Horizontal Pull,Intermediate,No,Strength,Added,—
+71,Back,Machine High Row,Lats,"Upper back, biceps",High row machine,Horizontal Pull,Beginner,No,Strength,Added,—
+72,Back,Inverted Row,Mid back,"Biceps, rear delts",Bar or suspension trainer,Horizontal Pull,Beginner,No,Strength,Added,—
+73,Back,Pendlay Row,Mid back,"Lats, spinal erectors",Barbell,Horizontal Pull,Advanced,No,Strength,Added,—
+74,Back,Meadows Row,Lats,"Mid back, biceps",Landmine barbell,Horizontal Pull,Advanced,Yes,Strength,Added,—
+75,Back,Reverse-Grip Barbell Row,Lats,"Biceps, mid back",Barbell,Horizontal Pull,Intermediate,No,Strength,Added,—
+76,Back,Dumbbell Pullover,Lats,"Chest, triceps","Dumbbell, bench",Shoulder Extension,Intermediate,No,Strength,Added,—
+77,Back,Back Extension,Spinal erectors,"Glutes, hamstrings",Back extension bench,Hip Hinge,Beginner,No,Strength,Added,—
+78,Back,Superman Hold,Spinal erectors,Glutes,Mat,Back Extension,Beginner,No,Strength,Added,—
+79,Back,Resistance Band Row,Mid back,"Lats, biceps",Resistance band,Horizontal Pull,Beginner,No,Strength,Added,—
+80,Back,Band Pull-Apart,Upper back,Rear delts,Resistance band,Horizontal Pull,Beginner,No,Strength,Added,—
+81,Back,Scapular Pull-Up,Lower traps,Lats,Pull-up bar,Scapular Control,Intermediate,No,Strength,Added,—
+82,Back,Seal Row,Mid back,"Lats, biceps","Dumbbells, high bench",Horizontal Pull,Intermediate,No,Strength,Added,—
+83,Back,Machine Seated Row,Mid back,"Lats, biceps",Row machine,Horizontal Pull,Beginner,No,Strength,Added,—
+84,Legs,Front Squat,Quads,"Core, glutes","Barbell, squat rack",Squat,Intermediate,No,Strength,Added,—
+85,Legs,Hack Squat,Quads,Glutes,Hack squat machine,Squat,Beginner,No,Strength,Added,—
+86,Legs,Smith Machine Squat,Quads,Glutes,Smith machine,Squat,Beginner,No,Strength,Added,—
+87,Legs,Dumbbell Squat,Quads,Glutes,Dumbbells,Squat,Beginner,No,Strength,Added,—
+88,Legs,Box Squat,Quads,"Glutes, core","Barbell, box",Squat,Intermediate,No,Strength,Added,—
+89,Legs,Bodyweight Squat,Quads,Glutes,Bodyweight,Squat,Beginner,No,Strength,Added,—
+90,Legs,Split Squat,Quads,Glutes,Bodyweight,Lunge,Beginner,Yes,Strength,Added,—
+91,Legs,Reverse Lunge,Quads,"Glutes, hamstrings",Bodyweight,Lunge,Beginner,Yes,Strength,Added,—
+92,Legs,Forward Lunge,Quads,Glutes,Bodyweight,Lunge,Beginner,Yes,Strength,Added,—
+93,Legs,Lateral Lunge,Adductors,"Quads, glutes",Bodyweight,Lunge,Beginner,Yes,Strength,Added,—
+94,Legs,Dumbbell Step-Up,Quads,Glutes,"Dumbbells, box",Step-Up,Beginner,Yes,Strength,Added,—
+95,Legs,Single-Leg Leg Press,Quads,Glutes,Leg press machine,Squat,Intermediate,Yes,Strength,Added,—
+96,Legs,Seated Leg Curl,Hamstrings,—,Seated leg curl machine,Knee Flexion,Beginner,No,Strength,Added,—
+97,Legs,Standing Leg Curl,Hamstrings,—,Leg curl machine,Knee Flexion,Beginner,Yes,Strength,Added,—
+98,Legs,Nordic Hamstring Curl,Hamstrings,Glutes,Partner or ankle anchor,Knee Flexion,Advanced,No,Strength,Added,—
+99,Legs,Single-Leg Romanian Deadlift,Hamstrings,"Glutes, core",Dumbbell,Hip Hinge,Intermediate,Yes,Strength,Added,—
+100,Legs,Dumbbell Romanian Deadlift,Hamstrings,"Glutes, spinal erectors",Dumbbells,Hip Hinge,Beginner,No,Strength,Added,—
+101,Legs,Good Morning,Hamstrings,"Glutes, spinal erectors",Barbell,Hip Hinge,Intermediate,No,Strength,Added,—
+102,Legs,Glute-Ham Raise,Hamstrings,"Glutes, spinal erectors",GHD machine,Knee Flexion,Advanced,No,Strength,Added,—
+103,Legs,Cossack Squat,Adductors,"Quads, glutes",Bodyweight,Squat,Intermediate,Yes,Strength,Added,—
+104,Legs,Wall Sit,Quads,Glutes,Wall,Isometric Hold,Beginner,No,Strength,Added,—
+105,Legs,Tibialis Raise,Tibialis anterior,—,Wall or tib bar,Ankle Dorsiflexion,Beginner,No,Strength,Added,—
+106,Legs,Donkey Calf Raise,Calves,—,Calf machine,Calf Raise,Beginner,No,Strength,Added,—
+107,Legs,Single-Leg Calf Raise,Calves,—,Bodyweight,Calf Raise,Beginner,Yes,Strength,Added,—
+108,Legs,Leg Press Calf Raise,Calves,—,Leg press machine,Calf Raise,Beginner,No,Strength,Added,—
+109,Legs,Assisted Pistol Squat,Quads,"Glutes, core",Support or TRX,Squat,Intermediate,Yes,Strength,Added,—
+110,Legs,Pistol Squat,Quads,"Glutes, core",Bodyweight,Squat,Advanced,Yes,Strength,Added,—
+111,Legs,Heel-Elevated Squat,Quads,Glutes,Weight plate or wedge,Squat,Beginner,No,Strength,Added,—
+112,Glutes,Barbell Glute Bridge,Glutes,Hamstrings,"Barbell, mat",Hip Extension,Beginner,No,Strength,Added,—
+113,Glutes,Bodyweight Glute Bridge,Glutes,Hamstrings,Mat,Hip Extension,Beginner,No,Strength,Added,—
+114,Glutes,Single-Leg Glute Bridge,Glutes,"Hamstrings, core",Mat,Hip Extension,Intermediate,Yes,Strength,Added,—
+115,Glutes,Single-Leg Hip Thrust,Glutes,"Hamstrings, core",Bench,Hip Extension,Intermediate,Yes,Strength,Added,—
+116,Glutes,Dumbbell Hip Thrust,Glutes,Hamstrings,"Dumbbell, bench",Hip Extension,Beginner,No,Strength,Added,—
+117,Glutes,Cable Glute Kickback,Glutes,Hamstrings,Cable machine,Hip Extension,Beginner,Yes,Strength,Added,—
+118,Glutes,Hip Abduction Machine,Glute medius,Glute minimus,Hip abduction machine,Hip Abduction,Beginner,No,Strength,Added,—
+119,Glutes,Standing Cable Hip Abduction,Glute medius,Glute minimus,Cable machine,Hip Abduction,Beginner,Yes,Strength,Added,—
+120,Glutes,Banded Lateral Walk,Glute medius,Glute minimus,Mini resistance band,Hip Abduction,Beginner,Yes,Strength,Added,—
+121,Glutes,Clamshell,Glute medius,Glute minimus,"Mat, mini band optional",Hip Abduction,Beginner,Yes,Strength,Added,—
+122,Glutes,Frog Pumps,Glutes,—,Mat,Hip Extension,Beginner,No,Strength,Added,—
+123,Glutes,Quadruped Fire Hydrant,Glute medius,Core,Mat,Hip Abduction,Beginner,Yes,Strength,Added,—
+124,Glutes,Reverse Hyperextension,Glutes,"Hamstrings, spinal erectors",Reverse hyper machine,Hip Extension,Intermediate,No,Strength,Added,—
+125,Glutes,Cable Pull-Through,Glutes,Hamstrings,Cable machine,Hip Hinge,Beginner,No,Strength,Added,—
+126,Shoulders,Seated Dumbbell Shoulder Press,Front delts,"Side delts, triceps","Dumbbells, bench",Vertical Push,Beginner,No,Strength,Added,—
+127,Shoulders,Machine Shoulder Press,Front delts,"Side delts, triceps",Shoulder press machine,Vertical Push,Beginner,No,Strength,Added,—
+128,Shoulders,Single-Arm Dumbbell Shoulder Press,Front delts,"Triceps, core",Dumbbell,Vertical Push,Intermediate,Yes,Strength,Added,—
+129,Shoulders,Cable Lateral Raise,Side delts,—,Cable machine,Shoulder Isolation,Beginner,Yes,Strength,Added,—
+130,Shoulders,Lean-Away Cable Lateral Raise,Side delts,—,Cable machine,Shoulder Isolation,Intermediate,Yes,Strength,Added,—
+131,Shoulders,Dumbbell Front Raise,Front delts,—,Dumbbells,Shoulder Isolation,Beginner,No,Strength,Added,—
+132,Shoulders,Cable Rear Delt Fly,Rear delts,Mid traps,Cable machine,Shoulder Isolation,Beginner,No,Strength,Added,—
+133,Shoulders,Reverse Pec Deck,Rear delts,Mid traps,Reverse pec deck machine,Shoulder Isolation,Beginner,No,Strength,Added,—
+134,Shoulders,Landmine Shoulder Press,Front delts,"Upper chest, triceps",Landmine barbell,Diagonal Push,Beginner,Yes,Strength,Added,—
+135,Shoulders,Pike Push-Up,Front delts,Triceps,Bodyweight,Vertical Push,Intermediate,No,Strength,Added,—
+136,Shoulders,Wall Handstand Push-Up,Front delts,"Triceps, core",Wall,Vertical Push,Advanced,No,Strength,Added,—
+137,Shoulders,Prone Y Raise,Lower traps,Rear delts,"Light dumbbells, bench",Scapular Control,Beginner,No,Strength,Added,—
+138,Shoulders,Dumbbell Shrug,Upper traps,—,Dumbbells,Scapular Elevation,Beginner,No,Strength,Added,—
+139,Shoulders,Cable External Rotation,Rotator cuff,—,Cable machine,External Rotation,Beginner,Yes,Strength,Added,—
+140,Shoulders,Banded External Rotation,Rotator cuff,—,Resistance band,External Rotation,Beginner,Yes,Strength,Added,—
+141,Arms,EZ-Bar Curl,Biceps,Forearms,EZ curl bar,Arm Curl,Beginner,No,Strength,Added,—
+142,Arms,Alternating Dumbbell Curl,Biceps,Forearms,Dumbbells,Arm Curl,Beginner,Yes,Strength,Added,—
+143,Arms,Preacher Curl,Biceps,—,"Preacher bench, EZ bar",Arm Curl,Beginner,No,Strength,Added,—
+144,Arms,Machine Preacher Curl,Biceps,—,Preacher curl machine,Arm Curl,Beginner,No,Strength,Added,—
+145,Arms,Standing Cable Curl,Biceps,—,Cable machine,Arm Curl,Beginner,No,Strength,Added,—
+146,Arms,Concentration Curl,Biceps,—,Dumbbell,Arm Curl,Beginner,Yes,Strength,Added,—
+147,Arms,Cross-Body Hammer Curl,Brachialis,"Biceps, forearms",Dumbbells,Arm Curl,Beginner,Yes,Strength,Added,—
+148,Arms,Bayesian Cable Curl,Biceps,—,Cable machine,Arm Curl,Intermediate,Yes,Strength,Added,—
+149,Arms,Reverse Barbell Curl,Brachioradialis,Biceps,Barbell,Arm Curl,Beginner,No,Strength,Added,—
+150,Arms,Zottman Curl,Biceps,Forearms,Dumbbells,Arm Curl,Intermediate,No,Strength,Added,—
+151,Arms,Spider Curl,Biceps,—,"Dumbbells, incline bench",Arm Curl,Intermediate,No,Strength,Added,—
+152,Arms,Cable Rope Hammer Curl,Brachialis,"Biceps, forearms","Cable machine, rope",Arm Curl,Beginner,No,Strength,Added,—
+153,Arms,Incline Hammer Curl,Brachialis,Biceps,"Dumbbells, incline bench",Arm Curl,Intermediate,No,Strength,Added,—
+154,Arms,21s Biceps Curl,Biceps,Forearms,Barbell or EZ bar,Arm Curl,Intermediate,No,Strength,Added,—
+155,Arms,Rope Triceps Pushdown,Triceps,—,"Cable machine, rope",Triceps Extension,Beginner,No,Strength,Added,—
+156,Arms,Straight-Bar Triceps Pushdown,Triceps,—,"Cable machine, straight bar",Triceps Extension,Beginner,No,Strength,Added,—
+157,Arms,Single-Arm Cable Triceps Pushdown,Triceps,—,Cable machine,Triceps Extension,Beginner,Yes,Strength,Added,—
+158,Arms,Cable Overhead Triceps Extension,Triceps,—,Cable machine,Triceps Extension,Beginner,No,Strength,Added,—
+159,Arms,Dumbbell Skull Crusher,Triceps,—,"Dumbbells, bench",Triceps Extension,Intermediate,No,Strength,Added,—
+160,Arms,EZ-Bar Skull Crusher,Triceps,—,"EZ curl bar, bench",Triceps Extension,Intermediate,No,Strength,Added,—
+161,Arms,Diamond Push-Up,Triceps,"Chest, front delts",Bodyweight,Horizontal Push,Intermediate,No,Strength,Added,—
+162,Arms,Close-Grip Push-Up,Triceps,"Chest, front delts",Bodyweight,Horizontal Push,Beginner,No,Strength,Added,—
+163,Arms,Bench Dip,Triceps,"Chest, front delts",Bench,Triceps Extension,Beginner,No,Strength,Added,—
+164,Arms,Assisted Triceps Dip,Triceps,"Chest, front delts",Assisted dip machine,Triceps Extension,Beginner,No,Strength,Added,—
+165,Arms,Dumbbell Triceps Kickback,Triceps,—,Dumbbell,Triceps Extension,Beginner,Yes,Strength,Added,—
+166,Arms,Cable Triceps Kickback,Triceps,—,Cable machine,Triceps Extension,Beginner,Yes,Strength,Added,—
+167,Arms,Seated Dumbbell Overhead Triceps Extension,Triceps,—,"Dumbbell, bench",Triceps Extension,Beginner,No,Strength,Added,—
+168,Arms,Wrist Curl,Wrist flexors,—,Dumbbells,Wrist Flexion,Beginner,No,Strength,Added,—
+169,Arms,Reverse Wrist Curl,Wrist extensors,—,Dumbbells,Wrist Extension,Beginner,No,Strength,Added,—
+170,Arms,Plate Pinch Hold,Grip / forearms,—,Weight plates,Grip Hold,Beginner,No,Strength,Added,—
+171,Core,Dead Bug,Deep core,Hip flexors,Mat,Anti-Extension,Beginner,Yes,Strength,Added,—
+172,Core,Bird Dog,Deep core,"Glutes, spinal erectors",Mat,Anti-Rotation,Beginner,Yes,Strength,Added,—
+173,Core,Reverse Crunch,Abs,Hip flexors,Mat,Core Flexion,Beginner,No,Strength,Added,—
+174,Core,Bicycle Crunch,Abs,Obliques,Mat,Core Flexion,Beginner,Yes,Strength,Added,—
+175,Core,Russian Twist,Obliques,Abs,Mat,Core Rotation,Beginner,Yes,Strength,Added,—
+176,Core,Side Plank,Obliques,Glute medius,Mat,Lateral Stability,Beginner,Yes,Strength,Added,—
+177,Core,Pallof Press,Obliques,Deep core,Cable machine or band,Anti-Rotation,Beginner,Yes,Strength,Added,—
+178,Core,Cable Woodchop,Obliques,Abs,Cable machine,Core Rotation,Intermediate,Yes,Strength,Added,—
+179,Core,Hollow Body Hold,Abs,Hip flexors,Mat,Anti-Extension,Intermediate,No,Strength,Added,—
+180,Core,Flutter Kicks,Abs,Hip flexors,Mat,Core Stability,Beginner,No,Strength,Added,—
+181,Core,Toe Touch Crunch,Abs,—,Mat,Core Flexion,Beginner,No,Strength,Added,—
+182,Core,V-Up,Abs,Hip flexors,Mat,Core Flexion,Intermediate,No,Strength,Added,—
+183,Core,Weighted Sit-Up,Abs,Hip flexors,"Weight plate, mat",Core Flexion,Intermediate,No,Strength,Added,—
+184,Core,Bear Plank,Deep core,"Shoulders, quads",Mat,Anti-Extension,Beginner,No,Strength,Added,—
+185,Core,Copenhagen Side Plank,Adductors,Obliques,"Bench, mat",Lateral Stability,Advanced,Yes,Strength,Added,—
+186,Core,Windshield Wipers,Obliques,"Abs, hip flexors",Mat,Core Rotation,Advanced,No,Strength,Added,—
+187,Core,Suitcase Carry,Obliques,Grip / forearms,Dumbbell or kettlebell,Carry,Beginner,Yes,Strength,Added,—
+188,Core,Stir the Pot,Deep core,Shoulders,Stability ball,Anti-Extension,Intermediate,No,Strength,Added,—
+189,Core,Landmine Rotation,Obliques,"Shoulders, abs",Landmine barbell,Core Rotation,Intermediate,Yes,Strength,Added,—
+190,Core,Stability Ball Crunch,Abs,—,Stability ball,Core Flexion,Beginner,No,Strength,Added,—
+191,Core,Heel Touches,Obliques,Abs,Mat,Lateral Flexion,Beginner,Yes,Strength,Added,—
+192,Core,Knee Raise on Captain's Chair,Abs,Hip flexors,Captain's chair,Core Flexion,Beginner,No,Strength,Added,—
+193,Full Body,Barbell Clean and Press,Full body,"Glutes, shoulders, traps",Barbell,Olympic Lift,Advanced,No,Power,Added,—
+194,Full Body,Dumbbell Thruster,Full body,"Quads, shoulders, core",Dumbbells,Squat to Press,Intermediate,No,Strength,Added,—
+195,Full Body,Barbell Thruster,Full body,"Quads, shoulders, core",Barbell,Squat to Press,Advanced,No,Strength,Added,—
+196,Full Body,Single-Arm Dumbbell Snatch,Full body,"Glutes, shoulders, core",Dumbbell,Explosive Pull,Intermediate,Yes,Power,Added,—
+197,Full Body,Kettlebell Clean,Full body,"Glutes, shoulders, traps",Kettlebell,Explosive Pull,Intermediate,Yes,Power,Added,—
+198,Full Body,Turkish Get-Up,Full body,"Shoulders, core, hips",Kettlebell,Ground to Stand,Advanced,Yes,Strength,Added,—
+199,Full Body,Medicine Ball Slam,Full body,"Core, shoulders",Medicine ball,Power Throw,Beginner,No,Power,Added,—
+200,Full Body,Bear Crawl,Full body,"Core, shoulders, quads",Bodyweight,Crawl,Beginner,No,Conditioning,Added,—
+201,Full Body,Sled Push,Full body,"Quads, glutes",Weighted sled,Push / Drive,Beginner,No,Conditioning,Added,—
+202,Full Body,Sled Pull,Full body,"Quads, back",Weighted sled,Pull / Drive,Beginner,No,Conditioning,Added,—
+203,Full Body,Sandbag Carry,Full body,"Core, traps, legs",Sandbag,Carry,Intermediate,No,Strength,Added,—
+204,Full Body,Devil's Press,Full body,"Chest, shoulders, glutes",Dumbbells,Complex,Advanced,No,Conditioning,Added,—
+205,Full Body,Dumbbell Clean and Press,Full body,"Quads, glutes, shoulders",Dumbbells,Explosive Pull,Intermediate,No,Power,Added,—
+206,Full Body,Step-Up to Press,Full body,"Quads, glutes, shoulders","Dumbbells, box",Step-Up to Press,Intermediate,Yes,Strength,Added,—
+207,Full Body,Kettlebell High Pull,Full body,"Glutes, traps",Kettlebell,Explosive Pull,Intermediate,No,Power,Added,—
+208,Cardio,Treadmill Walking,Cardiorespiratory system,Legs,Treadmill,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+209,Cardio,Treadmill Running,Cardiorespiratory system,Legs,Treadmill,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+210,Cardio,Incline Treadmill Walking,Cardiorespiratory system,"Glutes, calves",Treadmill,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+211,Cardio,Outdoor Running,Cardiorespiratory system,Legs,Bodyweight,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+212,Cardio,Stationary Cycling,Cardiorespiratory system,"Quads, glutes",Stationary bike,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+213,Cardio,Air Bike Intervals,Cardiorespiratory system,"Legs, arms",Air bike,Intervals,Intermediate,No,Conditioning,Added,—
+214,Cardio,Rowing Ergometer,Cardiorespiratory system,"Back, quads",Rowing machine,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+215,Cardio,Elliptical Trainer,Cardiorespiratory system,Legs,Elliptical machine,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+216,Cardio,Stair Climber,Cardiorespiratory system,"Quads, glutes",Stair machine,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+217,Cardio,Jump Rope,Cardiorespiratory system,"Calves, shoulders",Jump rope,Conditioning,Beginner,No,Conditioning,Added,—
+218,Cardio,Jumping Jacks,Cardiorespiratory system,"Shoulders, legs",Bodyweight,Conditioning,Beginner,No,Conditioning,Added,—
+219,Cardio,High Knees,Cardiorespiratory system,"Hip flexors, calves",Bodyweight,Conditioning,Beginner,No,Conditioning,Added,—
+220,Cardio,Mountain Climbers,Cardiorespiratory system,"Core, shoulders",Bodyweight,Conditioning,Beginner,Yes,Conditioning,Added,—
+221,Cardio,Skater Hops,Cardiorespiratory system,"Glutes, quads",Bodyweight,Lateral Jump,Intermediate,Yes,Conditioning,Added,—
+222,Cardio,Shadow Boxing,Cardiorespiratory system,"Shoulders, core",Bodyweight,Conditioning,Beginner,No,Conditioning,Added,—
+223,Cardio,Shuttle Runs,Cardiorespiratory system,"Quads, calves",Cones,Intervals,Intermediate,No,Conditioning,Added,—
+224,Cardio,Sprint Intervals,Cardiorespiratory system,Legs,Track or treadmill,Intervals,Advanced,No,Conditioning,Added,—
+225,Cardio,Swimming Laps,Cardiorespiratory system,"Upper body, legs",Swimming pool,Steady-State Cardio,Beginner,No,Conditioning,Added,—
+226,Cardio,Low-Impact March in Place,Cardiorespiratory system,Legs,Bodyweight,Conditioning,Beginner,No,Conditioning,Added,—
+227,Mobility,Cat-Cow,Spine mobility,Core,Mat,Spinal Mobility,Beginner,No,Mobility,Added,—
+228,Mobility,World's Greatest Stretch,Hip / thoracic mobility,"Hamstrings, shoulders",Mat,Full-Body Mobility,Beginner,Yes,Mobility,Added,—
+229,Mobility,Open-Book Thoracic Rotation,Thoracic mobility,Shoulders,Mat,Thoracic Rotation,Beginner,Yes,Mobility,Added,—
+230,Mobility,90/90 Hip Switch,Hip mobility,Glutes,Mat,Hip Rotation,Beginner,Yes,Mobility,Added,—
+231,Mobility,Deep Squat Hold,Hip / ankle mobility,Adductors,Bodyweight,Squat Mobility,Beginner,No,Mobility,Added,—
+232,Mobility,Couch Stretch,Hip flexor mobility,Quads,Bench or wall,Hip Extension Mobility,Beginner,Yes,Mobility,Added,—
+233,Mobility,Kneeling Hip Flexor Stretch,Hip flexor mobility,Quads,Mat,Hip Extension Mobility,Beginner,Yes,Mobility,Added,—
+234,Mobility,Doorway Chest Stretch,Chest mobility,Front delts,Doorframe,Chest Stretch,Beginner,Yes,Mobility,Added,—
+235,Mobility,Banded Shoulder Pass-Through,Shoulder mobility,Chest,Resistance band,Shoulder Mobility,Beginner,No,Mobility,Added,—
+236,Mobility,Ankle Dorsiflexion Rocks,Ankle mobility,Calves,Wall,Ankle Mobility,Beginner,Yes,Mobility,Added,—
+237,Mobility,Child's Pose,Spine mobility,Lats,Mat,Spinal Mobility,Beginner,No,Mobility,Added,—
+238,Mobility,Dynamic Hamstring Sweep,Hamstring mobility,Calves,Bodyweight,Hamstring Mobility,Beginner,Yes,Mobility,Added,—
+239,Mobility,Walking Knee Hug,Hip mobility,Glutes,Bodyweight,Hip Mobility,Beginner,Yes,Mobility,Added,—
+240,Mobility,Wall Slides,Shoulder mobility,Upper back,Wall,Shoulder Mobility,Beginner,No,Mobility,Added,—
+241,Mobility,Wrist Circles,Wrist mobility,Forearms,Bodyweight,Wrist Mobility,Beginner,No,Mobility,Added,—
+242,Mobility,Pigeon Stretch,Hip mobility,Glutes,Mat,Hip Rotation,Beginner,Yes,Mobility,Added,—
+243,Mobility,Standing Quad Stretch,Quad mobility,Hip flexors,Bodyweight,Quad Stretch,Beginner,Yes,Mobility,Added,—
