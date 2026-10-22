@@ -4,24 +4,24 @@ import { muscleMapLabel, muscleNames, musclesForExercises, toneFor } from '../li
 
 describe('musclesForExercises', () => {
   it('lists primary muscles most-worked first and secondaries by count', () => {
-    // Push-up: chest + triceps, shoulders, core. Bench: chest + triceps, shoulders.
-    // Squat: quads + glutes.
+    // Push-ups: chest + triceps, shoulders. Flat dumbbell press: chest +
+    // triceps, shoulders. Squat: quads + glutes (the exercise sheet's muscles).
     const r = musclesForExercises(['Push-up', 'Dumbbell bench press', 'Bodyweight squat']);
     expect(r.primary).toEqual(['chest', 'quads']);
-    expect(r.secondary).toEqual(['triceps', 'shoulders', 'core', 'glutes']);
+    expect(r.secondary).toEqual(['triceps', 'shoulders', 'glutes']);
   });
 
   it('drops a secondary that is primary elsewhere in the session', () => {
     const r = musclesForExercises(['Push-up', 'Close-grip bench press']);
     expect(r.primary).toEqual(['chest', 'triceps']);
-    expect(r.secondary).toEqual(['shoulders', 'core']);
+    expect(r.secondary).toEqual(['shoulders']);
     expect(r.secondary).not.toContain('chest');
   });
 
   it('resolves ids and aliases, and skips names it does not know', () => {
     const r = musclesForExercises(['push_up', 'Pushups', 'Something made up', '']);
     expect(r.primary).toEqual(['chest']);
-    expect(r.secondary).toEqual(['triceps', 'shoulders', 'core']);
+    expect(r.secondary).toEqual(['triceps', 'shoulders']);
   });
 
   it('is empty for an empty session', () => {

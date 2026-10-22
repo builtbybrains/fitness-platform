@@ -1,6 +1,6 @@
 /* "Replace an exercise": three alternatives for the same muscle group that
-   fit where the person trains and avoid their injuries. They choose this
-   week only or every week, then confirm. */
+   fit where the person trains and avoid their injuries. Each one carries its
+   tutorial chip. They choose this week only or every week, then confirm. */
 
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -13,7 +13,8 @@ import { haptic } from '../../lib/haptics';
 import { Button } from '../Button';
 import { Notice } from '../Bits';
 import { Sheet } from './Sheet';
-import { useExerciseVideo, WatchHowIcon } from './ExerciseVideo';
+import { useExerciseVideo } from './ExerciseVideo';
+import { ExerciseTutorial } from './ExerciseTutorial';
 import { ChoiceRow, Segmented, StateBlock } from './Controls';
 import { equipmentLabel, muscleLabel } from './labels';
 
@@ -95,7 +96,7 @@ export function ReplaceExerciseSheet({ visible, onClose, exercise, options, onRe
                     onPress={() => setPicked(o.id)}
                   />
                 </View>
-                <WatchHowIcon exercise={o} onWatch={video.watch} />
+                <ExerciseTutorial variant="compact" exercise={o} onWatch={video.watch} />
               </View>
             ))}
           </View>

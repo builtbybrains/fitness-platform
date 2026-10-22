@@ -1,31 +1,24 @@
-/* "Watch how": a form tutorial for an exercise. With a curated video
-   (data/exerciseVideos.ts) it opens a sheet with the video playing inline,
+/* The form tutorial sheet for an exercise. With a curated video
+   (data/exerciseVideos.ts) a tap opens a sheet with the video playing inline,
    its title and channel, and a link out to YouTube. Without one it opens a
-   YouTube search for a form tutorial instead, and says so ("Find a video"). */
+   YouTube search for a form tutorial instead. The tiles that open it live in
+   ExerciseTutorial.tsx. */
 
 import React, { useCallback, useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 
 import { C, FONT, T } from '../../design';
-import { ExerciseVideo, searchUrlFor, videoFor, watchUrl } from '../../data/exerciseVideos';
-import { Button, IconButton, LinkButton } from '../Button';
+import { ExerciseVideo, exerciseVideo, VideoTarget, videoLength, watchAction, watchUrl } from '../../data/exerciseVideos';
+import { LinkButton } from '../Button';
 import { Icon } from '../Icon';
 import { Sheet } from './Sheet';
 import { VideoPlayer } from './VideoPlayer';
 
-export type VideoTarget = { id?: string | null; name: string };
-
-export function exerciseVideo(ex: VideoTarget): ExerciseVideo | null {
-  return videoFor(ex.id) ?? videoFor(ex.name);
-}
+export { exerciseVideo };
+export type { VideoTarget };
 
 function openExternal(url: string) {
   Linking.openURL(url).catch(() => {});
-}
-
-function mmss(sec: number | null): string | null {
-  if (!sec) return null;
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
 
 /** State for one video sheet per screen: `watch(ex)` opens the sheet, or
@@ -33,9 +26,9 @@ function mmss(sec: number | null): string | null {
 export function useExerciseVideo() {
   const [current, setCurrent] = useState<{ ex: VideoTarget; video: ExerciseVideo } | null>(null);
   const watch = useCallback((ex: VideoTarget) => {
-    const video = exerciseVideo(ex);
-    if (video) setCurrent({ ex, video });
-    else openExternal(searchUrlFor(ex.name));
+    const action = watchAction(ex);
+    if (action.kind === 'sheet') setCurrent({ ex, video: action.video });
+    else openExternal(action.url);
   }, []);
   const sheet = <ExerciseVideoSheet target={current} onClose={() => setCurrent(null)} />;
   return { watch, sheet };
@@ -48,7 +41,7 @@ function ExerciseVideoSheet({ target, onClose }: { target: { ex: VideoTarget; vi
   const t = target ?? shown;
   if (!t) return null;
   const { ex, video } = t;
-  const length = mmss(video.seconds);
+  const length = videoLength(video.seconds);
   return (
     <Sheet visible={!!target} onClose={onClose} title={ex.name} subtitle="How to do it, step by step.">
       {target ? <VideoPlayer videoId={video.videoId} title={video.title} /> : <View style={{ width: '100%', aspectRatio: 16 / 9 }} />}
@@ -67,35 +60,5 @@ function ExerciseVideoSheet({ target, onClose }: { target: { ex: VideoTarget; vi
       </LinkButton>
       <Text style={[T.small, { color: C.faint }]}>Video from YouTube. Stop if anything hurts.</Text>
     </Sheet>
-  );
-}
-
-/** The 44px "Watch how" pill (play icon and label) under an exercise. */
-export function WatchHowButton({ exercise, onWatch }: { exercise: VideoTarget; onWatch: (ex: VideoTarget) => void }) {
-  const has = !!exerciseVideo(exercise);
-  return (
-    <Button
-      compact
-      variant="secondary"
-      icon="play"
-      label={has ? 'Watch how' : 'Find a video'}
-      onPress={() => onWatch(exercise)}
-      accessibilityLabel={has ? `Watch how to do ${exercise.name}` : `Find a video of ${exercise.name} on YouTube`}
-      accessibilityHint={has ? undefined : 'Opens a YouTube search'}
-      style={{ alignSelf: 'flex-start' }}
-    />
-  );
-}
-
-/** Icon-only version for tight rows (the replace-exercise sheet). */
-export function WatchHowIcon({ exercise, onWatch }: { exercise: VideoTarget; onWatch: (ex: VideoTarget) => void }) {
-  const has = !!exerciseVideo(exercise);
-  return (
-    <IconButton
-      icon="play"
-      variant="carbon"
-      onPress={() => onWatch(exercise)}
-      accessibilityLabel={has ? `Watch how to do ${exercise.name}` : `Find a video of ${exercise.name} on YouTube`}
-    />
   );
 }

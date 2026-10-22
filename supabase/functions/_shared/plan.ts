@@ -29,6 +29,7 @@ import {
   type Level,
   type Muscle,
   type Pattern,
+  prescribable,
   safeFor,
   type TrainLocation,
   variantFor,
@@ -296,14 +297,39 @@ function equipmentScore(e: Exercise, p: Person): number {
   return 0;
 }
 
-function pick(slot: Slot, p: Person, used: Set<string>, weekUsed: Set<string>, variation: number): Exercise | null {
+/** Fill a slot from the sheet library, best fit first: the muscle and
+    pattern; the muscle in the same push or pull family; a lift that trains
+    the muscle as a secondary (same pattern, then same family); the muscle
+    in any pattern that does not push on a pull slot (or the reverse); a
+    stretch for the muscle (first of all in the recovery session); anything
+    left for the muscle. A lift whose main muscle a later slot of the
+    session needs (`later`) is borrowed only as a last resort. */
+function pick(slot: Slot, p: Person, used: Set<string>, weekUsed: Set<string>, variation: number, recovery = false, later: ReadonlySet<Muscle> = new Set()): Exercise | null {
   const base = { available: p.available, injuries: p.injuryAreas, maxLevel: maxLevel(p) };
-  let options = exercisesFor({ ...base, muscle: slot.muscle, pattern: slot.pattern });
-  if (!options.length) options = exercisesFor({ ...base, muscle: slot.muscle });
-  options = options.filter((e) => !used.has(e.id)).sort((a, b) => equipmentScore(b, p) - equipmentScore(a, p));
+  const fresh = (xs: Exercise[]) => xs.filter((e) => !used.has(e.id));
+  const lifts = (xs: Exercise[]) => fresh(xs).filter((e) => e.kind !== 'mobility');
+  const stretches = (xs: Exercise[]) => fresh(xs).filter((e) => e.kind === 'mobility');
+  const sameMuscle = exercisesFor({ ...base, muscle: slot.muscle });
+  const helpers = exercisesFor(base).filter((e) => e.secondary.includes(slot.muscle));
+  const spare = helpers.filter((e) => !later.has(e.muscle));
+  const family = (pt: Pattern) => (pt.startsWith('push') ? 'push' : pt.startsWith('pull') ? 'pull' : pt);
+  const near = (e: Exercise) => !slot.pattern || family(e.pattern) === family(slot.pattern);
+  const opposite = (e: Exercise) => !!slot.pattern && ['push', 'pull'].includes(family(e.pattern)) && ['push', 'pull'].includes(family(slot.pattern)) && family(e.pattern) !== family(slot.pattern);
+  const tiers: Exercise[][] = [
+    ...(recovery ? [stretches(sameMuscle)] : []),
+    lifts(exercisesFor({ ...base, muscle: slot.muscle, pattern: slot.pattern })),
+    lifts(sameMuscle.filter(near)),
+    lifts(spare.filter((e) => !slot.pattern || e.pattern === slot.pattern)),
+    lifts(spare.filter(near)),
+    lifts(sameMuscle.filter((e) => !opposite(e))),
+    stretches(sameMuscle),
+    lifts(sameMuscle),
+    lifts(helpers),
+  ];
+  const options = (tiers.find((t) => t.length) ?? []).sort((a, b) => equipmentScore(b, p) - equipmentScore(a, p));
   if (!options.length) return null;
-  const fresh = options.filter((e) => !weekUsed.has(e.id));
-  const list = fresh.length > variation ? fresh : options;
+  const unused = options.filter((e) => !weekUsed.has(e.id));
+  const list = unused.length > variation ? unused : options;
   return list[variation % list.length];
 }
 
@@ -357,8 +383,9 @@ export function rulesWeek(adj: Adjusted, targets: DailyTargets): PlanDayV2[] {
     const exercises: PlanExerciseV2[] = [];
     const slots = [...tpl.slots];
     if ((p.goal === 'lose_fat' || p.goal === 'sports_performance') && key !== 'recovery') slots.push({ muscle: 'cardio' });
-    for (const slot of slots) {
-      const e = pick(slot, p, used, weekUsed, variation);
+    for (const [j, slot] of slots.entries()) {
+      const later = new Set(slots.slice(j + 1).map((s) => s.muscle));
+      const e = pick(slot, p, used, weekUsed, variation, key === 'recovery', later);
       if (!e) continue;
       used.add(e.id);
       weekUsed.add(e.id);
@@ -374,7 +401,8 @@ export function rulesWeek(adj: Adjusted, targets: DailyTargets): PlanDayV2[] {
 
 // ───────────────────────────── AI fill ─────────────────────────────
 
-function allowedList(p: Person): string {
+/** The ids the model may use, by muscle: the prescribable sheet exercises that fit. */
+export function allowedList(p: Person): string {
   const list = exercisesFor({ available: p.available, injuries: p.injuryAreas, maxLevel: maxLevel(p) });
   const byMuscle = new Map<string, string[]>();
   for (const e of list) byMuscle.set(e.muscle, [...(byMuscle.get(e.muscle) ?? []), `${e.id} (${e.name})`]);
@@ -391,7 +419,7 @@ function systemPrompt(p: Person): string {
     'Exercises: use ONLY ids from the ALLOWED EXERCISES list (they already fit the person\'s equipment and injuries). 4 to 7 exercises per workout, sensible sets and reps for the goal. Never prescribe absolute loads.',
     'Meals: Breakfast, Lunch, Dinner and Snack every day. Everyday food the person can get in Lebanon is welcome (labneh, foul, hummus, shish taouk, mujadara, fattoush, grilled fish, rice, bulgur, fruit). Respect diet, allergies and dislikes strictly. Each meal has kcal, protein, carbs and fat (grams) that agree with each other (4/4/9). Each day adds up to the day\'s kcal target. Vary meals across the week.',
     'Answer with ONLY valid JSON, no markdown:',
-    '{"summary":"2 sentences: the approach and why it suits them","why":"1 sentence: what changed from the previous plan and why (empty if first plan)","days":[{"focus":"Upper body","exercises":[{"id":"db_row","sets":3,"reps":10,"rest":90,"note":"short cue"}],"note":"rest-day note if rest","meals":[{"slot":"Breakfast","label":"...","kcal":450,"protein":30,"carbs":45,"fat":15}]}]}',
+    '{"summary":"2 sentences: the approach and why it suits them","why":"1 sentence: what changed from the previous plan and why (empty if first plan)","days":[{"focus":"Upper body","exercises":[{"id":"dumbbell_row","sets":3,"reps":10,"rest":90,"note":"short cue"}],"note":"rest-day note if rest","meals":[{"slot":"Breakfast","label":"...","kcal":450,"protein":30,"carbs":45,"fat":15}]}]}',
     'The days array has exactly 7 entries, Monday first. Rest days have "exercises":[].',
   ].filter(Boolean).join(' ');
 }
@@ -452,13 +480,14 @@ export function mergeFill(skeleton: PlanDayV2[], fill: AiFill, adj: Adjusted, ta
       return { session: { ...day.session, note: str(raw.note, 200, day.session.note) }, meals: fittedMeals };
     }
 
-    // exercises: only library ids that fit; keep the skeleton when too few
+    // exercises: only sheet exercises (current ids or names, never an old
+    // id) that may be prescribed and fit; keep the skeleton when too few
     const rawEx = Array.isArray(raw.exercises) ? raw.exercises.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object') : [];
     const used = new Set<string>();
     const exercises: PlanExerciseV2[] = [];
     for (const r of rawEx.slice(0, 8)) {
-      const e = findExercise(str(r.id, 60)) ?? findExercise(str(r.name, 60));
-      if (!e || used.has(e.id) || !fitsEquipment(e, p.available) || !safeFor(e, p.injuryAreas)) continue;
+      const e = findExercise(str(r.id, 60), { legacy: false }) ?? findExercise(str(r.name, 60), { legacy: false });
+      if (!e || !prescribable(e) || used.has(e.id) || !fitsEquipment(e, p.available) || !safeFor(e, p.injuryAreas)) continue;
       if (p.minor && e.level === 'advanced') continue;
       used.add(e.id);
       const unitMax = e.unit === 'reps' ? 30 : 1200;

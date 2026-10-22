@@ -11,9 +11,16 @@
 //  2. Workout videos: one embeddable YouTube form tutorial per exercise in
 //     mobile/src/data/exercises.ts, preferring well-known coaching channels and
 //     videos under 10 minutes. Writes mobile/src/data/exerciseVideos.generated.json.
+//     With YOUTUBE_API_KEY set it uses the official YouTube Data API v3 search
+//     (and tags each pick `source: "api"`), in the exercise sheet's order, up
+//     to --limit searches a run, stopping cleanly when the day's quota is
+//     spent; without it, it reads YouTube's public results page as before.
+//     See mobile/src/data/README-videos.md.
 //
 // Needs `sharp` (installed by the workflow). Flags: --meals-only, --videos-only,
-// --force (regenerate even when a file exists).
+// --limit N (API searches per run, default 90), --force (regenerate even when
+// a file exists; hand-picked entries with `source: "manual"` or "playlist"
+// are always kept).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -156,14 +163,41 @@ const TRUSTED = [
   'garage strength', 'barbell medicine', 'mark rippetoe', 'starting strength',
 ];
 
-function exerciseList() {
-  const src = fs.readFileSync(path.join(ROOT, 'mobile/src/data/exercises.ts'), 'utf8');
-  const re = /\bx\(\s*'([a-z0-9_]+)',\s*'([^']+)'/g;
-  const out = [];
+const trusted = (channel) => TRUSTED.some((t) => String(channel).toLowerCase().includes(t));
+
+/** Every `x('id', 'Name', ...)` in the library, with either quote style
+    (`x("farmers_carry", "Farmer's carry", ...)`) and escaped quotes inside.
+    The owner's exercise sheet row is kept when the row has one, either as a
+    leading number (`x(12, 'id', 'Name', ...)`) or as `sheetId: 12`. */
+export function exerciseList(src = fs.readFileSync(path.join(ROOT, 'mobile/src/data/exercises.ts'), 'utf8')) {
+  const re = /\bx\(\s*(?:(\d+)\s*,\s*)?(['"])([a-z0-9_]+)\2\s*,\s*(['"])((?:\\.|(?!\4)[^\\\n])+)\4/g;
+  const hits = [];
   let m;
-  while ((m = re.exec(src))) out.push({ id: m[1], name: m[2] });
-  return out;
+  while ((m = re.exec(src))) hits.push({ lead: m[1], id: m[3], name: m[5].replace(/\\(.)/g, '$1'), at: m.index, end: re.lastIndex });
+  return hits.map((h, i) => {
+    const row = src.slice(h.end, hits[i + 1]?.at ?? Math.min(src.length, h.end + 2000));
+    const sid = h.lead ?? /\bsheetId['"]?\s*[:=]\s*(\d+)/.exec(row)?.[1];
+    return sid != null ? { id: h.id, name: h.name, sheetId: Number(sid) } : { id: h.id, name: h.name };
+  });
 }
+
+/** Search order for the API: sheet rows 1 to 48 (the core list) first, then
+    the rest by sheet row; rows with no sheetId keep library order, last. */
+export function apiOrder(list) {
+  const band = (e) => (e.sheetId == null ? 2 : e.sheetId >= 1 && e.sheetId <= 48 ? 0 : 1);
+  return list
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => band(a.e) - band(b.e) || (a.e.sheetId ?? 0) - (b.e.sheetId ?? 0) || a.i - b.i)
+    .map((x) => x.e);
+}
+
+/** The JSON in library order, so re-runs give small diffs. */
+function writeVideos(file, out, list) {
+  const ordered = Object.fromEntries(list.filter((e) => out[e.id]).map((e) => [e.id, out[e.id]]));
+  fs.writeFileSync(file, JSON.stringify(ordered, null, 2) + '\n');
+}
+
+// ── Route 1: YouTube's public results page (no key; the old way) ──
 
 function seconds(t) {
   if (!t) return null;
@@ -210,17 +244,8 @@ async function embeddable(id) {
   }
 }
 
-async function genVideos() {
-  const file = path.join(ROOT, 'mobile/src/data/exerciseVideos.generated.json');
-  const prev = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
-  const list = exerciseList();
-  log(`videos: ${list.length} exercises`);
-  const out = {};
-  for (const ex of list) {
-    if (prev[ex.id] && !FORCE) {
-      out[ex.id] = prev[ex.id];
-      continue;
-    }
+async function fillFromResultsPage(todo, out, list, file) {
+  for (const ex of todo) {
     if (Date.now() - START > VIDEO_BUDGET_MS) {
       log('videos: time budget reached, the rest are left for the next run');
       break;
@@ -229,7 +254,7 @@ async function genVideos() {
       const results = (await searchYouTube(`${ex.name} exercise proper form tutorial`))
         .filter((v) => v.seconds != null && v.seconds >= 25 && v.seconds <= 600);
       const score = (v) =>
-        (TRUSTED.some((t) => v.channel.toLowerCase().includes(t)) ? 10 : 0) +
+        (trusted(v.channel) ? 10 : 0) +
         (/how to|form|tutorial|technique/i.test(v.title) ? 2 : 0) -
         results.indexOf(v) * 0.3;
       const ranked = [...results].sort((a, b) => score(b) - score(a));
@@ -249,12 +274,150 @@ async function genVideos() {
     } catch (e) {
       log(`  FAIL ${ex.id}: ${e.message}`);
     }
-    fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
+    writeVideos(file, out, list);
     await sleep(1_500);
   }
-  fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
-  log(`videos: ${Object.keys(out).length}/${list.length} found`);
 }
 
-if (!args.has('--videos-only')) await genMeals();
-if (!args.has('--meals-only')) await genVideos();
+// ── Route 2: the YouTube Data API v3, once the owner sends a key ──
+// search.list costs 100 quota units and videos.list 1 (for up to 50 ids), so
+// the default daily quota (10,000) covers about 95 searches. --limit N caps the
+// searches per run (default 90); the rest wait for the next run. The key is
+// read from YOUTUBE_API_KEY only and never written or logged.
+
+const API_KEY = process.env.YOUTUBE_API_KEY || '';
+const API = 'https://www.googleapis.com/youtube/v3';
+const argv = process.argv.slice(2);
+const flagValue = (name) => {
+  const i = argv.indexOf(name);
+  if (i >= 0) return argv[i + 1];
+  return argv.find((a) => a.startsWith(`${name}=`))?.slice(name.length + 1);
+};
+const LIMIT = Math.floor(Number(flagValue('--limit') ?? 90)) || 90;
+
+class QuotaError extends Error {}
+
+function decodeEntities(t) {
+  return String(t ?? '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+/** ISO 8601 duration ("PT4M13S") to seconds; null when it is not one. */
+export function isoSeconds(d) {
+  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(d || '');
+  if (!m || d === 'P' || d === 'PT') return null;
+  return ((Number(m[1] || 0) * 24 + Number(m[2] || 0)) * 60 + Number(m[3] || 0)) * 60 + Number(m[4] || 0);
+}
+
+/** The API's answer, or a QuotaError when the day's quota is spent. Error
+    messages carry the status and reason only, never the URL (it holds the key). */
+async function apiGet(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  const body = await r.json().catch(() => ({}));
+  if (r.ok) return body;
+  const reason = body?.error?.errors?.[0]?.reason || '';
+  if (r.status === 403 && /^(quotaExceeded|dailyLimitExceeded)$/.test(reason)) throw new QuotaError(reason);
+  throw new Error(`HTTP ${r.status} ${reason}`.trim());
+}
+
+async function apiSearch(q) {
+  const body = await apiGet(
+    `${API}/search?part=snippet&type=video&videoEmbeddable=true&relevanceLanguage=en&maxResults=10&q=${encodeURIComponent(q)}&key=${encodeURIComponent(API_KEY)}`,
+  );
+  return (body.items || [])
+    .filter((it) => it?.id?.videoId)
+    .map((it) => ({ videoId: it.id.videoId, title: decodeEntities(it.snippet?.title), channel: decodeEntities(it.snippet?.channelTitle), seconds: null, lang: null }));
+}
+
+/** Pick from the API's results (already embeddable only, in YouTube's order).
+    Only 1 to 10 minutes long: under a minute is almost always a vertical
+    Short, not a tutorial. Then a trusted coaching channel, an English
+    tutorial-style title ("how to", "form", "guide"), no clickbait ("STOP",
+    "NEVER", "vs", hashtags, emoji), and the same kit as the exercise
+    (a barbell exercise never gets a dumbbell video, and the reverse). */
+export function pickApiVideo(results, name = '') {
+  const kit = (s) => (/\bbarbell\b/i.test(s) ? 'barbell' : /\bdumbbells?\b|\bdb\b/i.test(s) ? 'dumbbell' : /\bkettlebells?\b|\bkb\b/i.test(s) ? 'kettlebell' : /\bcable\b/i.test(s) ? 'cable' : /\bmachine\b/i.test(s) ? 'machine' : null);
+  const want = kit(name);
+  const english = (v) => (!v.lang ? 0 : /^en(\b|-|_)/i.test(v.lang) ? 1 : -1);
+  const tutorial = (v) => (/\b(how to|how-to|tutorial|guide|form|technique|proper|correct)\b/i.test(v.title) ? 1 : 0);
+  const clickbait = (v) => (/\b(stop|never|vs\.?|versus)\b|#|[\u{1F300}-\u{1FAFF}☀-➿]/iu.test(v.title) ? 1 : 0);
+  const score = (v) => (trusted(v.channel) ? 10 : 0) + english(v) * 3 + tutorial(v) * 4 - clickbait(v) * 6 - results.indexOf(v) * 0.3;
+  const fits = results.filter((v) => v.seconds != null && v.seconds >= 60 && v.seconds <= 600 && !(want && kit(v.title) && kit(v.title) !== want));
+  return [...fits].sort((a, b) => score(b) - score(a))[0] ?? null;
+}
+
+async function fillFromApi(todo, out, list, file) {
+  const queue = apiOrder(todo).slice(0, LIMIT);
+  log(`videos: ${queue.length} searches this run (limit ${LIMIT}), ${todo.length} without a video`);
+  const searched = [];
+  let quota = false;
+  for (const ex of queue) {
+    try {
+      searched.push({ ex, results: await apiSearch(`${ex.name} exercise tutorial`) });
+    } catch (e) {
+      if (e instanceof QuotaError) {
+        quota = true;
+        break;
+      }
+      log(`  FAIL ${ex.id}: ${e.message}`);
+    }
+    await sleep(200);
+  }
+  // Lengths and audio language, 50 ids per videos.list call (1 unit each).
+  const ids = [...new Set(searched.flatMap((s) => s.results.map((r) => r.videoId)))];
+  const details = new Map();
+  for (let i = 0; i < ids.length; i += 50) {
+    try {
+      const body = await apiGet(`${API}/videos?part=contentDetails,snippet&id=${ids.slice(i, i + 50).join(',')}&key=${encodeURIComponent(API_KEY)}`);
+      for (const it of body.items || []) {
+        details.set(it.id, { seconds: isoSeconds(it.contentDetails?.duration), lang: it.snippet?.defaultAudioLanguage || it.snippet?.defaultLanguage || null });
+      }
+    } catch (e) {
+      if (e instanceof QuotaError) quota = true;
+      log(`  lengths unavailable for ${Math.min(50, ids.length - i)} videos: ${e.message}`);
+    }
+  }
+  for (const { ex, results } of searched) {
+    const pick = pickApiVideo(results.map((r) => ({ ...r, ...details.get(r.videoId) })), ex.name);
+    if (pick) {
+      out[ex.id] = { videoId: pick.videoId, title: pick.title.slice(0, 120), channel: pick.channel.slice(0, 60), seconds: pick.seconds ?? null, source: 'api' };
+      log(`  ok   ${ex.id}: ${pick.channel} | ${pick.title.slice(0, 60)}`);
+    } else {
+      log(`  none ${ex.id} (${results.length} results)`);
+    }
+  }
+  writeVideos(file, out, list);
+  const filled = list.filter((e) => out[e.id]).length;
+  const left = list.length - filled;
+  if (quota) log(`quota reached: ${filled} filled, ${left} left; run again tomorrow`);
+  else if (todo.length > queue.length) log(`limit reached (${LIMIT} searches): ${filled} filled, ${left} left; run again for the rest`);
+}
+
+async function genVideos() {
+  const file = path.join(ROOT, 'mobile/src/data/exerciseVideos.generated.json');
+  const prev = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+  const list = exerciseList();
+  log(`videos: ${list.length} exercises, ${API_KEY ? 'YouTube Data API' : 'public results page'}`);
+  // Keep what is already picked (unless --force); hand-picked ones always.
+  const out = {};
+  for (const ex of list) {
+    const kept = prev[ex.id];
+    if (kept?.videoId && (!FORCE || kept.source === 'manual' || kept.source === 'playlist')) out[ex.id] = kept;
+  }
+  const todo = list.filter((ex) => !out[ex.id]);
+  if (API_KEY) await fillFromApi(todo, out, list, file);
+  else await fillFromResultsPage(todo, out, list, file);
+  writeVideos(file, out, list);
+  log(`videos: ${list.filter((e) => out[e.id]).length}/${list.length} found`);
+}
+
+// Imported by tests (exerciseList, apiOrder, pickApiVideo, isoSeconds): only
+// run when executed.
+const MAIN = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname);
+if (MAIN && !args.has('--videos-only')) await genMeals();
+if (MAIN && !args.has('--meals-only')) await genVideos();
