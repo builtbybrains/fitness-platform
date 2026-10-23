@@ -345,9 +345,9 @@ export function pickApiVideo(results, name = '') {
   const want = kit(name);
   const english = (v) => (!v.lang ? 0 : /^en(\b|-|_)/i.test(v.lang) ? 1 : -1);
   const tutorial = (v) => (/\b(how to|how-to|tutorial|guide|form|technique|proper|correct)\b/i.test(v.title) ? 1 : 0);
-  const clickbait = (v) => (/\b(stop|never|vs\.?|versus)\b|#|[\u{1F300}-\u{1FAFF}☀-➿]/iu.test(v.title) ? 1 : 0);
-  const score = (v) => (trusted(v.channel) ? 10 : 0) + english(v) * 3 + tutorial(v) * 4 - clickbait(v) * 6 - results.indexOf(v) * 0.3;
-  const fits = results.filter((v) => v.seconds != null && v.seconds >= 60 && v.seconds <= 600 && !(want && kit(v.title) && kit(v.title) !== want));
+  const clickbait = (v) => (/\b(stop|never|vs\.?|versus|assessment|mistakes?)\b|f\*ck|#|[\u{1F300}-\u{1FAFF}☀-➿]/iu.test(v.title) ? 1 : 0);
+  const score = (v) => (trusted(v.channel) ? 10 : 0) + english(v) * 3 + tutorial(v) * 4 - results.indexOf(v) * 0.3;
+  const fits = results.filter((v) => v.seconds != null && v.seconds >= 60 && v.seconds <= 600 && !clickbait(v) && !(want && kit(v.title) && kit(v.title) !== want));
   return [...fits].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 

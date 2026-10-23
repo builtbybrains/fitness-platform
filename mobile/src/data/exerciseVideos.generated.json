@@ -1,4 +1,11 @@
 {
+  "barbell_bench": {
+    "videoId": "rxD321l2svE",
+    "title": "Learning to Bench Press | The Starting Strength Method",
+    "channel": "Starting Strength",
+    "seconds": 326,
+    "source": "api"
+  },
   "incline_db_press": {
     "videoId": "IP4oeKh1Sd4",
     "title": "How to do the INCLINE DUMBBELL BENCH PRESS! | 2 Minute Tutorial",
@@ -41,6 +48,20 @@
     "seconds": 93,
     "source": "api"
   },
+  "straight_arm_pulldown": {
+    "videoId": "r34PR1mxzmU",
+    "title": "Straight-Arm Pulldown - Back Exercise - Bodybuilding.com",
+    "channel": "Bodybuilding.com",
+    "seconds": 62,
+    "source": "api"
+  },
+  "barbell_row": {
+    "videoId": "UL8ZcK64KxA",
+    "title": "Bent-Over Row | How To Perform It Correctly And Safely | Men's Health UK",
+    "channel": "Men's Health UK",
+    "seconds": 60,
+    "source": "api"
+  },
   "chest_supported_db_row": {
     "videoId": "ro2vfHfD0DQ",
     "title": "How To Do A Chest Supported Dumbbell Row Correctly",
@@ -53,6 +74,13 @@
     "title": "How To Squat Correctly (NO BACK PAIN)",
     "channel": "Squat University",
     "seconds": 458,
+    "source": "api"
+  },
+  "leg_press": {
+    "videoId": "K5n2vg3oZa4",
+    "title": "How to PROPERLY Leg Press (FIX YOUR FORM NOW)",
+    "channel": "Colossus Fitness",
+    "seconds": 228,
     "source": "api"
   },
   "walking_lunge": {
@@ -69,11 +97,53 @@
     "seconds": 73,
     "source": "api"
   },
+  "barbell_rdl": {
+    "videoId": "_oyxCn2iSjU",
+    "title": "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Build Beefy Hamstrings With Perfect Technique",
+    "channel": "Jeff Nippard",
+    "seconds": 382,
+    "source": "api"
+  },
+  "bulgarian_split_squat": {
+    "videoId": "DeCnHqrN22U",
+    "title": "How To Perform Bulgarian Split Squats | Legs Exercise Tutorial",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 91,
+    "source": "api"
+  },
+  "seated_calf_raise": {
+    "videoId": "BxfKOyI8sUg",
+    "title": "How to Do a Seated Calf Raise: A Guide from Physical Therapists",
+    "channel": "Hinge Health",
+    "seconds": 62,
+    "source": "api"
+  },
+  "barbell_ohp": {
+    "videoId": "_RlRDWO2jfg",
+    "title": "Build Bigger Shoulders With Perfect Training Technique (The Overhead Press)",
+    "channel": "Jeff Nippard",
+    "seconds": 479,
+    "source": "api"
+  },
   "lateral_raise": {
     "videoId": "PzsMitRdI_8",
     "title": "How to do the DUMBBELL LATERAL RAISE! | 2 Minute Tutorial",
     "channel": "Max Euceda",
     "seconds": 121,
+    "source": "api"
+  },
+  "rear_delt_fly": {
+    "videoId": "6yMdhi2DVao",
+    "title": "How To Properly Use The Rear Delt Fly Machine (+ BONUS TIP)",
+    "channel": "Mind Pump TV",
+    "seconds": 372,
+    "source": "api"
+  },
+  "arnold_press": {
+    "videoId": "6Z15_WdXmVw",
+    "title": "Arnold Press - Shoulder Exercise - Proper Form Tutorial",
+    "channel": "Buff Dudes",
+    "seconds": 85,
     "source": "api"
   },
   "barbell_curl": {
@@ -111,11 +181,53 @@
     "seconds": 276,
     "source": "api"
   },
+  "cable_crunch": {
+    "videoId": "QR3vANGukK8",
+    "title": "Cable Crunches: The CORRECT Way To Do Them (Most People Are Wrong)",
+    "channel": "Leo Fanner",
+    "seconds": 311,
+    "source": "api"
+  },
+  "plank": {
+    "videoId": "kL_NJAkCQBg",
+    "title": "Mastering the Plank - In Just 2 Minutes",
+    "channel": "Calisthenicmovement",
+    "seconds": 139,
+    "source": "api"
+  },
+  "deadlift": {
+    "videoId": "XxWcirHIwVo",
+    "title": "How to PROPERLY Deadlift for Growth (5 Easy Steps)",
+    "channel": "Jeremy Ethier",
+    "seconds": 483,
+    "source": "api"
+  },
+  "goblet_squat": {
+    "videoId": "9W5KAqHfDe8",
+    "title": "The Goblet Squat Exercise Guide - The Proper Form, Sets & Routine Tutorial",
+    "channel": "Fit Father Project - Fitness For Busy Fathers",
+    "seconds": 208,
+    "source": "api"
+  },
+  "dumbbell_row": {
+    "videoId": "roCP6wCXPqo",
+    "title": "How to Perfect Your Dumbbell Row | Form Check | Men's Health",
+    "channel": "Men's Health",
+    "seconds": 196,
+    "source": "api"
+  },
   "farmer_carry": {
     "videoId": "NH7Xv-7NQNQ",
     "title": "How To Perform Farmer Walks Exercise Tutorial",
     "channel": "Buff Dudes Workouts",
     "seconds": 90,
+    "source": "api"
+  },
+  "kb_swing": {
+    "videoId": "sSESeQAir2M",
+    "title": "How To Do A Kettlebell Swing | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 153,
     "source": "api"
   },
   "burpee": {
@@ -153,11 +265,46 @@
     "seconds": 222,
     "source": "api"
   },
+  "weighted_push_up": {
+    "videoId": "Z88Rl5bpnmI",
+    "title": "How To Unlock Your Push Up Strength (In 5 Minutes)",
+    "channel": "Jeremy Ethier",
+    "seconds": 467,
+    "source": "api"
+  },
+  "knee_push_up": {
+    "videoId": "lFR1GWy1Dcs",
+    "title": "The Knee Push Up | How To Perform Without Shoulder Pain",
+    "channel": "Dr. Carl Baird",
+    "seconds": 125,
+    "source": "api"
+  },
   "machine_chest_press": {
     "videoId": "sqNwDkUU_Ps",
     "title": "How To Use The Chest Press Machine",
     "channel": "PureGym",
     "seconds": 61,
+    "source": "api"
+  },
+  "smith_machine_bench_press": {
+    "videoId": "IsouKm937Ug",
+    "title": "HOW TO BENCH PRESS ON THE SMITH MACHINE AT PLANET FITNESS!!",
+    "channel": "Nathan Jaworski",
+    "seconds": 409,
+    "source": "api"
+  },
+  "db_floor_press": {
+    "videoId": "uUGDRwge4F8",
+    "title": "How To: Dumbbell Floor Press",
+    "channel": "ScottHermanFitness",
+    "seconds": 99,
+    "source": "api"
+  },
+  "incline_dumbbell_fly": {
+    "videoId": "idAvu2HvqSQ",
+    "title": "HOW TO: Incline Dumbbell Fly || PERFECT FORM (GROWTH & STRENGTH)",
+    "channel": "ScottHermanFitness",
+    "seconds": 141,
     "source": "api"
   },
   "high_to_low_cable_fly": {
@@ -174,11 +321,25 @@
     "seconds": 188,
     "source": "api"
   },
+  "band_chest_press": {
+    "videoId": "HY9i5BSC2GQ",
+    "title": "Build a Big Chest with Bands (NO WEIGHTS!)",
+    "channel": "ATHLEAN-X™",
+    "seconds": 496,
+    "source": "api"
+  },
   "assisted_chest_dip": {
     "videoId": "kbmVlw-i0Vs",
     "title": "Exercise Tutorial: Assisted Dips",
     "channel": "Travis Tarrant",
     "seconds": 141,
+    "source": "api"
+  },
+  "assisted_pull_up": {
+    "videoId": "gx0RWT7WbmA",
+    "title": "How To PROPERLY Use The Assisted Pull Up Machine (DO MORE PULL UPS)",
+    "channel": "Colossus Fitness",
+    "seconds": 174,
     "source": "api"
   },
   "chin_up": {
@@ -202,11 +363,25 @@
     "seconds": 65,
     "source": "api"
   },
+  "neutral_grip_lat_pulldown": {
+    "videoId": "E1FK9APxk54",
+    "title": "Neutral Grip Pulldowns [Perfect Form in 60 Seconds]",
+    "channel": "Seriously Strong Training",
+    "seconds": 62,
+    "source": "api"
+  },
   "single_arm_cable_row": {
     "videoId": "_z5NMUxkxxw",
     "title": "Standing Single Arm Cable Row - The Proper Lift - BPI Sports",
     "channel": "BPI Sports",
     "seconds": 92,
+    "source": "api"
+  },
+  "t_bar_row": {
+    "videoId": "TyLoy3n_a10",
+    "title": "How to PROPERLY Machine T-Bar Row (FIX YOUR FORM)",
+    "channel": "Colossus Fitness",
+    "seconds": 144,
     "source": "api"
   },
   "machine_high_row": {
@@ -230,11 +405,60 @@
     "seconds": 234,
     "source": "api"
   },
+  "meadows_row": {
+    "videoId": "G-jU1aPVhnY",
+    "title": "How to Meadows Row \"The Right Way\"",
+    "channel": "mountaindog1",
+    "seconds": 115,
+    "source": "api"
+  },
+  "reverse_grip_barbell_row": {
+    "videoId": "3gdGSSgDby8",
+    "title": "Reverse Grip Bent Over Rows | How To Perform Them Correctly",
+    "channel": "KAGED ",
+    "seconds": 126,
+    "source": "api"
+  },
+  "dumbbell_pullover": {
+    "videoId": "Qc4L9I3pHnw",
+    "title": "How to Perform Dumbbell Pullovers | Back Exercise Tutorial",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 95,
+    "source": "api"
+  },
+  "superman": {
+    "videoId": "J9zXkxUAfUA",
+    "title": "Core Exercise: Superman",
+    "channel": "Children's Hospital Colorado",
+    "seconds": 63,
+    "source": "api"
+  },
+  "band_row": {
+    "videoId": "lHuGxZZ09nY",
+    "title": "How to do Resistance Band Rows",
+    "channel": "Cerin Rees",
+    "seconds": 128,
+    "source": "api"
+  },
+  "band_pull_apart": {
+    "videoId": "kZNeqj-wtE0",
+    "title": "How to Do A Band Pull Apart - Posture Exercises - Wellen",
+    "channel": "Wellen",
+    "seconds": 112,
+    "source": "api"
+  },
   "scapular_pull_up": {
     "videoId": "-ZIpSoTRsuE",
     "title": "Scapular Pull Ups (Beginner to Advanced Progressions)",
     "channel": "Zack Henderson",
     "seconds": 256,
+    "source": "api"
+  },
+  "seal_row": {
+    "videoId": "BNgeM3y3Byc",
+    "title": "How to Do Seal Rows - Bald Omni Man Style",
+    "channel": "Bald Omni-Man",
+    "seconds": 232,
     "source": "api"
   },
   "machine_seated_row": {
@@ -258,6 +482,13 @@
     "seconds": 83,
     "source": "api"
   },
+  "smith_machine_squat": {
+    "videoId": "XQ1KPrxmy0M",
+    "title": "HOW TO SQUAT ON THE SMITH MACHINE 2026",
+    "channel": "Naomi Kong",
+    "seconds": 595,
+    "source": "api"
+  },
   "dumbbell_squat": {
     "videoId": "MJao9o7ROs0",
     "title": "Dumbbell Front Squat | Exercise Guide",
@@ -265,11 +496,256 @@
     "seconds": 65,
     "source": "api"
   },
+  "barbell_box_squat": {
+    "videoId": "rRihE4weYg4",
+    "title": "How to Box Squat (feat. Donnie Thompson)",
+    "channel": "Squat University",
+    "seconds": 455,
+    "source": "api"
+  },
+  "bodyweight_squat": {
+    "videoId": "HFnSsLIB7a4",
+    "title": "Everyone should do this Basic Squat: Here's How",
+    "channel": "Strength Side",
+    "seconds": 372,
+    "source": "api"
+  },
   "split_squat": {
     "videoId": "SGHnCftrZkA",
     "title": "Beginner's Guide: Split Squat",
     "channel": "SilverSneakers",
     "seconds": 146,
+    "source": "api"
+  },
+  "forward_lunge": {
+    "videoId": "PW27T634U78",
+    "title": "Forward Lunge Exercise Tutorial (Level 1) - ONLINE PHYSIO EXERCISES",
+    "channel": "Online Physio Expert",
+    "seconds": 85,
+    "source": "api"
+  },
+  "lateral_lunge": {
+    "videoId": "vwK7vZNQwUI",
+    "title": "Lateral lunge - how to do it right.",
+    "channel": "Revival Performance Physical Therapy",
+    "seconds": 182,
+    "source": "api"
+  },
+  "step_up": {
+    "videoId": "hgkk12L_Umk",
+    "title": "HOW TO DO A DUMBBELL STEP-UP | Coach Kelly Cues",
+    "channel": "Kelly Matthews",
+    "seconds": 260,
+    "source": "api"
+  },
+  "single_leg_leg_press": {
+    "videoId": "ZYDTJaAM-gE",
+    "title": "SINGLE LEG PRESS | Legs | How-To Exercise Tutorial",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 269,
+    "source": "api"
+  },
+  "seated_leg_curl": {
+    "videoId": "ELOCsoDSmrg",
+    "title": "How To: Seated Leg Curl (Cybex)",
+    "channel": "ScottHermanFitness",
+    "seconds": 190,
+    "source": "api"
+  },
+  "standing_leg_curl": {
+    "videoId": "Z053-kKjesQ",
+    "title": "How To: Standing Leg Curl (BM)",
+    "channel": "ScottHermanFitness",
+    "seconds": 135,
+    "source": "api"
+  },
+  "single_leg_rdl": {
+    "videoId": "Zfr6wizR8rs",
+    "title": "The BEST Single-Leg RDL Tutorial (Romanian Deadlift)",
+    "channel": "Squat University",
+    "seconds": 557,
+    "source": "api"
+  },
+  "db_rdl": {
+    "videoId": "hQgFixeXdZo",
+    "title": "Dumbbell Romanian (RDL) Deadlift |TECHNIQUE for Beginners",
+    "channel": "Mike | J2FIT Strength & Conditioning",
+    "seconds": 79,
+    "source": "api"
+  },
+  "good_morning": {
+    "videoId": "f23vXjoG2e8",
+    "title": "HOW TO DO THE GOOD MORNING EXERCISE: Build Your Glutes, Hamstrings And Squat With Perfect Technique",
+    "channel": "Jeff Nippard",
+    "seconds": 436,
+    "source": "api"
+  },
+  "glute_ham_raise": {
+    "videoId": "c2pWqsHR7FU",
+    "title": "Best Hamstring Exercise? How To Perform Glute Ham Raises",
+    "channel": "Barbell Logic",
+    "seconds": 373,
+    "source": "api"
+  },
+  "cossack_squat": {
+    "videoId": "tpczTeSkHz0",
+    "title": "How to Cossack Squat Mobility Exercise: Tutorial & Progressions",
+    "channel": "FitnessFAQs",
+    "seconds": 181,
+    "source": "api"
+  },
+  "wall_sit": {
+    "videoId": "JaZNYM3zAP0",
+    "title": "How To Do a Wall Sit | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 100,
+    "source": "api"
+  },
+  "tibialis_raise": {
+    "videoId": "RHWRxiBe1iU",
+    "title": "Anterior Tibialis Raise",
+    "channel": "Elite Performance Institute",
+    "seconds": 89,
+    "source": "api"
+  },
+  "donkey_calf_raise": {
+    "videoId": "Jk_fDd57e98",
+    "title": "Finally Grow Your Calves with this Old School Exercise! | Donkey Calf Raises Exercise Tutorial",
+    "channel": "Buff Dudes Workouts",
+    "seconds": 114,
+    "source": "api"
+  },
+  "leg_press_calf_raise": {
+    "videoId": "OMUvfMZOcSA",
+    "title": "Exercise Tutorial: Calf Raise On Leg Press Machine",
+    "channel": "Travis Tarrant",
+    "seconds": 168,
+    "source": "api"
+  },
+  "assisted_pistol_squat": {
+    "videoId": "vq5-vdgJc0I",
+    "title": "How to Get Your First PISTOL SQUAT (Step-by-Step Progression)",
+    "channel": "Squat University",
+    "seconds": 379,
+    "source": "api"
+  },
+  "pistol_squat": {
+    "videoId": "vq5-vdgJc0I",
+    "title": "How to Get Your First PISTOL SQUAT (Step-by-Step Progression)",
+    "channel": "Squat University",
+    "seconds": 379,
+    "source": "api"
+  },
+  "heel_elevated_squat": {
+    "videoId": "7JWehDbcrnM",
+    "title": "Why You Should Do Heel Elevated Squats - COMPLETE GUIDE (Benefits, Demonstration, Explanation)- 2021",
+    "channel": "Chaplin Performance",
+    "seconds": 488,
+    "source": "api"
+  },
+  "barbell_glute_bridge": {
+    "videoId": "0od5lwWMGV8",
+    "title": "How To: Barbell Glute Bridge | 3 GOLDEN RULES (BUILD BIGGER GLUTES!)",
+    "channel": "ScottHermanFitness",
+    "seconds": 329,
+    "source": "api"
+  },
+  "glute_bridge": {
+    "videoId": "OUgsJ8-Vi0E",
+    "title": "How to Perform the Perfect Glute Bridge",
+    "channel": "Airrosti Rehab Centers",
+    "seconds": 140,
+    "source": "api"
+  },
+  "single_leg_glute_bridge": {
+    "videoId": "_K_di6h2-Wg",
+    "title": "How to do a Single-Leg Glute Bridge | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 209,
+    "source": "api"
+  },
+  "single_leg_hip_thrust": {
+    "videoId": "qCObDXTe4KY",
+    "title": "How To Do A Single Leg Hip Thrust (Exercise Demo) - FREE Great Butt Guide",
+    "channel": "Mind Pump TV",
+    "seconds": 183,
+    "source": "api"
+  },
+  "cable_kickback": {
+    "videoId": "5jJNfIlKTmg",
+    "title": "How to PROPERLY Cable Glute Kickback (GROW YOUR GLUTES)",
+    "channel": "Colossus Fitness",
+    "seconds": 192,
+    "source": "api"
+  },
+  "hip_abduction_machine": {
+    "videoId": "OQC8nso2aPE",
+    "title": "Hip Abduction Machine (Forward Leaning) | Proper Technique + Form Tips",
+    "channel": "Vivian Ngo",
+    "seconds": 163,
+    "source": "api"
+  },
+  "standing_cable_hip_abduction": {
+    "videoId": "pvnR8CDb4BU",
+    "title": "How to Do Cable Hip Abduction Exercise",
+    "channel": "LIVESTRONG",
+    "seconds": 91,
+    "source": "api"
+  },
+  "band_lateral_walk": {
+    "videoId": "42cYOwpwOIc",
+    "title": "How to properly perform Banded Crab Walk..(Band position for best Muscle Activation!)",
+    "channel": "Performance Sport & Spine",
+    "seconds": 101,
+    "source": "api"
+  },
+  "clamshell": {
+    "videoId": "EG5_gXcfozw",
+    "title": "How To Do The Clamshell Exercise - Kinetic Sports Rehab",
+    "channel": "Tangelo - Seattle Chiropractor + Rehab",
+    "seconds": 67,
+    "source": "api"
+  },
+  "frog_pumps": {
+    "videoId": "rgljhH1X4vc",
+    "title": "How to Do Frog Pumps for Bigger Glutes (Glute Activation & Form Tips)",
+    "channel": "Colossus Fitness",
+    "seconds": 92,
+    "source": "api"
+  },
+  "reverse_hyperextension": {
+    "videoId": "3d9_W--eUcI",
+    "title": "Reverse Hypers",
+    "channel": "Men's Health",
+    "seconds": 158,
+    "source": "api"
+  },
+  "cable_pull_through": {
+    "videoId": "DbSF7ipBh5Y",
+    "title": "How to PROPERLY Perform a Glute Pull Through | Fix Your Cable Pull Through Form NOW!",
+    "channel": "Colossus Fitness",
+    "seconds": 267,
+    "source": "api"
+  },
+  "db_shoulder_press": {
+    "videoId": "rO_iEImwHyo",
+    "title": "How to do the SEATED DUMBBELL SHOULDER PRESS! | 2 Minute Tutorial",
+    "channel": "Max Euceda",
+    "seconds": 120,
+    "source": "api"
+  },
+  "machine_shoulder_press": {
+    "videoId": "3R14MnZbcpw",
+    "title": "How to PROPERLY Shoulder Machine Press (LEARN FAST)",
+    "channel": "Colossus Fitness",
+    "seconds": 146,
+    "source": "api"
+  },
+  "cable_lateral_raise": {
+    "videoId": "BGw_YA3KiHs",
+    "title": "Cable Lateral Raise: The ONLY Guide You’ll Ever Need for 3D Shoulders",
+    "channel": "Leo Fanner",
+    "seconds": 273,
     "source": "api"
   }
 }
