@@ -192,6 +192,11 @@ export function apiOrder(list) {
 }
 
 /** The JSON in library order, so re-runs give small diffs. */
+// Videos a person reviewed and turned down for an exercise (wrong movement,
+// wrong equipment, not a tutorial). The API path never picks them again.
+const REJECTED_FILE = path.join(ROOT, 'mobile/src/data/exerciseVideos.rejected.json');
+const REJECTED = fs.existsSync(REJECTED_FILE) ? JSON.parse(fs.readFileSync(REJECTED_FILE, 'utf8')) : {};
+
 function writeVideos(file, out, list) {
   const ordered = Object.fromEntries(list.filter((e) => out[e.id]).map((e) => [e.id, out[e.id]]));
   fs.writeFileSync(file, JSON.stringify(ordered, null, 2) + '\n');
@@ -383,7 +388,8 @@ async function fillFromApi(todo, out, list, file) {
     }
   }
   for (const { ex, results } of searched) {
-    const pick = pickApiVideo(results.map((r) => ({ ...r, ...details.get(r.videoId) })), ex.name);
+    const banned = new Set(REJECTED[ex.id] || []);
+    const pick = pickApiVideo(results.filter((r) => !banned.has(r.videoId)).map((r) => ({ ...r, ...details.get(r.videoId) })), ex.name);
     if (pick) {
       out[ex.id] = { videoId: pick.videoId, title: pick.title.slice(0, 120), channel: pick.channel.slice(0, 60), seconds: pick.seconds ?? null, source: 'api' };
       log(`  ok   ${ex.id}: ${pick.channel} | ${pick.title.slice(0, 60)}`);
