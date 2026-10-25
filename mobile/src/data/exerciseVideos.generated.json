@@ -118,11 +118,25 @@
     "seconds": 73,
     "source": "api"
   },
+  "calf_raise": {
+    "videoId": "k8ipHzKeAkQ",
+    "title": "Exercises with an Athletic Trainer: Standing Calf Raises",
+    "channel": "Children's Hospital Colorado",
+    "seconds": 62,
+    "source": "api"
+  },
   "barbell_rdl": {
     "videoId": "_oyxCn2iSjU",
     "title": "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Build Beefy Hamstrings With Perfect Technique",
     "channel": "Jeff Nippard",
     "seconds": 382,
+    "source": "api"
+  },
+  "leg_curl": {
+    "videoId": "q1cKTmaeQWo",
+    "title": "How to PROPERLY Hamstring Curl for Muscle Gain & Injury Prevention",
+    "channel": "Colossus Fitness",
+    "seconds": 350,
     "source": "api"
   },
   "bulgarian_split_squat": {
@@ -368,6 +382,13 @@
     "title": "Exercise Tutorial: Assisted Dips",
     "channel": "Travis Tarrant",
     "seconds": 141,
+    "source": "api"
+  },
+  "svend_press": {
+    "videoId": "qKgs6OwFj6c",
+    "title": "Svend Press (Exercises.com.au)",
+    "channel": "Exercises.com.au",
+    "seconds": 89,
     "source": "api"
   },
   "assisted_pull_up": {
@@ -846,6 +867,20 @@
     "seconds": 272,
     "source": "api"
   },
+  "wall_handstand_push_up": {
+    "videoId": "gdhmNaZ7nAk",
+    "title": "Wall Handstand Push Ups | For WILD Shoulder Strength",
+    "channel": "Andrew Alinda",
+    "seconds": 202,
+    "source": "api"
+  },
+  "prone_y_raise": {
+    "videoId": "HW9VT-RVfrY",
+    "title": "Prone \"Y\" Raises",
+    "channel": "Integrated Strength",
+    "seconds": 79,
+    "source": "api"
+  },
   "cable_external_rotation": {
     "videoId": "MjwfckJLaKs",
     "title": "How to Do Cable External Shoulder Rotation",
@@ -902,6 +937,13 @@
     "seconds": 170,
     "source": "api"
   },
+  "cross_body_hammer_curl": {
+    "videoId": "udiW8R3d1Pg",
+    "title": "DUMBBELL CROSS BODY HAMMER CURL",
+    "channel": "Elliott Upton - Elements Online Coaching",
+    "seconds": 60,
+    "source": "api"
+  },
   "bayesian_cable_curl": {
     "videoId": "4O24gFksZ04",
     "title": "How To: Bayesian Cable Curl",
@@ -949,6 +991,13 @@
     "title": "Tricep Pushdown with Straight Bar | TWEAK THIS!",
     "channel": "Nevels Fitness",
     "seconds": 162,
+    "source": "api"
+  },
+  "cable_overhead_triceps_extension": {
+    "videoId": "u4sEGN7FlzQ",
+    "title": "Cable Overhead Tricep Extensions: You're Probably Doing This WRONG – Fix It Now",
+    "channel": "Leo Fanner",
+    "seconds": 305,
     "source": "api"
   },
   "db_skull_crusher": {
@@ -1005,6 +1054,20 @@
     "title": "HOW TO: Overhead Triceps Extension (BEST EXERCISE FOR HUGE TRICEPS) || PERFECT FORM (POWERBOMB)",
     "channel": "ScottHermanFitness",
     "seconds": 202,
+    "source": "api"
+  },
+  "wrist_curl": {
+    "videoId": "u61QWKYgbxI",
+    "title": "Personal Fitness Tips : How to Build Big Wrists by Using Dumbbells",
+    "channel": "ehowhealth",
+    "seconds": 112,
+    "source": "api"
+  },
+  "reverse_wrist_curl": {
+    "videoId": "FW7URAaC-vE",
+    "title": "How To: Reverse Seated Wrist Curl",
+    "channel": "ScottHermanFitness",
+    "seconds": 74,
     "source": "api"
   },
   "dead_bug": {
@@ -1161,6 +1224,13 @@
     "seconds": 156,
     "source": "api"
   },
+  "barbell_clean_and_press": {
+    "videoId": "8h7giY-GWTs",
+    "title": "How To Do A BARBELL POWER CLEAN AND PRESS | Exercise Demonstration Video and Guide",
+    "channel": "Live Lean TV Daily Exercises",
+    "seconds": 82,
+    "source": "api"
+  },
   "db_thruster": {
     "videoId": "SnHdBY_sK6M",
     "title": "How to Do a Dumbbell Thruster | Warrior Fitness",
@@ -1187,6 +1257,237 @@
     "title": "Kettlebell Clean and Press Variations - Nuffield Health",
     "channel": "Nuffield Health",
     "seconds": 138,
+    "source": "api"
+  },
+  "turkish_get_up": {
+    "videoId": "lpltjWHd0ek",
+    "title": "The Turkish Get-Up: The Ultimate Tutorial",
+    "channel": "Cat & Chau | Kettlebells",
+    "seconds": 285,
+    "source": "api"
+  },
+  "medicine_ball_slam": {
+    "videoId": "6vXHh-Lhb2o",
+    "title": "How to Do Medicine Ball Slams | Sleek/Strong With Rachel Cosgrove",
+    "channel": "LivestrongWoman",
+    "seconds": 101,
+    "source": "api"
+  },
+  "bear_crawl": {
+    "videoId": "disJ_lTAmAg",
+    "title": "How To Perform The Bear Crawl Exercise | Safely Building Core Strength For Less Joint Pain",
+    "channel": "Dr. Carl Baird",
+    "seconds": 69,
+    "source": "api"
+  },
+  "sled_push": {
+    "videoId": "QaTrePoCT4g",
+    "title": "The ULTIMATE Sled Push/Pull Tutorial",
+    "channel": "Squat University",
+    "seconds": 221,
+    "source": "api"
+  },
+  "sled_pull": {
+    "videoId": "QaTrePoCT4g",
+    "title": "The ULTIMATE Sled Push/Pull Tutorial",
+    "channel": "Squat University",
+    "seconds": 221,
+    "source": "api"
+  },
+  "devils_press": {
+    "videoId": "Cwxmji-3k40",
+    "title": "How to do a Dumbbell Devil Press with Jason Khalipa",
+    "channel": "Jason Khalipa",
+    "seconds": 284,
+    "source": "api"
+  },
+  "dumbbell_clean_and_press": {
+    "videoId": "QHUMJsnekLw",
+    "title": "A Great Full Body Exercise You Can Do While Traveling | Dumbbell Clean & Press",
+    "channel": "Mark Wildman",
+    "seconds": 373,
+    "source": "api"
+  },
+  "kettlebell_high_pull": {
+    "videoId": "Li4g5p6s2eM",
+    "title": "How To: Kettlebell High-Pull",
+    "channel": "ScottHermanFitness",
+    "seconds": 122,
+    "source": "api"
+  },
+  "incline_walk": {
+    "videoId": "NAsObfFJXvE",
+    "title": "How To: Incline Treadmill Walk (12-3-30 Workout)",
+    "channel": "Live Lean TV Daily Exercises",
+    "seconds": 113,
+    "source": "api"
+  },
+  "air_bike_intervals": {
+    "videoId": "Fv8tIEJhcsc",
+    "title": "4 Very Important Air Assault Bike Tips",
+    "channel": "ConstantlyVariedFitness",
+    "seconds": 151,
+    "source": "api"
+  },
+  "rowing_intervals": {
+    "videoId": "4zWu1yuJ0_g",
+    "title": "Correct Rowing Machine Technique, Improve Your Rowing  | Concept2",
+    "channel": "concept2usa",
+    "seconds": 114,
+    "source": "api"
+  },
+  "elliptical_trainer": {
+    "videoId": "YWfswVvOaiI",
+    "title": "Elliptical Instruction 101: Technique and Tips",
+    "channel": "Sunny Health & Fitness",
+    "seconds": 122,
+    "source": "api"
+  },
+  "jump_rope": {
+    "videoId": "u3zgHI8QnqE",
+    "title": "How To Jump Rope | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 164,
+    "source": "api"
+  },
+  "jumping_jacks": {
+    "videoId": "XR0xeuK5zBU",
+    "title": "How to do Jumping Jacks exercise - Best Cardio Exercises video tutorial",
+    "channel": "P4P WORKOUTS ",
+    "seconds": 86,
+    "source": "api"
+  },
+  "mountain_climber": {
+    "videoId": "ixxk9Qfn61o",
+    "title": "How To Perform Mountain Climbers - Exercise Tutorial",
+    "channel": "Buff Dudes",
+    "seconds": 131,
+    "source": "api"
+  },
+  "skater_hops": {
+    "videoId": "P9IAAME-1zw",
+    "title": "How To Do Skater Hops",
+    "channel": "The Runner's Flat",
+    "seconds": 66,
+    "source": "api"
+  },
+  "shadow_boxing": {
+    "videoId": "J4j3AOVWuHE",
+    "title": "Quick Shadow Boxing Tutorial by Olympian",
+    "channel": "Tony Jeffries",
+    "seconds": 180,
+    "source": "api"
+  },
+  "shuttle_runs": {
+    "videoId": "a-i5VD8I6gk",
+    "title": "SHUTTLE RUNS! Efficiency and Technique tips!",
+    "channel": "The Process Programming",
+    "seconds": 350,
+    "source": "api"
+  },
+  "swimming_laps": {
+    "videoId": "AQy_c30lNjI",
+    "title": "How To Swim Freestyle | Technique For Front Crawl Swimming",
+    "channel": "Global Triathlon Network",
+    "seconds": 385,
+    "source": "api"
+  },
+  "march_in_place": {
+    "videoId": "4wF8l7YjSNg",
+    "title": "Marching in place | Walking in place | Beginners workout",
+    "channel": "Fitfoody",
+    "seconds": 89,
+    "source": "api"
+  },
+  "cat_cow": {
+    "videoId": "1Y0YjXS9sKI",
+    "title": "How to Do a Cat Cow Stretch: A Guide from Physical Therapists",
+    "channel": "Hinge Health",
+    "seconds": 63,
+    "source": "api"
+  },
+  "worlds_greatest_stretch": {
+    "videoId": "ExuOImbFFFY",
+    "title": "The World’s GREATEST Stretch Tutorial",
+    "channel": "Squat University",
+    "seconds": 60,
+    "source": "api"
+  },
+  "open_book_thoracic_rotation": {
+    "videoId": "peeW19ofFUg",
+    "title": "Thoracic Rotation Open Book",
+    "channel": "Elite Performance Institute",
+    "seconds": 64,
+    "source": "api"
+  },
+  "90_90_hip_switch": {
+    "videoId": "VYvMMw8z3rE",
+    "title": "How to do a 90/90 Hip Stretch properly - CORRECT FORM IS ESSENTIAL",
+    "channel": "Jack Hanrahan Fitness ",
+    "seconds": 359,
+    "source": "api"
+  },
+  "couch_stretch": {
+    "videoId": "-rsIS-wl-ig",
+    "title": "How to do the Couch Stretch for Tight Hip Flexors",
+    "channel": "Seriously Strong Training",
+    "seconds": 101,
+    "source": "api"
+  },
+  "kneeling_hip_flexor_stretch": {
+    "videoId": "jbj6MeoQkcI",
+    "title": "Kneeling Hip Flexor Stretch - For Low Back Pain Relief",
+    "channel": "PostureFlow",
+    "seconds": 294,
+    "source": "api"
+  },
+  "doorway_chest_stretch": {
+    "videoId": "qv6el4OhHjA",
+    "title": "How to do the Doorway Pec Stretch for Rounded Shoulders",
+    "channel": "REACH Rehab + Chiropractic Performance Center",
+    "seconds": 165,
+    "source": "api"
+  },
+  "childs_pose": {
+    "videoId": "xujedBcjrRM",
+    "title": "Balasana (Child’s Pose) Benefits, How to Do & Contraindications by Yogi Sandeep - Siddhi Yoga",
+    "channel": "Siddhi Yoga International",
+    "seconds": 405,
+    "source": "api"
+  },
+  "dynamic_hamstring_sweep": {
+    "videoId": "dVeBdY5cDd4",
+    "title": "Multidirectional Hamstring Sweep",
+    "channel": "Myodetox Education",
+    "seconds": 68,
+    "source": "api"
+  },
+  "walking_knee_hug": {
+    "videoId": "vrSquyFFmDc",
+    "title": "Walking Knee Hugs",
+    "channel": "Restore Thrive",
+    "seconds": 86,
+    "source": "api"
+  },
+  "wall_slide": {
+    "videoId": "bYAvj2rFD5s",
+    "title": "How to Perform a Serratus Anterior Wall Slide for Serratus Anterior Activation",
+    "channel": "Momenta Chiropractic",
+    "seconds": 115,
+    "source": "api"
+  },
+  "pigeon_stretch": {
+    "videoId": "M1gEGLtF1p0",
+    "title": "How To Do Pigeon Pose | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 212,
+    "source": "api"
+  },
+  "standing_quad_stretch": {
+    "videoId": "2_pr9-LDUSQ",
+    "title": "How to Do the Standing Quad Stretch",
+    "channel": "LIVESTRONG",
+    "seconds": 89,
     "source": "api"
   }
 }
