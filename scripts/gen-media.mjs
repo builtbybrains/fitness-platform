@@ -302,6 +302,9 @@ const LIMIT = Math.floor(Number(flagValue('--limit') ?? 90)) || 90;
 // Search wording; {name} is the exercise name. A second pass with other
 // wording can fill exercises whose first results were all turned down.
 const QUERY = flagValue('--query') || '{name} exercise tutorial';
+// --shorts: also accept clips of 10 to 60 seconds (YouTube Shorts) for the
+// exercises that still have no video.
+const SHORTS = argv.includes('--shorts');
 
 class QuotaError extends Error {}
 
@@ -348,14 +351,18 @@ async function apiSearch(q) {
     tutorial-style title ("how to", "form", "guide"), no clickbait ("STOP",
     "NEVER", "vs", hashtags, emoji), and the same kit as the exercise
     (a barbell exercise never gets a dumbbell video, and the reverse). */
-export function pickApiVideo(results, name = '') {
+export function pickApiVideo(results, name = '', { shorts = false } = {}) {
   const kit = (s) => (/\bbarbell\b/i.test(s) ? 'barbell' : /\bdumbbells?\b|\bdb\b/i.test(s) ? 'dumbbell' : /\bkettlebells?\b|\bkb\b/i.test(s) ? 'kettlebell' : /\bcable\b/i.test(s) ? 'cable' : /\bmachine\b/i.test(s) ? 'machine' : null);
   const want = kit(name);
   const english = (v) => (!v.lang ? 0 : /^en(\b|-|_)/i.test(v.lang) ? 1 : -1);
   const tutorial = (v) => (/\b(how to|how-to|tutorial|guide|form|technique|proper|correct)\b/i.test(v.title) ? 1 : 0);
-  const clickbait = (v) => (/\b(stop|never|vs\.?|versus|assessment|mistakes?)\b|f\*ck|#|[\u{1F300}-\u{1FAFF}☀-➿]/iu.test(v.title) ? 1 : 0);
-  const score = (v) => (trusted(v.channel) ? 10 : 0) + english(v) * 3 + tutorial(v) * 4 - results.indexOf(v) * 0.3;
-  const fits = results.filter((v) => v.seconds != null && v.seconds >= 60 && v.seconds <= 600 && !clickbait(v) && !(want && kit(v.title) && kit(v.title) !== want));
+  const words = /\b(stop|never|vs\.?|versus|assessment|mistakes?)\b|f\*ck/i;
+  // Shorts mode (--shorts): Shorts titles nearly always carry hashtags and
+  // emoji, so only the words count as clickbait there.
+  const clickbait = (v) => (words.test(v.title) || (!shorts && /#|[\u{1F300}-\u{1FAFF}☀-➿]/u.test(v.title)) ? 1 : 0);
+  const named = (v) => (name && name.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3).every((w) => v.title.toLowerCase().includes(w)) ? 1 : 0);
+  const score = (v) => (shorts ? named(v) * 8 : 0) + (trusted(v.channel) ? 10 : 0) + english(v) * 3 + tutorial(v) * 4 - results.indexOf(v) * 0.3;
+  const fits = results.filter((v) => v.seconds != null && v.seconds >= (shorts ? 10 : 60) && v.seconds <= 600 && !clickbait(v) && !(want && kit(v.title) && kit(v.title) !== want));
   return [...fits].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
@@ -392,7 +399,7 @@ async function fillFromApi(todo, out, list, file) {
   }
   for (const { ex, results } of searched) {
     const banned = new Set(REJECTED[ex.id] || []);
-    const pick = pickApiVideo(results.filter((r) => !banned.has(r.videoId)).map((r) => ({ ...r, ...details.get(r.videoId) })), ex.name);
+    const pick = pickApiVideo(results.filter((r) => !banned.has(r.videoId)).map((r) => ({ ...r, ...details.get(r.videoId) })), ex.name, { shorts: SHORTS });
     if (pick) {
       out[ex.id] = { videoId: pick.videoId, title: pick.title.slice(0, 120), channel: pick.channel.slice(0, 60), seconds: pick.seconds ?? null, source: 'api' };
       log(`  ok   ${ex.id}: ${pick.channel} | ${pick.title.slice(0, 60)}`);

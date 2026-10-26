@@ -20,6 +20,13 @@
     "seconds": 296,
     "source": "api"
   },
+  "chest_dip": {
+    "videoId": "5k7Atrwsty0",
+    "title": "How to do Dips for Chest Growth",
+    "channel": "TylerPath",
+    "seconds": 14,
+    "source": "api"
+  },
   "incline_barbell_press": {
     "videoId": "SrqOu55lrYU",
     "title": "How To: Incline Barbell Bench Press | 3 GOLDEN RULES! (MADE BETTER!)",
@@ -97,6 +104,13 @@
     "seconds": 458,
     "source": "api"
   },
+  "cable_face_pull": {
+    "videoId": "pB9qVPwWp1I",
+    "title": "How to do Facepulls",
+    "channel": "TylerPath",
+    "seconds": 16,
+    "source": "api"
+  },
   "back_squat": {
     "videoId": "my0tLDaWyDU",
     "title": "How To Squat Correctly (NO BACK PAIN)",
@@ -137,6 +151,13 @@
     "title": "HOW TO DO ROMANIAN DEADLIFTS (RDLs): Build Beefy Hamstrings With Perfect Technique",
     "channel": "Jeff Nippard",
     "seconds": 382,
+    "source": "api"
+  },
+  "hip_thrust": {
+    "videoId": "42lU8xsumBo",
+    "title": "How to HIP THRUST properly #hipthrust #gym",
+    "channel": "Train with Dave ",
+    "seconds": 51,
     "source": "api"
   },
   "leg_curl": {
@@ -1042,6 +1063,13 @@
     "seconds": 77,
     "source": "api"
   },
+  "incline_hammer_curl": {
+    "videoId": "dISJh9eXmgU",
+    "title": "Incline Hammer Curls (How To)",
+    "channel": "Quinlan Smith",
+    "seconds": 21,
+    "source": "api"
+  },
   "21s_biceps_curl": {
     "videoId": "oq7jXQP3Fk8",
     "title": "How To Do 21s [one of the best bicep exercises]",
@@ -1126,6 +1154,13 @@
     "seconds": 113,
     "source": "api"
   },
+  "cable_triceps_kickback": {
+    "videoId": "ZvF4Oi_6Vtg",
+    "title": "How To Do A SINGLE ARM CABLE TRICEP KICKBACK | Exercise Demonstration Video and Guide",
+    "channel": "Live Lean TV Daily Exercises",
+    "seconds": 43,
+    "source": "api"
+  },
   "seated_dumbbell_overhead_triceps_extension": {
     "videoId": "fYqswDVbJDg",
     "title": "HOW TO: Overhead Triceps Extension (BEST EXERCISE FOR HUGE TRICEPS) || PERFECT FORM (POWERBOMB)",
@@ -1145,6 +1180,13 @@
     "title": "How To: Reverse Seated Wrist Curl",
     "channel": "ScottHermanFitness",
     "seconds": 74,
+    "source": "api"
+  },
+  "plate_pinch_hold": {
+    "videoId": "zOmCzoRXWDc",
+    "title": "Plate Pinch Hold",
+    "channel": "ADAPT Strength and Conditioning",
+    "seconds": 23,
     "source": "api"
   },
   "dead_bug": {
@@ -1371,6 +1413,13 @@
     "seconds": 221,
     "source": "api"
   },
+  "sandbag_carry": {
+    "videoId": "CGmqJFP9mto",
+    "title": "Sandbag Carry for BJJ?",
+    "channel": "Electrum Performance",
+    "seconds": 10,
+    "source": "api"
+  },
   "devils_press": {
     "videoId": "Cwxmji-3k40",
     "title": "How to do a Dumbbell Devil Press with Jason Khalipa",
@@ -1385,11 +1434,25 @@
     "seconds": 373,
     "source": "api"
   },
+  "step_up_to_press": {
+    "videoId": "ffCLu0Kl93c",
+    "title": "Step up press",
+    "channel": "Whitney Carnohan",
+    "seconds": 28,
+    "source": "api"
+  },
   "kettlebell_high_pull": {
     "videoId": "Li4g5p6s2eM",
     "title": "How To: Kettlebell High-Pull",
     "channel": "ScottHermanFitness",
     "seconds": 122,
+    "source": "api"
+  },
+  "treadmill_walking": {
+    "videoId": "Y6CW8JFt3d8",
+    "title": "A Few Tips To Help With Proper Walking Form On The Treadmill #shorts",
+    "channel": "Treadchic",
+    "seconds": 59,
     "source": "api"
   },
   "treadmill_running": {
@@ -1460,6 +1523,13 @@
     "title": "How to do Jumping Jacks exercise - Best Cardio Exercises video tutorial",
     "channel": "P4P WORKOUTS ",
     "seconds": 86,
+    "source": "api"
+  },
+  "high_knees": {
+    "videoId": "IdIlyOKozx4",
+    "title": "How To Do High Knees #runningdrills #shorts",
+    "channel": "Chari Hawkins",
+    "seconds": 14,
     "source": "api"
   },
   "mountain_climber": {
@@ -1607,6 +1677,13 @@
     "title": "How to Perform a Serratus Anterior Wall Slide for Serratus Anterior Activation",
     "channel": "Momenta Chiropractic",
     "seconds": 115,
+    "source": "api"
+  },
+  "wrist_circles": {
+    "videoId": "20Y-W5fHPEM",
+    "title": "How To Do KNEELING WRIST CIRCLES | Exercise Demonstration Video and Guide",
+    "channel": "Live Lean TV Daily Exercises",
+    "seconds": 32,
     "source": "api"
   },
   "pigeon_stretch": {

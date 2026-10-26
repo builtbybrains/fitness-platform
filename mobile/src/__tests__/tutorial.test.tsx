@@ -180,6 +180,20 @@ describe('gen-media video script', () => {
     expect(pickApiVideo([v('db', 120, 'Dumbbell Overhead Press - How To')], 'Barbell Overhead Press')).toBeNull();
   });
 
+  it('with --shorts, takes a short demo clip but still refuses clickbait and the wrong kit', () => {
+    const v = (videoId: string, seconds: number | null, title: string, channel = 'Someone') => ({ videoId, title, channel, seconds, lang: 'en' });
+    const clip = v('clip', 30, 'How to HIP THRUST properly #hipthrust #gym');
+    // Off by default: a 30 second clip with hashtags is never picked.
+    expect(pickApiVideo([clip], 'Hip Thrust')).toBeNull();
+    expect(pickApiVideo([clip], 'Hip Thrust', { shorts: true })?.videoId).toBe('clip');
+    // A title that names the exercise beats one that doesn't.
+    expect(pickApiVideo([v('other', 20, 'Glute day #shorts'), clip], 'Hip Thrust', { shorts: true })?.videoId).toBe('clip');
+    // Still refused: clickbait words, the wrong kit, under 10 seconds.
+    expect(pickApiVideo([v('bait', 30, 'STOP doing hip thrusts like this #shorts')], 'Hip Thrust', { shorts: true })).toBeNull();
+    expect(pickApiVideo([v('db', 30, 'Dumbbell press #shorts')], 'Barbell Bench Press', { shorts: true })).toBeNull();
+    expect(pickApiVideo([v('tiny', 6, 'Hip thrust #shorts')], 'Hip Thrust', { shorts: true })).toBeNull();
+  });
+
   it('reads YouTube API durations', () => {
     expect(isoSeconds('PT4M13S')).toBe(253);
     expect(isoSeconds('PT45S')).toBe(45);
