@@ -299,6 +299,9 @@ const flagValue = (name) => {
   return argv.find((a) => a.startsWith(`${name}=`))?.slice(name.length + 1);
 };
 const LIMIT = Math.floor(Number(flagValue('--limit') ?? 90)) || 90;
+// Search wording; {name} is the exercise name. A second pass with other
+// wording can fill exercises whose first results were all turned down.
+const QUERY = flagValue('--query') || '{name} exercise tutorial';
 
 class QuotaError extends Error {}
 
@@ -363,7 +366,7 @@ async function fillFromApi(todo, out, list, file) {
   let quota = false;
   for (const ex of queue) {
     try {
-      searched.push({ ex, results: await apiSearch(`${ex.name} exercise tutorial`) });
+      searched.push({ ex, results: await apiSearch(QUERY.replaceAll('{name}', ex.name)) });
     } catch (e) {
       if (e instanceof QuotaError) {
         quota = true;

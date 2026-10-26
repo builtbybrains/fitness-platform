@@ -83,6 +83,13 @@
     "seconds": 60,
     "source": "api"
   },
+  "db_row": {
+    "videoId": "dFzUjzfih7k",
+    "title": "How to do the SINGLE ARM DUMBBELL ROW! | 2 Minute Tutorial",
+    "channel": "Max Euceda",
+    "seconds": 120,
+    "source": "api"
+  },
   "chest_supported_db_row": {
     "videoId": "ro2vfHfD0DQ",
     "title": "How To Do A Chest Supported Dumbbell Row Correctly",
@@ -258,6 +265,13 @@
     "seconds": 208,
     "source": "api"
   },
+  "push_up": {
+    "videoId": "IODxDxX7oi4",
+    "title": "The Perfect Push Up | Do it right!",
+    "channel": "Calisthenicmovement",
+    "seconds": 218,
+    "source": "api"
+  },
   "dumbbell_row": {
     "videoId": "roCP6wCXPqo",
     "title": "How to Perfect Your Dumbbell Row | Form Check | Men's Health",
@@ -368,6 +382,13 @@
     "title": "HOW TO: Chest \"Low-To-High\" Cable Fly (BIGGER UPPER CHEST) || PERFECT FORM",
     "channel": "ScottHermanFitness",
     "seconds": 188,
+    "source": "api"
+  },
+  "single_arm_cable_chest_press": {
+    "videoId": "D9e8ZBlFPBw",
+    "title": "How to do the Single Arm Cable Chest Press for Crazy Chest Pumps",
+    "channel": "Seriously Strong Training",
+    "seconds": 102,
     "source": "api"
   },
   "band_chest_press": {
@@ -587,6 +608,13 @@
     "seconds": 146,
     "source": "api"
   },
+  "reverse_lunge": {
+    "videoId": "RZKXLMxPF_I",
+    "title": "Dumbbell Reverse Lunges | How To | Proper Form & Technique",
+    "channel": "FITTR",
+    "seconds": 67,
+    "source": "api"
+  },
   "forward_lunge": {
     "videoId": "PW27T634U78",
     "title": "Forward Lunge Exercise Tutorial (Level 1) - ONLINE PHYSIO EXERCISES",
@@ -627,6 +655,13 @@
     "title": "How To: Standing Leg Curl (BM)",
     "channel": "ScottHermanFitness",
     "seconds": 135,
+    "source": "api"
+  },
+  "nordic_hamstring_curl": {
+    "videoId": "6NCN6kOagfY",
+    "title": "How to Do a Nordic Hamstring Curl",
+    "channel": "The Kneesovertoesguy",
+    "seconds": 288,
     "source": "api"
   },
   "single_leg_rdl": {
@@ -797,6 +832,13 @@
     "seconds": 92,
     "source": "api"
   },
+  "quadruped_fire_hydrant": {
+    "videoId": "X5iIUqd_U7k",
+    "title": "Lower Extremity Exercise - Fire Hydrants - Zion Physical Therapy Video",
+    "channel": "Zion Physical Therapy",
+    "seconds": 91,
+    "source": "api"
+  },
   "reverse_hyperextension": {
     "videoId": "3d9_W--eUcI",
     "title": "Reverse Hypers",
@@ -825,6 +867,13 @@
     "seconds": 146,
     "source": "api"
   },
+  "single_arm_dumbbell_shoulder_press": {
+    "videoId": "4mzFocnr5mU",
+    "title": "How To Single Arm Standing Dumbbell Shoulder Press PROPERLY",
+    "channel": "Colossus Fitness",
+    "seconds": 158,
+    "source": "api"
+  },
   "cable_lateral_raise": {
     "videoId": "BGw_YA3KiHs",
     "title": "Cable Lateral Raise: The ONLY Guide You’ll Ever Need for 3D Shoulders",
@@ -837,6 +886,13 @@
     "title": "Lean Away Low Cable Lateral Raise: How To",
     "channel": "Hammer Fitness",
     "seconds": 99,
+    "source": "api"
+  },
+  "dumbbell_front_raise": {
+    "videoId": "-t7fuZ0KhDA",
+    "title": "How To: Dumbbell Front Raise",
+    "channel": "ScottHermanFitness",
+    "seconds": 111,
     "source": "api"
   },
   "cable_rear_delt_fly": {
@@ -879,6 +935,13 @@
     "title": "Prone \"Y\" Raises",
     "channel": "Integrated Strength",
     "seconds": 79,
+    "source": "api"
+  },
+  "dumbbell_shrug": {
+    "videoId": "g6qbq4Lf1FI",
+    "title": "How to Do Dumbbell Shrugs",
+    "channel": "LIVESTRONG",
+    "seconds": 99,
     "source": "api"
   },
   "cable_external_rotation": {
@@ -986,11 +1049,25 @@
     "seconds": 95,
     "source": "api"
   },
+  "rope_triceps_pushdown": {
+    "videoId": "n2FSCB4vRSA",
+    "title": "How to PROPERLY Do Cable Rope Pushdowns",
+    "channel": "Colossus Fitness",
+    "seconds": 243,
+    "source": "api"
+  },
   "straight_bar_triceps_pushdown": {
     "videoId": "8JBHlaS7Dkk",
     "title": "Tricep Pushdown with Straight Bar | TWEAK THIS!",
     "channel": "Nevels Fitness",
     "seconds": 162,
+    "source": "api"
+  },
+  "single_arm_cable_triceps_pushdown": {
+    "videoId": "_w-HpW70nSQ",
+    "title": "HOW TO: Cable Triceps Pushdown || 3 Golden Rules (FOR GROWTH)",
+    "channel": "ScottHermanFitness",
+    "seconds": 271,
     "source": "api"
   },
   "cable_overhead_triceps_extension": {
@@ -1315,11 +1392,32 @@
     "seconds": 122,
     "source": "api"
   },
+  "treadmill_running": {
+    "videoId": "K6I24WgiiPw",
+    "title": "How To Have Proper Runner's Form | The Right Way | Well+Good",
+    "channel": "Well+Good",
+    "seconds": 221,
+    "source": "api"
+  },
   "incline_walk": {
     "videoId": "NAsObfFJXvE",
     "title": "How To: Incline Treadmill Walk (12-3-30 Workout)",
     "channel": "Live Lean TV Daily Exercises",
     "seconds": 113,
+    "source": "api"
+  },
+  "outdoor_running": {
+    "videoId": "_kGESn8ArrU",
+    "title": "How To Run Properly | Running Technique Explained",
+    "channel": "Global Triathlon Network",
+    "seconds": 575,
+    "source": "api"
+  },
+  "bike_intervals": {
+    "videoId": "fW-gDFOLaCk",
+    "title": "How To Properly Use The Upright Bike",
+    "channel": "Live Lean TV Daily Exercises",
+    "seconds": 68,
     "source": "api"
   },
   "air_bike_intervals": {
@@ -1341,6 +1439,13 @@
     "title": "Elliptical Instruction 101: Technique and Tips",
     "channel": "Sunny Health & Fitness",
     "seconds": 122,
+    "source": "api"
+  },
+  "stair_climber": {
+    "videoId": "ww3YV_N6U_U",
+    "title": "StairMaster Workout and Exercises! How to Use StairMaster with Proper Form",
+    "channel": "McKinley Health Center",
+    "seconds": 199,
     "source": "api"
   },
   "jump_rope": {
@@ -1385,6 +1490,13 @@
     "seconds": 350,
     "source": "api"
   },
+  "sprint_intervals": {
+    "videoId": "6m_fjNhRhkY",
+    "title": "Proper Sprinting Form In 3 Steps",
+    "channel": "Outperform",
+    "seconds": 334,
+    "source": "api"
+  },
   "swimming_laps": {
     "videoId": "AQy_c30lNjI",
     "title": "How To Swim Freestyle | Technique For Front Crawl Swimming",
@@ -1427,6 +1539,13 @@
     "seconds": 359,
     "source": "api"
   },
+  "deep_squat_hold": {
+    "videoId": "IHApHfNA2Ag",
+    "title": "How to Do a Deep Squat According to Physical Therapists",
+    "channel": "Hinge Health",
+    "seconds": 69,
+    "source": "api"
+  },
   "couch_stretch": {
     "videoId": "-rsIS-wl-ig",
     "title": "How to do the Couch Stretch for Tight Hip Flexors",
@@ -1446,6 +1565,20 @@
     "title": "How to do the Doorway Pec Stretch for Rounded Shoulders",
     "channel": "REACH Rehab + Chiropractic Performance Center",
     "seconds": 165,
+    "source": "api"
+  },
+  "banded_shoulder_pass_through": {
+    "videoId": "xaSsrvN9Bv0",
+    "title": "Improve Your Shoulder Mobility In Seconds with the Banded Pass Throughs",
+    "channel": "Tangelo - Seattle Chiropractor + Rehab",
+    "seconds": 87,
+    "source": "api"
+  },
+  "ankle_dorsiflexion_rocks": {
+    "videoId": "jGT_NmaQWo4",
+    "title": "Increase Dorsiflexion with Active Wall Ankles Stretch",
+    "channel": "Tom Morrison",
+    "seconds": 108,
     "source": "api"
   },
   "childs_pose": {
