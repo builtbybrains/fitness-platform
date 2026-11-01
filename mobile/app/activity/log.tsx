@@ -17,6 +17,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 
 import { C, card as cardStyle, FONT, screen, T } from '../../src/design';
 import { usePlan } from '../../src/planStore';
+import { kindOn } from '../../src/planData';
 import { activitiesFor, activityDef, DEFAULT_WEIGHT_KG, EFFORT_HINTS, EFFORTS, type ActivityKind, type Effort, isActivityKind, kcalFor, MAX_ACTIVITY_MINUTES } from '../../src/data/activities';
 import { addDays, mondayIndex, parseDay } from '../../src/lib/dates';
 import { haptic } from '../../src/lib/haptics';
@@ -98,7 +99,7 @@ export default function LogActivityScreen() {
     // through the workout)? Then say so, and celebrate the crossing.
     const shown = days.find((d) => d.id === day);
     const workoutDone = shown ? shown.done.workout : !!history[day]?.workout;
-    const workoutDay = shown ? shown.session.kind === 'workout' : schedule[mondayIndex(parseDay(day))] === 'workout';
+    const workoutDay = shown ? shown.session.kind === 'workout' : kindOn(schedule, day) === 'workout';
     const total = before + (countsAsSport(r.activity.kind) ? r.activity.minutes : 0);
     const counts = !workoutDone && sportCounts(total) ? (workoutDay ? `Counts as ${whose} workout. Your streak keeps going.` : 'Counts as a training day. Your streak keeps going.') : null;
     setSaved({ name, minutes: r.activity.minutes, kcal: r.activity.kcal, counts });

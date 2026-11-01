@@ -11,6 +11,14 @@ export function isoDay(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** The local day id of an instant (an ISO timestamp such as a health
+    app's workout start, which is UTC): 22:30Z on the 19th is the 20th in
+    Beirut. Falls back to the date part when the timestamp can't be read. */
+export function localDayOf(timestamp: string): string {
+  const d = new Date(timestamp);
+  return Number.isNaN(d.getTime()) ? timestamp.slice(0, 10) : isoDay(d);
+}
+
 /** Today's local day id. */
 export function todayId(now: Date = new Date()): string {
   return isoDay(now);

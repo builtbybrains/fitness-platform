@@ -21,7 +21,14 @@
    routed into the questionnaire by the entry gate (app/index.tsx).
 
    Sign-out returns to the login screen and keeps the device-only identity
-   (and its data) for the next "Continue without an account". */
+   (and its data) for the next "Continue without an account".
+
+   Creating an account (or signing into one that hasn't finished the
+   questionnaire) after using the app without one moves that device-only
+   person's answers and history into the account first (api/migrateLocal),
+   so they land on Today with everything they logged. The session is only
+   put on screen once that is done, so the entry gate never flashes the
+   questionnaire. */
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
@@ -36,6 +43,7 @@ import { supabaseConfigured } from '../supabase.config';
 import { asApiError } from './api/errors';
 import { emptyProfile, getProfile, saveProfilePatch } from './api/profile';
 import { registerPushToken, unregisterPushToken } from './api/push';
+import { migrateLocalPerson } from './api/migrateLocal';
 import type { ApiErrorCode, ProfilePatchV2, ProfileV2 } from './types';
 
 /** The signed-in person's profile: the whole v2 questionnaire row. */
@@ -127,6 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const localModeRef = useRef(!supabaseConfigured);
   const profileRef = useRef<Profile | null>(null);
   const pushToken = useRef<string | null>(null);
+  // True while signUp/signIn finish their own work (moving a device-only
+  // person in): the auth listener leaves the session to them.
+  const holdSession = useRef(false);
 
   const putProfile = useCallback((p: Profile | null) => {
     profileRef.current = p;
@@ -195,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       // A device-only identity ignores any leftover cloud session.
-      if (!localModeRef.current) setSession(s);
+      if (!localModeRef.current && !holdSession.current) setSession(s);
     });
     return () => {
       alive = false;
@@ -265,6 +276,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [cloudUserId]);
 
+  /** After a successful sign-up or sign-in: bring a device-only person's
+      data along (only into an account without its own answers), then put
+      the session, and the moved profile, on screen together. */
+  const finishSignIn = useCallback(
+    async (s: Session) => {
+      await AsyncStorage.removeItem(LOCAL_MODE_KEY).catch(() => {});
+      const moved = await migrateLocalPerson(s.user.id).catch(() => null);
+      setLocalMode(false);
+      if (moved?.migrated) {
+        setLocalUserId(null);
+        putProfile(moved.profile);
+      }
+      setSession(s);
+    },
+    [setLocalMode, putProfile],
+  );
+
   const signUp = useCallback(
     async (email: string, password: string, name = '') => {
       if (!supabaseConfigured) {
@@ -273,17 +301,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
       if (password.length < 8) return { error: 'Use at least 8 characters for your password.' };
 
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-      if (error) return { error: error.message };
-      if (!data.session) {
-        // Only when email confirmation is switched back on in Supabase.
-        return { error: 'CONFIRM_EMAIL:Account created. Check your inbox to confirm your email, then sign in.' };
+      holdSession.current = true;
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+        if (error) return { error: error.message };
+        if (!data.session) {
+          // Only when email confirmation is switched back on in Supabase.
+          return { error: 'CONFIRM_EMAIL:Account created. Check your inbox to confirm your email, then sign in.' };
+        }
+        await finishSignIn(data.session);
+        return {};
+      } finally {
+        holdSession.current = false;
       }
-      await AsyncStorage.removeItem(LOCAL_MODE_KEY).catch(() => {});
-      setLocalMode(false);
-      return {};
     },
-    [setLocalMode],
+    [finishSignIn],
   );
 
   const signIn = useCallback(
@@ -292,13 +324,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: "Accounts aren't available in this build. Continue without an account instead." };
       }
       if (!email || !password) return { error: 'Enter your email and password.' };
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error: error.message };
-      await AsyncStorage.removeItem(LOCAL_MODE_KEY).catch(() => {});
-      setLocalMode(false);
-      return {};
+      holdSession.current = true;
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) return { error: error.message };
+        if (data.session) await finishSignIn(data.session);
+        else setLocalMode(false);
+        return {};
+      } finally {
+        holdSession.current = false;
+      }
     },
-    [setLocalMode],
+    [finishSignIn, setLocalMode],
   );
 
   const signOut = useCallback(async () => {

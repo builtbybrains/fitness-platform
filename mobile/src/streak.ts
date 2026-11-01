@@ -14,14 +14,17 @@
    - today is still in progress: done adds one, not done yet changes nothing.
 
    "Scheduled" follows the plan actually in use (the active AI plan's
-   weekday pattern, or the rules week when there is none). The Today chip
+   weekday pattern, or the rules week when there is none). Days moved in
+   one calendar week change that week only (planData.streakSchedule), so
+   moving this Monday's workout to Tuesday never turns past Tuesdays into
+   missed days. The Today chip
    (currentStreak) and the Progress tab (stats.streakHistory) both use
    streakSeries, so they always agree.
 
    Pure module: no React, no native imports. */
 
-import { addDays, isoDay, mondayIndex, parseDay } from './lib/dates';
-import { DoneMap, PlanDay, RULES_SCHEDULE, WeekSchedule, scheduleOf } from './planData';
+import { addDays, isoDay } from './lib/dates';
+import { DoneMap, kindOn, PlanDay, RULES_SCHEDULE, scheduleOf, type StreakSchedule } from './planData';
 
 /** How far back a streak is followed (days). */
 export const STREAK_HORIZON_DAYS = 366;
@@ -65,7 +68,7 @@ export function isTrainedDay(done: { workout?: boolean } | null | undefined, spo
     history (bounded by the horizon) up to and including `todayId`. */
 export function streakSeries(
   done: DoneMap,
-  schedule: WeekSchedule = RULES_SCHEDULE,
+  schedule: StreakSchedule = RULES_SCHEDULE,
   todayId: string = isoDay(new Date()),
   sport: MinutesByDay = {},
 ): Map<string, number> {
@@ -82,7 +85,7 @@ export function streakSeries(
   for (let id = first; id <= todayId; id = addDays(id, 1)) {
     const trained = isTrainedDay(done[id], sport[id]);
     if (trained) running += 1;
-    else if (id < todayId && schedule[mondayIndex(parseDay(id))] === 'workout') running = 0;
+    else if (id < todayId && kindOn(schedule, id) === 'workout') running = 0;
     out.set(id, running);
   }
   return out;
@@ -91,7 +94,7 @@ export function streakSeries(
 /** The streak as of today. */
 export function currentStreak(
   done: DoneMap,
-  schedule: WeekSchedule = RULES_SCHEDULE,
+  schedule: StreakSchedule = RULES_SCHEDULE,
   todayId: string = isoDay(new Date()),
   sport: MinutesByDay = {},
 ): number {

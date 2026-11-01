@@ -5,7 +5,7 @@
 
    Pure module: no React, no native imports, so it runs in unit tests. */
 
-import { addDays, isoDay, mondayIndex, weekStartDate } from './lib/dates';
+import { addDays, isoDay, mondayIndex, parseDay, weekStartDate } from './lib/dates';
 import type { Allergy, DietType, MealSlot as SlotV2, PlanDayV2, PlanExerciseV2, PlanMealV2, PlanRestV2, PlanV2, PlanWorkoutV2 } from './types';
 import { availableEquipment, type Equipment, findExercise, type InjuryArea, injuriesFromText, INJURY_AREAS, variantFor } from './data/exercises';
 import type { TrainLocation } from './data/exercises';
@@ -201,6 +201,32 @@ export function withDone(days: PlanDay[], done: DoneMap): PlanDay[] {
 
 export function scheduleOf(days: readonly { session: { kind: SessionKind } }[]): WeekSchedule {
   return days.map((d) => d.session.kind);
+}
+
+/** What history is judged against: one week pattern for every week, or
+    the plan's usual week (`base`) plus calendar weeks laid out differently
+    (moved days), keyed by their Monday. */
+export type StreakSchedule = WeekSchedule | { base: WeekSchedule; weeks?: Readonly<Record<string, WeekSchedule>> };
+
+/** The session kind a schedule expects on a calendar day. */
+export function kindOn(schedule: StreakSchedule, dayId: string): SessionKind {
+  const weekday = mondayIndex(parseDay(dayId));
+  if (Array.isArray(schedule)) return (schedule as WeekSchedule)[weekday];
+  const s = schedule as Exclude<StreakSchedule, WeekSchedule>;
+  return (s.weeks?.[addDays(dayId, -weekday)] ?? s.base)[weekday];
+}
+
+/** The plan's usual week for every week, with this week's moved days
+    applied to this week only. `planDays` is the plan before any week's
+    changes; `thisWeek` is the week as shown (weekView). */
+export function streakSchedule(
+  planDays: readonly { session: { kind: SessionKind } }[],
+  weekStart: string,
+  thisWeek: readonly { session: { kind: SessionKind } }[],
+): StreakSchedule {
+  const base = scheduleOf(planDays);
+  const week = scheduleOf(thisWeek);
+  return week.length === 7 && week.some((k, i) => k !== base[i]) ? { base, weeks: { [weekStart]: week } } : base;
 }
 
 // ─────────────────────────── stored AI plan ───────────────────────────

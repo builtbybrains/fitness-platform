@@ -10,7 +10,7 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { isCloudUser } from '../lib/cloud';
 import { loadLocal, updateLocal } from '../lib/localFallback';
-import { addDays, todayId } from '../lib/dates';
+import { addDays, localDayOf, todayId } from '../lib/dates';
 import { saveWeight } from '../data';
 import { healthAvailable, healthPlatform, readHealthDays, readHealthWorkouts, requestHealthPermissions } from './device/health';
 import { logActivity } from './activities';
@@ -61,7 +61,7 @@ export async function syncHealth(userId: string, opts: { days?: number; weightKg
     if (/^BUILT/i.test(w.label)) continue;
     await logActivity(
       userId,
-      { kind: w.kind, minutes: Math.min(720, w.minutes), effort: 'moderate', day: w.start.slice(0, 10), label: w.label, externalId: w.externalId, source: 'health', kcal: w.kcal, createdAt: w.start },
+      { kind: w.kind, minutes: Math.min(720, w.minutes), effort: 'moderate', day: localDayOf(w.start), label: w.label, externalId: w.externalId, source: 'health', kcal: w.kcal, createdAt: w.start },
       opts.weightKg,
     ).then(() => imported++).catch(() => undefined);
   }

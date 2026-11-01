@@ -37,7 +37,7 @@ import { ObjectImage } from '../../src/components/objects/ObjectImage';
 import { CheckinDueCard } from '../../src/components/profile/CheckinDue';
 import { plural } from '../../src/components/training/labels';
 import { usePlan } from '../../src/planStore';
-import { DoneMap, setsOf, WeekDay, WeekSchedule } from '../../src/planData';
+import { DoneMap, kindOn, setsOf, type StreakSchedule, WeekDay } from '../../src/planData';
 import { useWater } from '../../src/useWater';
 import { useFoodLogs } from '../../src/foodLogs';
 import { useAuth } from '../../src/auth';
@@ -50,7 +50,7 @@ import type { DailyNoteSummary } from '../../src/api/coach';
 import { haptic } from '../../src/lib/haptics';
 import { musclesForExercises } from '../../src/lib/muscles';
 import { DROP_PATH, wavePath } from '../../src/lib/motionMath';
-import { addDays, mondayIndex, parseDay, todayId as localToday } from '../../src/lib/dates';
+import { addDays, todayId as localToday } from '../../src/lib/dates';
 import type { Activity, HealthDaily } from '../../src/types';
 
 // The day Today last played its entrance, so tab switches and re-mounts
@@ -623,7 +623,7 @@ function noteSummary(p: {
   history: DoneMap;
   sport: MinutesByDay;
   sportToday: string;
-  schedule: WeekSchedule;
+  schedule: StreakSchedule;
   streak: number;
   today: string;
 }): DailyNoteSummary {
@@ -633,7 +633,7 @@ function noteSummary(p: {
     const id = addDays(p.today, -i);
     const done = isTrainedDay(p.history[id], p.sport[id]);
     if (done) done7++;
-    if (done || p.schedule[mondayIndex(parseDay(id))] === 'workout') planned7++;
+    if (done || kindOn(p.schedule, id) === 'workout') planned7++;
   }
   const w = p.day.session.kind === 'workout' ? p.day.session : null;
   const y = p.yesterday;
@@ -692,12 +692,12 @@ export default function TodayTab() {
             day,
             logs: food.logs,
             activityKcal: todaysActivities.reduce((a, x) => a + x.kcal, 0),
-            activityMinutes: todaysActivities.reduce((a, x) => a + x.minutes, 0),
+            sportMinutes: sportMinutes[todayId] ?? 0,
             water: { count: water.count, target: water.target },
             targets,
           })
         : null,
-    [day, food.logs, todaysActivities, water.count, water.target, targets],
+    [day, food.logs, todaysActivities, sportMinutes, todayId, water.count, water.target, targets],
   );
   const sportToday = todaysActivities.filter((a) => countsAsSport(a.kind)).map((a) => `${activityName(a).toLowerCase()} ${a.minutes} min`).join(', ');
   const note = useMemo(

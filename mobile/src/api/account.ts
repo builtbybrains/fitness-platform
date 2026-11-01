@@ -26,7 +26,7 @@ export function deleteConfirmed(typed: string): boolean {
 }
 
 /** Device keys kept for one person outside the `fallback:<id>:` mirror. */
-const personKeys = (userId: string) => [
+export const personKeys = (userId: string) => [
   `coach:lastThread:${userId}`,
   `coach:remaining:${userId}`,
   `built.signupPhotoSet:${userId}`,

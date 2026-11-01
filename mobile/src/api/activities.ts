@@ -16,7 +16,9 @@ import type { Activity, ActivityInput } from '../types';
 const LOCAL = 'activities';
 const KEEP = 500;
 
-function toRow(userId: string, a: Activity) {
+/** The activities row the app writes for this activity (also used when a
+    device-only person's history moves into a new account). */
+export function activityRow(userId: string, a: Activity) {
   return {
     id: a.id,
     user_id: userId,
@@ -84,7 +86,7 @@ export async function logActivity(
     op: 'upsert',
     table: 'activities',
     onConflict: draft.external_id ? 'user_id,external_id' : 'id',
-    row: toRow(userId, draft),
+    row: activityRow(userId, draft),
   });
   if (!ok) return draft;
   const stored = { ...draft, pending: undefined };

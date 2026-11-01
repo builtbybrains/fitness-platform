@@ -11,7 +11,7 @@
 
    Pure module: no React, no native imports. */
 
-import type { DoneMap, WeekSchedule } from '../planData';
+import type { DoneMap, StreakSchedule } from '../planData';
 import { RULES_SCHEDULE } from '../planData';
 import { type MinutesByDay, streakSeries } from '../streak';
 
@@ -41,7 +41,7 @@ export type LiftLog = { day: string; exercise: string; kg: number };
 
 export type MilestoneInput = {
   history: DoneMap;
-  schedule?: WeekSchedule;
+  schedule?: StreakSchedule;
   todayId: string;
   /** Days with a saved check-in, weekly or monthly, any order. */
   checkinDays: readonly string[];
