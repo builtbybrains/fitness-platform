@@ -35,10 +35,10 @@ import {
   EMPTY_DONE,
   locationsFor,
   MealSwaps,
-  scheduleOf,
   starterPlan,
+  streakSchedule,
+  type StreakSchedule,
   WeekDay,
-  WeekSchedule,
 } from './planData';
 import { clearDaysProgress, fetchDoneRange, saveDayProgress } from './data';
 import { countsAsSport, currentStreak, minutesByDay, type MinutesByDay, sportCounts, STREAK_HORIZON_DAYS } from './streak';
@@ -89,7 +89,8 @@ type PlanStore = {
   setLocation: (loc: TrainLocation) => void;
   /** True when this week has moved days or exercise swaps. */
   weekChanged: boolean;
-  schedule: WeekSchedule;
+  /** What history is judged against (planData.kindOn reads a day). */
+  schedule: StreakSchedule;
   history: DoneMap;
   historyLoaded: boolean;
   /** True when the last history read couldn't reach the server: `history`
@@ -301,7 +302,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const basePlanRef = useRef(basePlan);
   basePlanRef.current = basePlan;
 
-  const schedule = useMemo(() => scheduleOf(days), [days]);
+  // History is judged against the plan's usual week; this week's moved
+  // days change this week only.
+  const schedule = useMemo(() => streakSchedule(basePlan.days, weekStart, days), [basePlan.days, weekStart, days]);
   const streak = useMemo(() => currentStreak(done, schedule, today, sportMinutes), [done, schedule, today, sportMinutes]);
   const weekChanged = overrides.day_order.some((p, i) => p !== i) || Object.keys(overrides.exercise_swaps).length > 0;
 

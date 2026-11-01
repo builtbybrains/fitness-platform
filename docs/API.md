@@ -588,8 +588,9 @@ One Edge Function. Base URL:
   page source. No Supabase key is needed (the function is deployed without
   the JWT check).
 - **Lockout:** 5 failed logins from one address in 15 minutes lock that
-  address for 15 minutes; 20 failures from anywhere lock every login for 15
-  minutes. Changing the password clears lockouts and sessions.
+  address for 15 minutes. There is no lock across all addresses, so nobody
+  can keep the admin out by failing logins on purpose. Changing the password
+  clears lockouts and sessions.
 - **CORS:** only `https://builtbybrains.github.io`,
   `https://fitness-platform-blue.vercel.app`, this project's Vercel preview
   deployments (`https://fitness-platform-<hash or branch>-brains-ai.vercel.app`,
@@ -751,6 +752,24 @@ oldest first. `timeline`: the last 100 events, newest first; `kind` is one
 of `signup`, `onboarding`, `workout`, `meal`, `activity`, `weight`,
 `checkin`, `report`, `coach` (coach messages are counted, never shown).
 400 for a malformed id, 404 for an unknown one.
+
+### GET /contact
+
+Early-access and contact messages sent from the website form, newest first.
+Query: `limit` (1 to 200, default 50), `offset`.
+
+```json
+{
+  "total": 1, "last_7d": 1, "limit": 50, "offset": 0,
+  "rows": [
+    {
+      "id": "5555…", "created_at": "2026-11-01T09:12:00+00:00",
+      "name": "Rana", "email": "rana@example.com", "topic": "early-access",
+      "message": "I'd love to try BUILT.", "source": "website"
+    }
+  ]
+}
+```
 
 ### GET /reports
 

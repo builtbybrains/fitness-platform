@@ -35,7 +35,7 @@ import type { DayMeal } from '../../src/planData';
 const SOURCE_LABEL: Record<string, string> = { photo: 'From a photo', text: 'Typed', generated: 'Made from what you had', plan: 'Plan meal' };
 
 export default function FoodTab() {
-  const { days, todayIdx, todayId, targets, activities, profile, plan, planLoaded, swapMeal, toggleMeal, reload } = usePlan();
+  const { days, todayIdx, todayId, targets, activities, sportMinutes, profile, plan, planLoaded, swapMeal, toggleMeal, reload } = usePlan();
   const { session, profileLoaded, profileError } = useAuth();
   const unreachable = !!session && profileLoaded && !profile && !!profileError;
   const food = useFoodLogs(todayId);
@@ -54,12 +54,12 @@ export default function FoodTab() {
             day,
             logs: food.logs,
             activityKcal: activityToday.reduce((a, x) => a + x.kcal, 0),
-            activityMinutes: activityToday.reduce((a, x) => a + x.minutes, 0),
+            sportMinutes: sportMinutes[todayId] ?? 0,
             water: { count: 0, target: 0 },
             targets,
           })
         : null,
-    [day, food.logs, activityToday, targets],
+    [day, food.logs, activityToday, sportMinutes, todayId, targets],
   );
 
   // Never flash the starter meals: wait for the stored plan and, with an

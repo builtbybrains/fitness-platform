@@ -31,6 +31,32 @@ export type FoodLog = Estimate & {
 
 export type FoodState = { key: string; logs: FoodLog[]; loaded: boolean };
 
+/** A whole number clamped to 0..hi. */
+export function n(v: unknown, hi: number): number {
+  return Math.min(hi, Math.max(0, Math.round(Number(v) || 0)));
+}
+
+/** The food_logs row the app writes for a log (also used when a
+    device-only person's history moves into a new account). */
+export function foodLogRow(userId: string, l: FoodLog) {
+  return {
+    id: l.id,
+    user_id: userId,
+    day: l.day,
+    label: l.label.slice(0, 120),
+    kcal: n(l.kcal, 5000),
+    protein: n(l.protein, 300),
+    carbs: n(l.carbs, 1000),
+    fat: n(l.fat, 500),
+    confidence: l.confidence,
+    source: l.source ?? 'photo',
+    slot: l.slot ?? '',
+    follow_up: (l.followUp ?? []).slice(0, 5),
+    items: (l.items ?? []).slice(0, 15),
+    created_at: l.created_at || new Date().toISOString(),
+  };
+}
+
 export function cacheKey(userId: string, dayId: string): string {
   return `${userId}|${dayId}`;
 }

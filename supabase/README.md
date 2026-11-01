@@ -62,7 +62,7 @@ A short password set this way should be replaced with
 Run `admin_set_credentials` again to change either; that also signs out
 every admin session and clears lockouts (sessions and lockouts are expired,
 not deleted, so they stay as an audit trail). Five wrong passwords from one address lock that address
-for 15 minutes (twenty from anywhere lock every login). Nobody can call this
+for 15 minutes; other addresses can still sign in. Nobody can call this
 function from the app or the website; only the SQL Editor (and the service
 role) can.
 

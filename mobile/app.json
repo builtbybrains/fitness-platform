@@ -1,6 +1,5 @@
 {
   "expo": {
-    "newArchEnabled": true,
     "name": "BUILT",
     "slug": "vital",
     "version": "0.2.0",
@@ -10,9 +9,19 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#080808",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "ai.builtbybrains.built",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "BUILT uses your camera to photograph meals and take progress photos. Faces are blurred on your phone before upload.",
+        "NSPhotoLibraryUsageDescription": "BUILT uses your photos for meal estimates, progress photos and problem-report screenshots you choose.",
+        "NSHealthShareUsageDescription": "BUILT reads your steps, active calories, workouts, weight and sleep to keep your plan and progress accurate.",
+        "NSHealthUpdateUsageDescription": "BUILT saves the workouts you finish in the app to Apple Health."
+      }
     },
     "android": {
+      "package": "ai.builtbybrains.built",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +29,8 @@
         "backgroundColor": "#080808"
       },
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_EXERCISE",

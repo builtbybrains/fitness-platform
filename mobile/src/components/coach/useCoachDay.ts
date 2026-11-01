@@ -11,7 +11,7 @@ import { daySummary } from '../../stats';
 import type { CoachDay } from '../../lib/coachStarters';
 
 export function useCoachDay(): CoachDay | null {
-  const { days, todayIdx, todayId, targets, streak, activities, planLoaded } = usePlan();
+  const { days, todayIdx, todayId, targets, streak, activities, sportMinutes, planLoaded } = usePlan();
   const food = useFoodLogs(todayId);
   const day = days[todayIdx];
   const hour = new Date().getHours();
@@ -22,7 +22,7 @@ export function useCoachDay(): CoachDay | null {
       day,
       logs: food.logs,
       activityKcal: mine.reduce((a, x) => a + x.kcal, 0),
-      activityMinutes: mine.reduce((a, x) => a + x.minutes, 0),
+      sportMinutes: sportMinutes[todayId] ?? 0,
       water: { count: 0, target: 0 },
       targets,
     });
@@ -34,5 +34,5 @@ export function useCoachDay(): CoachDay | null {
       streak,
       hour,
     };
-  }, [day, planLoaded, activities, todayId, food.logs, targets, streak, hour]);
+  }, [day, planLoaded, activities, sportMinutes, todayId, food.logs, targets, streak, hour]);
 }

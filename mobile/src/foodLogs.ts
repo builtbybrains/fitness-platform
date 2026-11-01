@@ -28,9 +28,11 @@ import {
   FoodLog,
   FoodSource,
   FoodState,
+  foodLogRow,
   getFoodCache,
   MealSlot,
   mergeFoodLogs,
+  n,
   publishFood,
   subscribeFood,
 } from './lib/foodCache';
@@ -48,9 +50,6 @@ function localKey(dayId: string) {
   return `foodLogs:${dayId}`;
 }
 
-function n(v: unknown, hi: number): number {
-  return Math.min(hi, Math.max(0, Math.round(Number(v) || 0)));
-}
 
 function toLog(row: Record<string, unknown>): FoodLog {
   const confidence = CONFIDENCE.includes(row.confidence as Confidence) ? (row.confidence as Confidence) : 'medium';
@@ -71,24 +70,7 @@ function toLog(row: Record<string, unknown>): FoodLog {
   };
 }
 
-function toRow(userId: string, l: FoodLog) {
-  return {
-    id: l.id,
-    user_id: userId,
-    day: l.day,
-    label: l.label.slice(0, 120),
-    kcal: n(l.kcal, 5000),
-    protein: n(l.protein, 300),
-    carbs: n(l.carbs, 1000),
-    fat: n(l.fat, 500),
-    confidence: l.confidence,
-    source: l.source ?? 'photo',
-    slot: l.slot ?? '',
-    follow_up: (l.followUp ?? []).slice(0, 5),
-    items: (l.items ?? []).slice(0, 15),
-    created_at: l.created_at || new Date().toISOString(),
-  };
-}
+const toRow = foodLogRow;
 
 // ─────────────────────────────── data layer ───────────────────────────────
 

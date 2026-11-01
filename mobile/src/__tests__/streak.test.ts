@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { addDays } from '../lib/dates';
-import { buildWeek, DoneMap, RULES_SCHEDULE, WeekSchedule, withDone } from '../planData';
+import { buildWeek, DoneMap, kindOn, RULES_SCHEDULE, scheduleOf, streakSchedule, WeekSchedule, withDone } from '../planData';
 import { countsAsSport, currentStreak, isTrainedDay, minutesByDay, SPORT_COUNTS_MINUTES, sportCounts, workoutStreak } from '../streak';
 import { bestStreak, streakHistory, tdeeSuggestion, trainingCalendar, weeklyHistory } from '../stats';
 import { stripState, weekCounts, weekStrip } from '../lib/weekStrip';
@@ -195,5 +195,47 @@ describe('sport counts as the day\'s workout (30 minutes or more)', () => {
     const rest = { id: '2026-09-30', index: 2, session: { kind: 'rest' }, done: { workout: false }, sportMinutes: 45 };
     expect(stripState(rest, '2026-09-30')).toBe('done');
     expect(weekCounts(weekStrip([{ ...day, sportMinutes: 60 }, rest], '2026-09-30'))).toEqual({ done: 2, planned: 2 });
+  });
+});
+
+describe('moved days change their own week only', () => {
+  // The plan trains Mon, Wed, Fri. This week (Monday 2026-10-26) the
+  // Monday workout was moved to Tuesday. Today is Wednesday 2026-10-28.
+  const kinds = (...k: ('workout' | 'rest')[]) => k.map((kind) => ({ session: { kind } }));
+  const planDays = kinds('workout', 'rest', 'workout', 'rest', 'workout', 'rest', 'rest');
+  const thisWeek = kinds('rest', 'workout', 'workout', 'rest', 'workout', 'rest', 'rest');
+  const WEEK = '2026-10-26';
+  const TODAY = '2026-10-28';
+  // Three past weeks of Mon, Wed, Fri, then this week's moved Tuesday.
+  const history = done(
+    '2026-10-05', '2026-10-07', '2026-10-09',
+    '2026-10-12', '2026-10-14', '2026-10-16',
+    '2026-10-19', '2026-10-21', '2026-10-23',
+    '2026-10-27',
+  );
+
+  it('keeps past Tuesdays as rest days', () => {
+    const schedule = streakSchedule(planDays, WEEK, thisWeek);
+    expect(kindOn(schedule, '2026-10-20')).toBe('rest'); // a past Tuesday
+    expect(kindOn(schedule, '2026-10-19')).toBe('workout'); // a past Monday
+    expect(kindOn(schedule, '2026-10-27')).toBe('workout'); // this Tuesday
+    expect(kindOn(schedule, '2026-10-26')).toBe('rest'); // this Monday
+    expect(currentStreak(history, schedule, TODAY)).toBe(10);
+    // Judging the whole year by this week's layout broke it on 10-20.
+    expect(currentStreak(history, scheduleOf(thisWeek), TODAY)).toBe(3);
+  });
+
+  it('shows past Tuesdays as rest on the training calendar', () => {
+    const schedule = streakSchedule(planDays, WEEK, thisWeek);
+    const cells = trainingCalendar(history, schedule, 4, new Date(2026, 9, 28, 18), '2026-10-05').flat();
+    const state = (id: string) => cells.find((c) => c.id === id)?.state;
+    expect(state('2026-10-20')).toBe('rest');
+    expect(state('2026-10-13')).toBe('rest');
+    expect(state('2026-10-26')).toBe('rest');
+    expect(state('2026-10-27')).toBe('done');
+  });
+
+  it('is the plain week when nothing moved', () => {
+    expect(streakSchedule(planDays, WEEK, planDays)).toEqual(scheduleOf(planDays));
   });
 });

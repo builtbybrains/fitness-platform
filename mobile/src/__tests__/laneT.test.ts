@@ -4,6 +4,7 @@ import { composeWeekV2, localMealSwaps, locationsFor, mealFits, MEAL_LIBRARY, mo
 import { activityByKind, activityTotals, averageMacros, daySummary, kcalAdherence, trainingCalendar, weeklyActivity } from '../stats';
 import { findExercise } from '../data/exercises';
 import { addDays } from '../lib/dates';
+import { minutesByDay } from '../streak';
 import type { PlanDayV2 } from '../types';
 
 // 2026-09-28 is a Monday.
@@ -147,7 +148,7 @@ describe('daySummary', () => {
       day: { session: { kind: 'rest' }, meals, done: { workout: false, exercises: [], meals: ['Breakfast'] } },
       logs: [{ kcal: 300, protein: 10, carbs: 40, fat: 10 }],
       activityKcal: 0,
-      activityMinutes: 0,
+      sportMinutes: 0,
       water: { count: 4, target: 8 },
       targets,
     });
@@ -159,19 +160,53 @@ describe('daySummary', () => {
   });
 
   it('counts an activity as training on a rest day, and sets on a workout day', () => {
-    const rest = daySummary({ day: { session: { kind: 'rest' }, meals: [], done: { workout: false, exercises: [], meals: [] } }, logs: [], activityKcal: 300, activityMinutes: 40, water: { count: 0, target: 8 }, targets });
+    const rest = daySummary({ day: { session: { kind: 'rest' }, meals: [], done: { workout: false, exercises: [], meals: [] } }, logs: [], activityKcal: 300, sportMinutes: 40, water: { count: 0, target: 8 }, targets });
     expect(rest.parts.train).toBe(1);
     expect(rest.burned).toBe(300);
     const work = daySummary({
       day: { session: { kind: 'workout', exercises: [{ sets: 3 }, { sets: 3 }] }, meals: [], done: { workout: false, exercises: [[0, 1, 2]], meals: [] } },
       logs: [],
       activityKcal: 0,
-      activityMinutes: 0,
+      sportMinutes: 0,
       water: { count: 8, target: 8 },
       targets,
     });
     expect(work.parts.train).toBe(0.5);
     expect(work.parts.water).toBe(1);
+  });
+});
+
+describe('daySummary training follows the streak rule', () => {
+  const targets = { kcal: 2000, protein: 150, carbs: 200, fat: 60 };
+  const rest = { session: { kind: 'rest' }, meals: [], done: { workout: false, exercises: [], meals: [] } };
+  const workout = { session: { kind: 'workout', exercises: [{ sets: 3 }, { sets: 3 }] }, meals: [], done: { workout: false, exercises: [], meals: [] } };
+
+  it('gives a 5-minute walk on a rest day no training credit', () => {
+    const walk = [{ day: '2026-10-20', kind: 'walking', minutes: 5 }];
+    // What the screens used to pass (every minute, walking included) next
+    // to the sport minutes the streak uses.
+    const s = daySummary({
+      day: rest,
+      logs: [],
+      activityKcal: 20,
+      activityMinutes: 5,
+      sportMinutes: minutesByDay(walk)['2026-10-20'] ?? 0,
+      water: { count: 0, target: 8 },
+      targets,
+    } as unknown as Parameters<typeof daySummary>[0]);
+    expect(s.parts.train).toBeNull();
+    expect(s.burned).toBe(20);
+  });
+
+  it('fills the training part for 60 minutes of football on a workout day', () => {
+    const football = [{ day: '2026-10-20', kind: 'football', minutes: 60 }];
+    const s = daySummary({ day: workout, logs: [], activityKcal: 600, sportMinutes: minutesByDay(football)['2026-10-20'] ?? 0, water: { count: 0, target: 8 }, targets });
+    expect(s.parts.train).toBe(1);
+  });
+
+  it('keeps the sets count on a workout day with less than 30 minutes of sport', () => {
+    const s = daySummary({ day: { ...workout, done: { ...workout.done, exercises: [[0, 1, 2]] } }, logs: [], activityKcal: 0, sportMinutes: 20, water: { count: 0, target: 8 }, targets });
+    expect(s.parts.train).toBe(0.5);
   });
 });
 

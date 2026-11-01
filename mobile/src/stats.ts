@@ -6,8 +6,8 @@
    Pure module: no React, no native imports. */
 
 import { addDays, isoDay, mondayIndex, weekStartDate } from './lib/dates';
-import { buildWeek, DoneMap, PlanSession, RULES_SCHEDULE, WeekSchedule } from './planData';
-import { isTrainedDay, type MinutesByDay, streakSeries } from './streak';
+import { buildWeek, DoneMap, kindOn, PlanSession, RULES_SCHEDULE, type StreakSchedule } from './planData';
+import { isTrainedDay, type MinutesByDay, sportCounts, streakSeries } from './streak';
 
 /** Rules-plan session for any date (not just the current week). */
 export function sessionForDate(date: Date): PlanSession {
@@ -30,7 +30,7 @@ export function weeklyHistory(
   done: DoneMap,
   weeks = 8,
   today = new Date(),
-  schedule: WeekSchedule = RULES_SCHEDULE,
+  schedule: StreakSchedule = RULES_SCHEDULE,
   sport: MinutesByDay = {},
 ): WeekBucket[] {
   const todayId = isoDay(today);
@@ -45,7 +45,7 @@ export function weeklyHistory(
       const id = addDays(ws, i);
       if (id > todayId) continue; // future day of the current week
       const didWorkout = isTrainedDay(done[id], sport[id]);
-      if (schedule[i] === 'workout' || didWorkout) planned += 1;
+      if (kindOn(schedule, id) === 'workout' || didWorkout) planned += 1;
       if (didWorkout) completed += 1;
     }
     out.push({
@@ -65,7 +65,7 @@ export function streakHistory(
   done: DoneMap,
   weeks = 8,
   today = new Date(),
-  schedule: WeekSchedule = RULES_SCHEDULE,
+  schedule: StreakSchedule = RULES_SCHEDULE,
   sport: MinutesByDay = {},
 ): number[] {
   const todayId = isoDay(today);
@@ -92,7 +92,7 @@ export function bestStreak(
   done: DoneMap,
   weeks = 8,
   today = new Date(),
-  schedule: WeekSchedule = RULES_SCHEDULE,
+  schedule: StreakSchedule = RULES_SCHEDULE,
   sport: MinutesByDay = {},
 ): number {
   const todayId = isoDay(today);
@@ -143,7 +143,9 @@ export type DaySummaryInput = {
   /** Food logged outside the plan (photo, typed, generated). */
   logs: readonly Partial<Macros>[];
   activityKcal: number;
-  activityMinutes: number;
+  /** The day's sport minutes, walking left out (streak.minutesByDay; the
+      plan store's `sportMinutes`). */
+  sportMinutes: number;
   water: { count: number; target: number };
   targets: Macros;
 };
@@ -160,8 +162,10 @@ export type DaySummary = {
   parts: { train: number | null; food: number; water: number };
 };
 
-/** Everything the Today ring and numbers show. Training counts on workout
-    days (sets done); on a rest day a logged activity counts as training.
+/** Everything the Today ring and numbers show. Training follows the
+    streak's rule (streak.isTrainedDay): the workout done, or 30 minutes of
+    sport, fills it on any day. Otherwise a workout day shows the sets done
+    and a rest day has no training part (a walk never counts).
     Food is calories and protein against target (off-plan food included);
     water is glasses. */
 export function daySummary(i: DaySummaryInput): DaySummary {
@@ -174,8 +178,8 @@ export function daySummary(i: DaySummaryInput): DaySummary {
     const ex = i.day.session.exercises ?? [];
     const total = ex.reduce((a, e) => a + e.sets, 0);
     const done = ex.reduce((a, e, k) => a + Math.min(e.sets, (i.day.done.exercises[k] ?? []).filter((x) => x < e.sets).length), 0);
-    train = i.day.done.workout ? 1 : total ? done / total : 0;
-  } else if (i.activityMinutes > 0) {
+    train = i.day.done.workout || sportCounts(i.sportMinutes) ? 1 : total ? done / total : 0;
+  } else if (sportCounts(i.sportMinutes)) {
     train = 1;
   }
   const kcalPart = i.targets.kcal > 0 ? Math.min(1, eaten.kcal / i.targets.kcal) : 0;
@@ -241,7 +245,7 @@ export type DayCell = { id: string; state: 'done' | 'missed' | 'rest' | 'open' |
     first): workout done, a missed training day, rest, today still open,
     or a day still to come. Days before `since` (default: the first day
     with a saved row) are 'none': nothing was expected yet. */
-export function trainingCalendar(done: DoneMap, schedule: WeekSchedule, weeks = 8, today = new Date(), since?: string | null, sport: MinutesByDay = {}): DayCell[][] {
+export function trainingCalendar(done: DoneMap, schedule: StreakSchedule, weeks = 8, today = new Date(), since?: string | null, sport: MinutesByDay = {}): DayCell[][] {
   const todayId = isoDay(today);
   const first = since ?? Object.keys(done).sort()[0] ?? todayId;
   const thisMonday = isoDay(weekStartDate(today));
@@ -251,7 +255,7 @@ export function trainingCalendar(done: DoneMap, schedule: WeekSchedule, weeks = 
     rows.push(
       Array.from({ length: 7 }, (_, i) => {
         const id = addDays(ws, i);
-        const training = schedule[i] === 'workout';
+        const training = kindOn(schedule, id) === 'workout';
         let state: DayCell['state'];
         if (isTrainedDay(done[id], sport[id])) state = 'done';
         else if (id > todayId) state = 'future';
