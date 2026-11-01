@@ -19,6 +19,7 @@
 //   GET  /reports/<id>         report, thread, user; screenshot as a 10-minute signed link
 //   POST /reports/<id>/reply   {body, status?} → adds the reply, notifies the person by push
 //   POST /reports/<id>/status  {status}
+//   GET  /contact              ?limit&offset  website contact messages, newest first, plus the count from the last 7 days
 //
 // Customers (CRM) and finance (./erp.ts; tables and functions in
 // supabase/erp.sql). Money is integer cents, USD; dates are yyyy-mm-dd.
@@ -93,8 +94,20 @@ function tokenOf(req: Request): string {
   return a.startsWith('Bearer ') ? a.slice(7).trim() : '';
 }
 
+// The client address for the per-address login lockout. It must come from a
+// header the platform writes, never one the caller can choose, or an attacker
+// could rotate fake addresses to dodge the lock, or send the admin's address
+// to lock them out. Every request to *.supabase.co passes Cloudflare first,
+// which sets cf-connecting-ip to the address it saw and replaces any value the
+// caller sent. x-forwarded-for is only a fallback, and only its last entry:
+// proxies append the address they saw, so the entries on the left are
+// whatever the caller wrote. x-real-ip is not used: nothing here proves who
+// set it.
 function ipOf(req: Request): string {
-  return (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0] ?? req.headers.get('x-real-ip') ?? '').trim().slice(0, 100);
+  const cf = req.headers.get('cf-connecting-ip')?.trim();
+  if (cf) return cf.slice(0, 100);
+  const hops = (req.headers.get('x-forwarded-for') ?? '').split(',').map((h) => h.trim()).filter(Boolean);
+  return (hops[hops.length - 1] ?? '').slice(0, 100);
 }
 
 /** Route path after ".../admin". */
@@ -258,6 +271,12 @@ Deno.serve(async (req) => {
         if (!data) return err(ctx, 404, 'not_found', 'No report with that id.');
         return send(ctx, 200, data);
       }
+    }
+
+    if (route[0] === 'contact' && route.length === 1 && method === 'GET') {
+      const { data, error } = await db.rpc('admin_contact_messages', { p: filtersFrom(url, ['limit', 'offset']) });
+      if (error) throw new Error(`admin_contact_messages: ${error.message}`);
+      return send(ctx, 200, data);
     }
 
     const erp = await erpRoute(db, route, url, method, {

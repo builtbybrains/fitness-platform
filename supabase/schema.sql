@@ -526,7 +526,8 @@ create table if not exists public.admin_login_attempts (
 create index if not exists admin_login_attempts_ip_idx on public.admin_login_attempts (ip, created_at desc);
 create index if not exists admin_login_attempts_created_idx on public.admin_login_attempts (created_at desc);
 
--- Active lockouts: scope 'ip:<address>' or 'global'.
+-- Active lockouts: scope 'ip:<address>'. (Rows with scope 'global' are from
+-- an older version; nothing reads them any more.)
 create table if not exists public.admin_lockouts (
   scope text primary key,
   locked_until timestamptz not null
@@ -903,8 +904,9 @@ $$;
 -- Log in. Returns {"ok":true,"token":…,"expires_at":…} or
 -- {"ok":false,"error":"invalid"|"locked"|"not_configured","locked_until":…}.
 -- Lockout: 5 failed attempts from one address within 15 minutes lock that
--- address for 15 minutes; 20 failures from anywhere lock every login for
--- 15 minutes. Sessions last 12 hours. Expired sessions, lifted lockouts and
+-- address for 15 minutes. There is no lock across all addresses: one would
+-- let anyone keep the only admin out by sending bad passwords on a timer.
+-- Sessions last 12 hours. Expired sessions, lifted lockouts and
 -- old attempts are never deleted: they stay as an audit trail, and every
 -- check below only looks at rows that are still live.
 create or replace function public.admin_login(p_username text, p_password text, p_ip text default '')
@@ -927,7 +929,7 @@ declare
   c_dummy constant text := '$2a$12$tlOhBBmA4xrh6/43SYxdOeg0uhTwUDgMIOa1eu9VSGNKyEtRIciOW';
 begin
   select max(locked_until) into v_lock from public.admin_lockouts
-  where scope in ('ip:' || v_ip, 'global') and locked_until > now();
+  where scope = 'ip:' || v_ip and locked_until > now();
   if v_lock is not null then
     return jsonb_build_object('ok', false, 'error', 'locked', 'locked_until', v_lock);
   end if;
@@ -947,13 +949,6 @@ begin
       and (v_last_ok is null or created_at > v_last_ok);
     if v_fails >= 5 then
       insert into public.admin_lockouts (scope, locked_until) values ('ip:' || v_ip, now() + interval '15 minutes')
-      on conflict (scope) do update set locked_until = excluded.locked_until;
-      v_lock := now() + interval '15 minutes';
-    end if;
-    select count(*) into v_fails from public.admin_login_attempts
-    where not ok and created_at > now() - interval '15 minutes';
-    if v_fails >= 20 then
-      insert into public.admin_lockouts (scope, locked_until) values ('global', now() + interval '15 minutes')
       on conflict (scope) do update set locked_until = excluded.locked_until;
       v_lock := now() + interval '15 minutes';
     end if;
@@ -1421,6 +1416,40 @@ begin
 end;
 $$;
 
+-- Website contact messages (the early-access form), newest first. p: limit
+-- (1..200, default 50), offset. Returns {"total", "last_7d", "limit",
+-- "offset", "rows": [{id, created_at, name, email, topic, message, source}]}.
+create or replace function public.admin_contact_messages(p jsonb default '{}'::jsonb)
+returns jsonb
+language plpgsql
+stable
+security definer set search_path = public
+as $$
+declare
+  v_limit int := least(greatest(coalesce((p ->> 'limit')::int, 50), 1), 200);
+  v_offset int := greatest(coalesce((p ->> 'offset')::int, 0), 0);
+  v_out jsonb;
+begin
+  with page as (
+    select id, created_at, name, email, topic, message, source
+    from public.contact_messages
+    order by created_at desc, id
+    limit v_limit offset v_offset
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from public.contact_messages),
+    'last_7d', (select count(*) from public.contact_messages where created_at >= now() - interval '7 days'),
+    'limit', v_limit,
+    'offset', v_offset,
+    'rows', coalesce((select jsonb_agg(jsonb_build_object(
+      'id', id, 'created_at', created_at, 'name', name, 'email', email,
+      'topic', topic, 'message', message, 'source', source
+    ) order by created_at desc, id) from page), '[]'::jsonb)
+  ) into v_out;
+  return v_out;
+end;
+$$;
+
 do $admin_fns$
 declare
   f text;
@@ -1438,7 +1467,8 @@ begin
     'public.admin_reports(jsonb)',
     'public.admin_report_detail(uuid)',
     'public.admin_report_reply(uuid, text, text)',
-    'public.admin_report_set_status(uuid, text)'
+    'public.admin_report_set_status(uuid, text)',
+    'public.admin_contact_messages(jsonb)'
   ] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);

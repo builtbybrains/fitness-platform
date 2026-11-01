@@ -36,6 +36,7 @@ const L = {
   gender: { female: 'Female', male: 'Male' },
   sport: { martial_arts: 'Martial arts', crossfit: 'CrossFit', dancing: 'Dance', strength: 'Strength training' },
   platform: { ios: 'iPhone', android: 'Android', web: 'Web' },
+  topic: { 'early-access': 'Early access', question: 'Question', partnership: 'Partnership', support: 'Support', privacy: 'Privacy or data' },
 };
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FILTER_KEYS = ['active', 'goal', 'activity_level', 'train_location', 'age_group', 'onboarding', 'streak_min', 'streak_max', 'signed_from', 'signed_to'];
@@ -333,7 +334,7 @@ const main = () => $('#main');
 let seq = 0;
 let current = { view: '' };
 let lastUsersHash = '#/users';
-const TITLES = { overview: 'Overview', users: 'Users', customers: 'Customers', finance: 'Finance', reports: 'Reports' };
+const TITLES = { overview: 'Overview', users: 'Users', customers: 'Customers', finance: 'Finance', reports: 'Reports', messages: 'Messages' };
 
 function showApp() {
   $('#login').hidden = true;
@@ -377,6 +378,7 @@ function route(fromLogin = false) {
   else if (view === 'reports') current.ctl = renderReports(params, parts[1] || '', s);
   else if (view === 'customers') current.ctl = renderCustomers(params, parts[1] || '', s);
   else if (view === 'finance') current.ctl = renderFinance(parts, params, s);
+  else if (view === 'messages') renderMessages(s);
   else renderOverview(s);
   if (view === 'users' && parts[1]) current.view = 'user';
   window.scrollTo(0, 0);
@@ -385,12 +387,24 @@ function route(fromLogin = false) {
 }
 
 async function refreshBadge() {
-  try {
-    const d = await api('/reports?status=new&limit=1');
-    const b = $('#nav-badge');
-    b.hidden = !d.total;
-    b.innerHTML = `${esc(n(d.total))}<span class="sr"> new</span>`;
-  } catch { /* the badge is a nicety; the inbox shows real errors */ }
+  await Promise.all([
+    (async () => {
+      try {
+        const d = await api('/reports?status=new&limit=1');
+        const b = $('#nav-badge');
+        b.hidden = !d.total;
+        b.innerHTML = `${esc(n(d.total))}<span class="sr"> new</span>`;
+      } catch { /* the badge is a nicety; the inbox shows real errors */ }
+    })(),
+    (async () => {
+      try { msgBadge((await api('/contact?limit=1')).last_7d); } catch { /* same: the Messages page shows real errors */ }
+    })(),
+  ]);
+}
+function msgBadge(count) {
+  const b = $('#nav-badge-msg');
+  b.hidden = !count;
+  b.innerHTML = `${esc(n(count))}<span class="sr"> this week</span>`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1246,6 +1260,84 @@ function msgHtml(m, who, fresh = false) {
     <p class="msg__by"><b>${admin ? 'BUILT support' : esc(first(who))}</b><span>${esc(fDateTime(m.created_at))}</span></p>
     <p class="msg__body">${esc(m.body)}</p>
   </div>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Messages (the website contact form)                                 */
+/* ------------------------------------------------------------------ */
+
+/** mailto link with the reply subject filled in. The address is encoded so a
+ *  "?" or "&" in it can't add fields of its own. */
+function replyHref(m) {
+  const subject = `Re: your BUILT ${label('topic', m.topic || 'question').toLowerCase()} request`;
+  return `mailto:${encodeURIComponent(String(m.email || '')).replace(/%40/g, '@')}?subject=${encodeURIComponent(subject)}`;
+}
+
+function renderMessages(s) {
+  setTitle('Messages');
+  const st = { rows: [], total: 0, week: 0 };
+  const el = main();
+  el.innerHTML = `
+    <div class="head">
+      <div><h1 tabindex="-1">Messages</h1><p class="head__meta" id="m-meta">What people sent from the form on the website.</p></div>
+      <div class="head__actions"><button type="button" class="btn btn-secondary btn-sm" id="m-refresh">${icon('refresh')}Refresh</button></div>
+    </div>
+    <div class="msgs" id="m-list" aria-live="polite"></div>`;
+
+  let req = 0;
+  async function load(quiet = false, append = false) {
+    const my = ++req;
+    const list = $('#m-list');
+    if (!quiet && !append) { list.setAttribute('aria-busy', 'true'); list.innerHTML = `<div class="rlist">${skLines(5, 'sk-row--tall')}</div>`; }
+    try {
+      const q = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(append ? st.rows.length : 0) });
+      const d = await api(`/contact?${q}`);
+      if (s !== seq || my !== req) return;
+      list.removeAttribute('aria-busy');
+      st.rows = append ? st.rows.concat(d.rows || []) : (d.rows || []);
+      st.total = d.total || 0;
+      st.week = d.last_7d || 0;
+      msgBadge(st.week);
+      draw();
+    } catch (e) {
+      if (s !== seq || my !== req) return;
+      list.removeAttribute('aria-busy');
+      if (quiet) {
+        const more = $('#m-more'); if (more) busy(more, false);
+        if (e.code !== 'session_expired') toast(append ? `No more loaded. ${e.message}` : `The list didn't refresh. ${e.message}`, 'error');
+        return;
+      }
+      showError(list, e, () => load());
+    }
+  }
+
+  function draw() {
+    const list = $('#m-list');
+    $('#m-meta').textContent = st.total
+      ? `${plural(st.total, 'message', 'messages')} from the website, ${n(st.week)} in the last 7 days.`
+      : 'What people sent from the form on the website.';
+    if (!st.rows.length) {
+      list.innerHTML = emptyBlock('No messages yet.', 'When someone sends the form on the website, it lands here with their email, ready to answer.');
+      return;
+    }
+    list.innerHTML = `<div class="rlist">${st.rows.map((m) => `<article class="mrow">
+      <p class="mrow__top"><span class="mrow__who">${esc(m.name || 'No name')}</span><time class="mrow__when" datetime="${esc(m.created_at)}" title="${esc(fDate(m.created_at))}, ${esc(fTime(m.created_at))}">${esc(fDateTime(m.created_at))}</time></p>
+      <p class="mrow__meta"><span class="flag">${esc(label('topic', m.topic) || 'No topic')}</span>${m.source && m.source !== 'website' ? `<span class="flag">${esc(humanize(m.source))}</span>` : ''}
+        <a class="link mrow__mail" href="${esc(replyHref(m))}">${icon('mail')}<span>${esc(m.email)}</span></a></p>
+      <p class="mrow__msg">${esc(m.message)}</p>
+    </article>`).join('')}</div>
+    ${st.rows.length < st.total ? `<button type="button" class="btn btn-secondary btn-sm more" id="m-more">Show more (${n(st.total - st.rows.length)} left)</button>` : ''}`;
+    const more = $('#m-more');
+    if (more) more.addEventListener('click', () => { busy(more, true, 'Loading'); load(true, true); });
+  }
+
+  $('#m-refresh').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget; busy(b, true, 'Refreshing');
+    await load(true);
+    busy(b, false);
+  });
+
+  load();
 }
 
 /* ------------------------------------------------------------------ */

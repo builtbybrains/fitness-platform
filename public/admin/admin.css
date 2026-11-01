@@ -411,6 +411,19 @@ a.row:hover { background: var(--band); }
 .status--fixed { background: var(--band); color: var(--muted); }
 .flag .ico { width: 14px; height: 14px; margin-right: 4px; }
 
+/* ---------- Messages (website form) ---------- */
+.msgs { display: grid; gap: 14px; }
+.mrow { display: grid; gap: 8px; padding: 18px 12px 20px; border-bottom: 1px solid var(--line); }
+.mrow__top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.mrow__who { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.mrow__when { font-size: 0.8125rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mrow__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.mrow__mail { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 0.9375rem; }
+.mrow__mail span { overflow-wrap: anywhere; }
+.mrow__mail .ico { width: 16px; height: 16px; color: var(--green); }
+.mrow__msg { max-width: 65ch; color: var(--stone); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sk-row--tall { height: 112px; }
+
 .pane { position: sticky; top: 24px; min-width: 0; }
 .pane__empty { display: grid; place-items: center; text-align: center; gap: 8px; min-height: 320px; padding: 32px; border-radius: var(--r-card); border: 1px dashed var(--line-strong); color: var(--muted); }
 .rd { display: grid; gap: 24px; padding: 28px; border-radius: var(--r-card); background: var(--carbon); min-width: 0; }
@@ -878,7 +891,9 @@ a.cat:hover .cat__name { color: var(--white); text-decoration: underline; text-d
 
 /* ---------- ERP: tablet and phone ---------- */
 @media (max-width: 900px) {
-  .nav { grid-template-columns: repeat(5, 1fr); }
+  .nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .mrow { padding: 16px 4px 18px; }
+  .mrow__mail { min-height: 44px; }
   .drawer {
     top: auto; left: 0; width: 100%; max-height: 92dvh; border-left: 0; border-top: 1px solid var(--line-strong);
     border-radius: var(--r-card) var(--r-card) 0 0; transform: translateY(104%);
